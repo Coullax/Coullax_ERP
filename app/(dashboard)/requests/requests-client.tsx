@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {motion} from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,8 +40,8 @@ const REQUEST_LINKS = [
 export function RequestsPageClient({ requests, userId }: RequestsPageClientProps) {
   const [filter, setFilter] = useState<string>('all')
 
-  const filteredRequests = filter === 'all' 
-    ? requests 
+  const filteredRequests = filter === 'all'
+    ? requests
     : requests.filter(r => r.status === filter)
 
   const getStatusBadge = (status: string) => {
@@ -200,7 +200,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                           )}
                           {request.review_notes && (
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                              "{request.review_notes}"
+                              &quot;{request.review_notes}&quot;
                             </p>
                           )}
                         </div>
