@@ -41,7 +41,7 @@ export function DepartmentsPageClient({ departments, users }: DepartmentsPageCli
 
   // Organize departments by hierarchy
   const rootDepartments = departments.filter(d => !d.parent_id)
-  const getSubDepartments = (parentId: string) => 
+  const getSubDepartments = (parentId: string) =>
     departments.filter(d => d.parent_id === parentId)
 
   return (
@@ -298,7 +298,7 @@ function DepartmentDialog({ department, departments, users, onClose }: any) {
                 className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
               >
                 <option value="">No Head</option>
-                {users.map((user) => (
+                {users.map((user: any) => (
                   <option key={user.id} value={user.id}>
                     {user.full_name} ({user.email})
                   </option>
