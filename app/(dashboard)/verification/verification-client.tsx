@@ -167,7 +167,7 @@ export function VerificationPageClient({
                               </p>
                               {doc.verification_notes && (
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                                  "{doc.verification_notes}"
+                                  &quot;{doc.verification_notes}&quot;
                                 </p>
                               )}
                             </div>
