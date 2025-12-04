@@ -1,0 +1,476 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import {
+  createLeaveRequest,
+  createOvertimeRequest,
+  createTravelRequest,
+  createExpenseRequest,
+  createAttendanceRegularization,
+  createAssetRequest,
+  createResignation,
+} from '@/app/actions/request-actions'
+
+interface RequestFormProps {
+  employeeId: string
+  requestType: string
+}
+
+export function RequestForm({ employeeId, requestType }: RequestFormProps) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState<any>({})
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      let result
+      switch (requestType) {
+        case 'leave':
+          result = await createLeaveRequest(employeeId, formData)
+          break
+        case 'overtime':
+          result = await createOvertimeRequest(employeeId, {
+            ...formData,
+            hours: parseFloat(formData.hours),
+          })
+          break
+        case 'travel':
+          result = await createTravelRequest(employeeId, {
+            ...formData,
+            estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : undefined,
+          })
+          break
+        case 'expense':
+          result = await createExpenseRequest(employeeId, {
+            ...formData,
+            amount: parseFloat(formData.amount),
+          })
+          break
+        case 'attendance_regularization':
+          result = await createAttendanceRegularization(employeeId, formData)
+          break
+        case 'asset':
+          result = await createAssetRequest(employeeId, {
+            ...formData,
+            quantity: parseInt(formData.quantity) || 1,
+          })
+          break
+        case 'resignation':
+          result = await createResignation(employeeId, formData)
+          break
+        default:
+          throw new Error('Invalid request type')
+      }
+
+      toast.success('Request submitted successfully!')
+      router.push('/requests')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to submit request')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const renderFormFields = () => {
+    switch (requestType) {
+      case 'leave':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="leave_type">Leave Type *</Label>
+              <select
+                id="leave_type"
+                name="leave_type"
+                onChange={handleChange}
+                required
+                className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <option value="">Select leave type</option>
+                <option value="sick">Sick Leave</option>
+                <option value="casual">Casual Leave</option>
+                <option value="vacation">Vacation</option>
+                <option value="maternity">Maternity Leave</option>
+                <option value="paternity">Paternity Leave</option>
+                <option value="unpaid">Unpaid Leave</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Start Date *</Label>
+                <Input
+                  id="start_date"
+                  name="start_date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end_date">End Date *</Label>
+                <Input
+                  id="end_date"
+                  name="end_date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Explain the reason for your leave request..."
+              />
+            </div>
+          </>
+        )
+
+      case 'overtime':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  name="date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hours">Hours *</Label>
+                <Input
+                  id="hours"
+                  name="hours"
+                  type="number"
+                  step="0.5"
+                  onChange={handleChange}
+                  required
+                  placeholder="2.5"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Explain the reason for overtime..."
+              />
+            </div>
+          </>
+        )
+
+      case 'travel':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="destination">Destination *</Label>
+                <Input
+                  id="destination"
+                  name="destination"
+                  onChange={handleChange}
+                  required
+                  placeholder="New York, USA"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="estimated_cost">Estimated Cost</Label>
+                <Input
+                  id="estimated_cost"
+                  name="estimated_cost"
+                  type="number"
+                  step="0.01"
+                  onChange={handleChange}
+                  placeholder="1500.00"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Start Date *</Label>
+                <Input
+                  id="start_date"
+                  name="start_date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end_date">End Date *</Label>
+                <Input
+                  id="end_date"
+                  name="end_date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="purpose">Purpose *</Label>
+              <textarea
+                id="purpose"
+                name="purpose"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Describe the purpose of travel..."
+              />
+            </div>
+          </>
+        )
+
+      case 'expense':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="expense_type">Expense Type *</Label>
+                <Input
+                  id="expense_type"
+                  name="expense_type"
+                  onChange={handleChange}
+                  required
+                  placeholder="Travel, Food, Equipment, etc."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount *</Label>
+                <Input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  onChange={handleChange}
+                  required
+                  placeholder="150.00"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expense_date">Expense Date *</Label>
+              <Input
+                id="expense_date"
+                name="expense_date"
+                type="date"
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description *</Label>
+              <textarea
+                id="description"
+                name="description"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Describe the expense..."
+              />
+            </div>
+          </>
+        )
+
+      case 'attendance_regularization':
+        return (
+          <>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  name="date"
+                  type="date"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="actual_time">Actual Time</Label>
+                <Input
+                  id="actual_time"
+                  name="actual_time"
+                  type="time"
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="requested_time">Requested Time *</Label>
+                <Input
+                  id="requested_time"
+                  name="requested_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Explain why attendance needs correction..."
+              />
+            </div>
+          </>
+        )
+
+      case 'asset':
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="asset_type">Asset Type *</Label>
+                <Input
+                  id="asset_type"
+                  name="asset_type"
+                  onChange={handleChange}
+                  required
+                  placeholder="Laptop, Monitor, Phone, etc."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  onChange={handleChange}
+                  required
+                  defaultValue="1"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Explain why you need this asset..."
+              />
+            </div>
+          </>
+        )
+
+      case 'resignation':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="last_working_date">Last Working Date *</Label>
+              <Input
+                id="last_working_date"
+                name="last_working_date"
+                type="date"
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason for Resignation *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Please provide your reason for resignation..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Feedback (Optional)</Label>
+              <textarea
+                id="feedback"
+                name="feedback"
+                onChange={handleChange}
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Any feedback about your experience..."
+              />
+            </div>
+          </>
+        )
+
+      default:
+        return <p>Invalid request type</p>
+    }
+  }
+
+  const getRequestTitle = () => {
+    const titles: Record<string, string> = {
+      leave: 'Leave Request',
+      overtime: 'Overtime Request',
+      travel: 'Travel Request',
+      expense: 'Expense Reimbursement',
+      attendance_regularization: 'Attendance Regularization',
+      asset: 'Asset Request',
+      resignation: 'Resignation',
+    }
+    return titles[requestType] || 'Request'
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{getRequestTitle()}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {renderFormFields()}
+          
+          <div className="flex gap-2 justify-end pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Submitting...' : 'Submit Request'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
