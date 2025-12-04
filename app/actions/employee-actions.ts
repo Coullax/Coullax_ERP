@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 // Get all employees with their profiles
@@ -58,10 +58,10 @@ export async function createEmployee(data: {
   designation_id?: string
   phone?: string
 }) {
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  // Create auth user
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // Create auth user using admin client
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: data.email,
     password: data.password,
     email_confirm: true,
@@ -72,8 +72,8 @@ export async function createEmployee(data: {
   if (!authData.user) throw new Error('Failed to create user')
 
   try {
-    // Create profile
-    const { error: profileError } = await supabase
+    // Create profile using admin client to bypass RLS
+    const { error: profileError } = await adminClient
       .from('profiles')
       .insert({
         id: authData.user.id,
@@ -85,9 +85,9 @@ export async function createEmployee(data: {
 
     if (profileError) throw profileError
 
-    // Create employee record
+    // Create employee record using admin client to bypass RLS
     const employeeId = `EMP${Date.now().toString().slice(-6)}`
-    const { error: employeeError } = await supabase
+    const { error: employeeError } = await adminClient
       .from('employees')
       .insert({
         id: authData.user.id,
@@ -103,7 +103,7 @@ export async function createEmployee(data: {
     return { success: true, employeeId: authData.user.id }
   } catch (error) {
     // Rollback: delete auth user if profile/employee creation fails
-    await supabase.auth.admin.deleteUser(authData.user.id)
+    await adminClient.auth.admin.deleteUser(authData.user.id)
     throw error
   }
 }
@@ -157,10 +157,10 @@ export async function updateEmployeeTeam(
 
 // Delete employee
 export async function deleteEmployee(employeeId: string) {
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // This will cascade delete from employees table and auth.users
-  const { error } = await supabase.auth.admin.deleteUser(employeeId)
+  const { error } = await adminClient.auth.admin.deleteUser(employeeId)
 
   if (error) throw error
 
