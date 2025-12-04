@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,11 +32,7 @@ export function SkillsSection({ employeeId }: SkillsSectionProps) {
     years_of_experience: '',
   })
 
-  useEffect(() => {
-    loadSkills()
-  }, [employeeId])
-
-  const loadSkills = async () => {
+  const loadSkills = useCallback(async () => {
     try {
       const data = await getEmployeeSkills(employeeId)
       setSkills(data)
@@ -45,7 +41,11 @@ export function SkillsSection({ employeeId }: SkillsSectionProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [employeeId])
+
+  useEffect(() => {
+    loadSkills()
+  }, [loadSkills])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -175,7 +175,7 @@ export function SkillsSection({ employeeId }: SkillsSectionProps) {
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : skills.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No skills added yet. Click "Add Skill" to get started.
+            No skills added yet. Click &quot;Add Skill&quot; to get started.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -197,16 +197,15 @@ export function SkillsSection({ employeeId }: SkillsSectionProps) {
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-                
+
                 <div className="flex items-center gap-1 mb-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-4 h-4 ${
-                        i < skill.proficiency_level
-                          ? 'fill-black dark:fill-white text-black dark:text-white'
-                          : 'text-gray-300 dark:text-gray-700'
-                      }`}
+                      className={`w-4 h-4 ${i < skill.proficiency_level
+                        ? 'fill-black dark:fill-white text-black dark:text-white'
+                        : 'text-gray-300 dark:text-gray-700'
+                        }`}
                     />
                   ))}
                 </div>
