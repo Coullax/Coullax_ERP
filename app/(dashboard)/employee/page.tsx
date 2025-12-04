@@ -61,7 +61,7 @@ export default async function EmployeeDashboard() {
       employee={employee}
       todayAttendance={todayAttendance}
       attendanceStats={attendanceStats}
-      recentRequests={recentRequests}
+      recentRequests={recentRequests || []}
     />
   )
 }
