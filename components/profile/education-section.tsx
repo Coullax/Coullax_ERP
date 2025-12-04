@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,11 +38,7 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
     grade: '',
   })
 
-  useEffect(() => {
-    loadEducation()
-  }, [employeeId])
-
-  const loadEducation = async () => {
+  const loadEducation = useCallback(async () => {
     try {
       const data = await getEmployeeEducation(employeeId)
       setEducation(data)
@@ -51,7 +47,11 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [employeeId])
+
+  useEffect(() => {
+    loadEducation()
+  }, [loadEducation])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -196,7 +196,7 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
           <div className="text-center py-8 text-gray-500">Loading...</div>
         ) : education.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No education added yet. Click "Add Education" to get started.
+            No education added yet. Click &quot;Add Education&quot; to get started.
           </div>
         ) : (
           <div className="space-y-3">
