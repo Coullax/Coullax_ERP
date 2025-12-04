@@ -55,7 +55,7 @@ export function EmployeeDashboardClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Welcome back, {profile?.full_name?.split(' ')[0]}!</h1>
-          <p className="text-gray-500 mt-1">Here's your overview for today</p>
+          <p className="text-gray-500 mt-1">Here&apos;s your overview for today</p>
         </div>
         <div className="flex gap-2">
           <Link href="/attendance">
@@ -78,7 +78,7 @@ export function EmployeeDashboardClient({
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold mb-2">Today's Attendance</h2>
+              <h2 className="text-xl font-semibold mb-2">Today&apos;s Attendance</h2>
               {todayAttendance ? (
                 <div className="space-y-1">
                   <p className="text-sm opacity-80">
