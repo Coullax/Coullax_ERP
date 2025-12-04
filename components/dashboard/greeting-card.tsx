@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/auth-store'
 export function GreetingCard() {
   const { profile } = useAuthStore()
   const hour = new Date().getHours()
-  
+
   const getGreeting = () => {
     if (hour < 12) return 'Good Morning'
     if (hour < 18) return 'Good Afternoon'
@@ -35,7 +35,7 @@ export function GreetingCard() {
                 {getGreeting()}, {profile?.full_name?.split(' ')[0] || 'User'}!
               </h2>
               <p className="text-sm opacity-80 mt-1">
-                Welcome back to your dashboard. Here's what's happening today.
+                Welcome back to your dashboard. Here&apos;s what&apos;s happening today.
               </p>
             </div>
           </div>
