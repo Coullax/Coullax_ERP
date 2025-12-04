@@ -36,7 +36,7 @@ export function VerificationsPageClient({
   const [loading, setLoading] = useState(false)
   const [notes, setNotes] = useState('')
 
-  const filteredDocs = documents.filter(doc => 
+  const filteredDocs = documents.filter(doc =>
     filter === 'all' ? true : doc.status === filter
   )
 
@@ -185,7 +185,7 @@ export function VerificationsPageClient({
                       <Avatar>
                         <AvatarImage src={doc.employee?.profile?.avatar_url} />
                         <AvatarFallback>
-                          {doc.employee?.profile 
+                          {doc.employee?.profile
                             ? getInitials(doc.employee.profile.full_name)
                             : <User className="w-4 h-4" />
                           }
@@ -214,7 +214,7 @@ export function VerificationsPageClient({
                         </p>
                         {doc.notes && (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                            Note: "{doc.notes}"
+                            Note: &quot;{doc.notes}&quot;
                           </p>
                         )}
                       </div>
@@ -253,7 +253,7 @@ export function VerificationsPageClient({
                 <Avatar className="w-12 h-12">
                   <AvatarImage src={selectedDoc.employee?.profile?.avatar_url} />
                   <AvatarFallback>
-                    {selectedDoc.employee?.profile 
+                    {selectedDoc.employee?.profile
                       ? getInitials(selectedDoc.employee.profile.full_name)
                       : <User className="w-4 h-4" />
                     }
