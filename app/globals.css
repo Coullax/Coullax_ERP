@@ -4,48 +4,110 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* Light Mode - Modern Purple Theme */
+    --background: 220 17% 98%;
+    /* #F9FAFB - Very light gray */
+    --foreground: 222 47% 11%;
+    /* #111827 - Dark gray text */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    /* #FFFFFF - Pure white cards */
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Purple primary color */
+    --primary: 258 90% 66%;
+    /* #8B5CF6 - Purple accent */
+    --primary-foreground: 0 0% 100%;
+    /* White text on purple */
+
+    /* Secondary colors */
+    --secondary: 220 14% 96%;
+    /* #F3F4F6 - Light gray */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    /* #6B7280 - Medium gray */
+
+    --accent: 258 90% 66%;
+    /* Purple accent same as primary */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    /* Red for errors */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 220 13% 91%;
+    /* #E5E7EB - Light gray borders */
+    --input: 220 13% 91%;
+    --ring: 258 90% 66%;
+    /* Purple focus ring */
+
     --radius: 0.75rem;
+    /* 12px rounded corners */
+
+    /* Chart colors */
+    --chart-1: 258 90% 66%;
+    /* Purple */
+    --chart-2: 221 83% 53%;
+    /* Blue */
+    --chart-3: 142 76% 36%;
+    /* Green */
+    --chart-4: 48 96% 53%;
+    /* Yellow */
+    --chart-5: 340 82% 52%;
+    /* Pink */
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    /* Dark Mode - Modern Deep Gray Theme */
+    --background: 222 47% 11%;
+    /* #111827 - Deep gray background */
+    --foreground: 210 40% 98%;
+    /* #F9FAFB - Light text */
+    --card: 217 33% 17%;
+    /* #1F2937 - Medium gray cards */
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Purple primary - same in dark mode */
+    --primary: 258 90% 66%;
+    /* #8B5CF6 - Purple accent */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary colors */
+    --secondary: 217 19% 27%;
+    /* #374151 - Dark gray */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 19% 27%;
+    --muted-foreground: 215 20% 65%;
+    /* #9CA3AF - Medium gray */
+
+    --accent: 258 90% 66%;
+    /* Purple */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    /* Dark red */
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders and inputs */
+    --border: 217 19% 27%;
+    /* #374151 - Dark gray borders */
+    --input: 217 19% 27%;
+    --ring: 258 90% 66%;
+    /* Purple focus ring */
+
+    /* Chart colors - same as light mode */
+    --chart-1: 258 90% 66%;
+    --chart-2: 221 83% 53%;
+    --chart-3: 142 76% 36%;
+    --chart-4: 48 96% 53%;
+    --chart-5: 340 82% 52%;
   }
 }
 
@@ -53,8 +115,10 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
@@ -63,6 +127,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -70,11 +135,11 @@
 
 /* Custom styles for modern dashboard look */
 .glass-card {
-  @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm;
+  @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm;
 }
 
 .stat-card {
-  @apply rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-card hover:shadow-card-hover transition-all duration-300;
+  @apply rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all duration-300;
 }
 
 .sidebar-item {
@@ -82,9 +147,27 @@
 }
 
 .sidebar-item-active {
-  @apply bg-black dark:bg-white text-white dark:text-black;
+  @apply bg-primary text-primary-foreground shadow-sm;
 }
 
 .sidebar-item-inactive {
   @apply text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800;
+}
+
+/* Enhanced card shadows */
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.card-shadow-hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Purple gradient backgrounds */
+.purple-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+}
+
+.purple-gradient-subtle {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(109, 40, 217, 0.05) 100%);
 }
