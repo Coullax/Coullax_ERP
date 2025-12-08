@@ -91,7 +91,7 @@ export async function createLeaveRequest(employeeId: string, data: {
   // Check leave balance before creating request
   const { checkLeaveBalance } = await import('./policy-actions')
   const balanceCheck = await checkLeaveBalance(employeeId, totalDays, start)
-  
+
   if (!balanceCheck.hasBalance) {
     throw new Error(`Insufficient leave balance. Available: ${balanceCheck.available} days, Requested: ${balanceCheck.requested} days`)
   }
@@ -200,13 +200,47 @@ export async function createTravelRequest(employeeId: string, data: {
   return { success: true, requestId: request.id }
 }
 
+// Upload Expense Attachment
+export async function uploadExpenseAttachment(formData: FormData) {
+  const supabase = await createClient()
+  const file = formData.get('file') as File
+  const employeeId = formData.get('employeeId') as string
+
+  if (!file) throw new Error('No file provided')
+
+  // Validate file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('File size should be less than 10MB')
+  }
+
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${employeeId}/expense-${Date.now()}.${fileExt}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('documents')
+    .upload(fileName, file)
+
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage
+    .from('documents')
+    .getPublicUrl(fileName)
+
+  return {
+    url: data.publicUrl,
+    name: file.name,
+    type: file.type,
+    size: file.size
+  }
+}
+
 // Create Expense Reimbursement
 export async function createExpenseRequest(employeeId: string, data: {
   expense_type: string
   amount: number
   expense_date: string
   description: string
-  receipt_url?: string
+  attachments?: string[]
 }) {
   const supabase = await createClient()
 
@@ -227,7 +261,11 @@ export async function createExpenseRequest(employeeId: string, data: {
     .insert({
       request_id: request.id,
       employee_id: employeeId,
-      ...data,
+      expense_type: data.expense_type,
+      amount: data.amount,
+      expense_date: data.expense_date,
+      description: data.description,
+      attachments: data.attachments || null,
     })
 
   if (detailError) throw detailError
@@ -371,14 +409,14 @@ export async function updateRequestStatus(
 
   // If approved and it's a leave request, deduct from leave balance
   if (status === 'approved' && request.request_type === 'leave' && request.leave_requests) {
-    const leaveRequest = Array.isArray(request.leave_requests) 
-      ? request.leave_requests[0] 
+    const leaveRequest = Array.isArray(request.leave_requests)
+      ? request.leave_requests[0]
       : request.leave_requests
-    
+
     if (leaveRequest) {
       const startDate = new Date(leaveRequest.start_date)
       const { deductLeaveFromBalance } = await import('./policy-actions')
-      
+
       try {
         await deductLeaveFromBalance(
           request.employee_id,

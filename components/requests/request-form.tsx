@@ -15,6 +15,7 @@ import {
   createAttendanceRegularization,
   createAssetRequest,
   createResignation,
+  uploadExpenseAttachment,
 } from '@/app/actions/request-actions'
 
 interface RequestFormProps {
@@ -28,29 +29,30 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [formData, setFormData] = useState<any>({})
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    // Handle file inputs differently
-    if (e.target instanceof HTMLInputElement && e.target.type === 'file') {
+    // Handle file inputs for expense attachments
+    if (e.target instanceof HTMLInputElement && e.target.type === 'file' && e.target.name === 'attachments') {
       const files = e.target.files
       if (files && files.length > 0) {
-        // Convert files to base64 strings
-        const filePromises = Array.from(files).map(file => {
-          return new Promise<{ name: string; data: string; type: string; size: number }>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => {
-              resolve({
-                name: file.name,
-                data: reader.result as string,
-                type: file.type,
-                size: file.size
-              })
-            }
-            reader.onerror = reject
-            reader.readAsDataURL(file)
-          })
-        })
+        setLoading(true)
+        try {
+          // Upload all files to Supabase Storage
+          const uploadPromises = Array.from(files).map(async (file) => {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('employeeId', employeeId)
 
-        const filesData = await Promise.all(filePromises)
-        setFormData({ ...formData, [e.target.name]: filesData })
+            const result = await uploadExpenseAttachment(formData)
+            return result.url // Only return the URL string
+          })
+
+          const uploadedUrls = await Promise.all(uploadPromises)
+          setFormData({ ...formData, attachments: uploadedUrls })
+          toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to upload files')
+        } finally {
+          setLoading(false)
+        }
       }
     } else {
       setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -338,6 +340,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Upload receipts, invoices, or supporting documents (Images or PDF, max 10MB each)
               </p>
+              {formData.attachments && formData.attachments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                    Uploaded Files:
+                  </p>
+                  <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
+                    {formData.attachments.map((url: string, index: number) => (
+                      <li key={index}>{url.split('/').pop()}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </>
         )
