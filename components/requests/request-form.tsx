@@ -27,8 +27,34 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<any>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    // Handle file inputs differently
+    if (e.target instanceof HTMLInputElement && e.target.type === 'file') {
+      const files = e.target.files
+      if (files && files.length > 0) {
+        // Convert files to base64 strings
+        const filePromises = Array.from(files).map(file => {
+          return new Promise<{ name: string; data: string; type: string; size: number }>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => {
+              resolve({
+                name: file.name,
+                data: reader.result as string,
+                type: file.type,
+                size: file.size
+              })
+            }
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+        })
+
+        const filesData = await Promise.all(filePromises)
+        setFormData({ ...formData, [e.target.name]: filesData })
+      }
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value })
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -297,6 +323,21 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                 placeholder="Describe the expense..."
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="attachments">Attachments (Receipt/Invoice)</Label>
+              <Input
+                id="attachments"
+                name="attachments"
+                type="file"
+                multiple
+                accept="image/*,.pdf"
+                onChange={handleChange}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Upload receipts, invoices, or supporting documents (Images or PDF, max 10MB each)
+              </p>
             </div>
           </>
         )
