@@ -86,7 +86,7 @@ export function AdminDashboardClient() {
             title="Weekly Attendance"
             data={attendanceData}
             dataKey="value"
-            color="#000000"
+            color="#22c55e"
           />
         </div>
 
