@@ -4,110 +4,121 @@
 
 @layer base {
   :root {
-    /* Light Mode - Modern Purple Theme */
-    --background: 220 17% 98%;
-    /* #F9FAFB - Very light gray */
-    --foreground: 222 47% 11%;
-    /* #111827 - Dark gray text */
+    /* Light Mode - Custom Brand Theme */
+    --background: 0 0% 100%;
+    /* #FFFFFF - Pure white */
+    --foreground: 144 95% 5%;
+    /* #101702 - dark alt */
+    
     --card: 0 0% 100%;
     /* #FFFFFF - Pure white cards */
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 144 95% 5%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 144 95% 5%;
 
-    /* Purple primary color */
-    --primary: 258 90% 66%;
-    /* #8B5CF6 - Purple accent */
-    --primary-foreground: 0 0% 100%;
-    /* White text on purple */
+    /* Green primary color */
+    --primary: 75 78% 52%;
+    /* #A4E322 - primary color */
+    --primary-foreground: 144 95% 5%;
+    /* Dark text on green primary */
 
     /* Secondary colors */
-    --secondary: 220 14% 96%;
-    /* #F3F4F6 - Light gray */
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 95 23% 87%;
+    /* #DDE6D6 - white alternative */
+    --secondary-foreground: 144 95% 5%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 215 16% 47%;
-    /* #6B7280 - Medium gray */
+    --muted: 95 23% 87%;
+    /* #DDE6D6 */
+    --muted-foreground: 144 95% 25%;
+    /* Darker shade for muted text */
 
-    --accent: 258 90% 66%;
-    /* Purple accent same as primary */
-    --accent-foreground: 0 0% 100%;
+    --accent: 75 78% 52%;
+    /* #A4E322 - Green accent */
+    --accent-foreground: 144 95% 5%;
 
     --destructive: 0 84% 60%;
     /* Red for errors */
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 98%;
 
     /* Borders and inputs */
-    --border: 220 13% 91%;
-    /* #E5E7EB - Light gray borders */
-    --input: 220 13% 91%;
-    --ring: 258 90% 66%;
-    /* Purple focus ring */
+    --border: 95 23% 82%;
+    /* Light gray borders */
+    --input: 95 23% 82%;
+    --ring: 75 78% 52%;
+    /* #A4E322 - Green focus ring */
 
     --radius: 0.75rem;
     /* 12px rounded corners */
 
     /* Chart colors */
-    --chart-1: 258 90% 66%;
-    /* Purple */
-    --chart-2: 221 83% 53%;
-    /* Blue */
-    --chart-3: 142 76% 36%;
-    /* Green */
-    --chart-4: 48 96% 53%;
-    /* Yellow */
-    --chart-5: 340 82% 52%;
-    /* Pink */
+    --chart-1: 75 78% 52%;
+    /* Green primary */
+    --chart-2: 95 23% 87%;
+    /* Light alternative */
+    --chart-3: 144 95% 15%;
+    /* Dark green */
+    --chart-4: 217 91% 8%;
+    /* Dark blue */
+    --chart-5: 0 84% 60%;
+    /* Red */
   }
 
   .dark {
-    /* Dark Mode - Modern Deep Gray Theme */
-    --background: 222 47% 11%;
-    /* #111827 - Deep gray background */
-    --foreground: 210 40% 98%;
-    /* #F9FAFB - Light text */
-    --card: 217 33% 17%;
-    /* #1F2937 - Medium gray cards */
-    --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
+    /* Dark Mode - Custom Brand Dark Theme */
+    --background: 217 91% 8%;
+    /* #070D1A - dark alt 2 */
+    --foreground: 95 23% 87%;
+    /* #DDE6D6 - Light text */
+    
+    --card: 144 95% 5%;
+    /* #101702 - dark alt */
+    --card-foreground: 95 23% 87%;
+    
+    --popover: 144 95% 5%;
+    --popover-foreground: 95 23% 87%;
 
-    /* Purple primary - same in dark mode */
-    --primary: 258 90% 66%;
-    /* #8B5CF6 - Purple accent */
-    --primary-foreground: 0 0% 100%;
+    /* Green primary - same in dark mode */
+    --primary: 75 78% 52%;
+    /* #A4E322 - primary color */
+    --primary-foreground: 144 95% 5%;
+    /* Dark text on green */
 
     /* Secondary colors */
-    --secondary: 217 19% 27%;
-    /* #374151 - Dark gray */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 144 95% 10%;
+    /* Darker green shade */
+    --secondary-foreground: 95 23% 87%;
 
-    --muted: 217 19% 27%;
-    --muted-foreground: 215 20% 65%;
-    /* #9CA3AF - Medium gray */
+    --muted: 144 95% 10%;
+    --muted-foreground: 95 23% 70%;
+    /* Medium gray for muted text */
 
-    --accent: 258 90% 66%;
-    /* Purple */
-    --accent-foreground: 0 0% 100%;
+    --accent: 75 78% 52%;
+    /* #A4E322 - Green */
+    --accent-foreground: 144 95% 5%;
 
-    --destructive: 0 63% 31%;
-    /* Dark red */
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    /* Dark mode red */
+    --destructive-foreground: 95 23% 87%;
 
     /* Borders and inputs */
-    --border: 217 19% 27%;
-    /* #374151 - Dark gray borders */
-    --input: 217 19% 27%;
-    --ring: 258 90% 66%;
-    /* Purple focus ring */
+    --border: 144 95% 15%;
+    /* Dark green borders */
+    --input: 144 95% 15%;
+    --ring: 75 78% 52%;
+    /* #A4E322 - Green focus ring */
 
-    /* Chart colors - same as light mode */
-    --chart-1: 258 90% 66%;
-    --chart-2: 221 83% 53%;
-    --chart-3: 142 76% 36%;
-    --chart-4: 48 96% 53%;
-    --chart-5: 340 82% 52%;
+    /* Chart colors */
+    --chart-1: 75 78% 52%;
+    /* Green primary */
+    --chart-2: 95 23% 60%;
+    /* Medium gray */
+    --chart-3: 144 95% 25%;
+    /* Medium green */
+    --chart-4: 217 91% 15%;
+    /* Medium dark blue */
+    --chart-5: 0 72% 51%;
+    /* Red */
   }
 }
 
@@ -163,11 +174,11 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-/* Purple gradient backgrounds */
+/* Green gradient backgrounds */
 .purple-gradient {
-  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  background: linear-gradient(135deg, #A4E322 0%, #8BC920 100%);
 }
 
 .purple-gradient-subtle {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(109, 40, 217, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(164, 227, 34, 0.1) 0%, rgba(139, 201, 32, 0.05) 100%);
 }
