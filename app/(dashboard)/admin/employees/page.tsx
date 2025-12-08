@@ -6,6 +6,7 @@ import {
   getDepartments,
   getDesignations,
 } from '@/app/actions/employee-actions'
+import { getAllPolicies } from '@/app/actions/policy-actions'
 
 export default async function EmployeesPage() {
   const supabase = await createClient()
@@ -26,10 +27,11 @@ export default async function EmployeesPage() {
     redirect('/')
   }
 
-  const [employees, departments, designations] = await Promise.all([
+  const [employees, departments, designations, policies] = await Promise.all([
     getAllEmployees(),
     getDepartments(),
     getDesignations(),
+    getAllPolicies(),
   ])
 
   return (
@@ -37,6 +39,7 @@ export default async function EmployeesPage() {
       employees={employees}
       departments={departments}
       designations={designations}
+      policies={policies}
       currentUserId={user.id}
     />
   )

@@ -13,12 +13,14 @@ interface CreateEmployeeDialogProps {
   onClose: () => void
   departments: any[]
   designations: any[]
+  policies: any[]
 }
 
 export function CreateEmployeeDialog({
   onClose,
   departments,
   designations,
+  policies,
 }: CreateEmployeeDialogProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -29,6 +31,7 @@ export function CreateEmployeeDialog({
     phone: '',
     department_id: '',
     designation_id: '',
+    policy_id: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,6 +150,22 @@ export function CreateEmployeeDialog({
                   {designations.map((desig) => (
                     <option key={desig.id} value={desig.id}>
                       {desig.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="policy">Leave Policy</Label>
+                <select
+                  id="policy"
+                  value={formData.policy_id}
+                  onChange={(e) => setFormData({ ...formData, policy_id: e.target.value })}
+                  className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <option value="">Select Policy (Optional)</option>
+                  {policies.map((policy) => (
+                    <option key={policy.id} value={policy.id}>
+                      {policy.name} ({policy.leave_days_per_month} days/month)
                     </option>
                   ))}
                 </select>

@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { LeaveBalanceCard } from '@/components/employee/leave-balance-card'
 
 interface EmployeeDashboardClientProps {
   profile: any
@@ -99,8 +100,8 @@ export function EmployeeDashboardClient({
         </CardContent>
       </Card>
 
-      {/* Monthly Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Monthly Stats & Leave Balance Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -135,6 +136,9 @@ export function EmployeeDashboardClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* Leave Balance */}
+      <LeaveBalanceCard employeeId={employee.id} />
 
       {/* Quick Actions */}
       <Card>

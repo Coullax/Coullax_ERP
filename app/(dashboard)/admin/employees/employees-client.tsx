@@ -15,6 +15,7 @@ interface EmployeesPageClientProps {
   employees: any[]
   departments: any[]
   designations: any[]
+  policies: any[]
   currentUserId: string
 }
 
@@ -22,6 +23,7 @@ export function EmployeesPageClient({
   employees,
   departments,
   designations,
+  policies,
   currentUserId,
 }: EmployeesPageClientProps) {
   const [loading, setLoading] = useState<string | null>(null)
@@ -106,6 +108,7 @@ export function EmployeesPageClient({
           onClose={() => setShowCreateDialog(false)}
           departments={departments}
           designations={designations}
+          policies={policies}
         />
       )}
 

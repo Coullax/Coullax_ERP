@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Search,
   Plus,
+  Paperclip
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ const employeeNavItems = [
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: Users, label: "Employees", href: "/admin/employees" },
+  { icon: Paperclip, label: "Policies", href: "/admin/policies" },
   { icon: FileCheck, label: "Verifications", href: "/admin/verifications" },
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
   {

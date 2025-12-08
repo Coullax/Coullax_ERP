@@ -88,6 +88,14 @@ export async function createLeaveRequest(employeeId: string, data: {
   const end = new Date(data.end_date)
   const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
+  // Check leave balance before creating request
+  const { checkLeaveBalance } = await import('./policy-actions')
+  const balanceCheck = await checkLeaveBalance(employeeId, totalDays, start)
+  
+  if (!balanceCheck.hasBalance) {
+    throw new Error(`Insufficient leave balance. Available: ${balanceCheck.available} days, Requested: ${balanceCheck.requested} days`)
+  }
+
   // Create main request
   const { data: request, error: requestError } = await supabase
     .from('requests')
@@ -340,6 +348,15 @@ export async function updateRequestStatus(
 ) {
   const supabase = await createClient()
 
+  // Get request details to check if it's a leave request
+  const { data: request, error: requestError } = await supabase
+    .from('requests')
+    .select('*, leave_requests(*)')
+    .eq('id', requestId)
+    .single()
+
+  if (requestError) throw requestError
+
   const { error } = await supabase
     .from('requests')
     .update({
@@ -351,6 +368,30 @@ export async function updateRequestStatus(
     .eq('id', requestId)
 
   if (error) throw error
+
+  // If approved and it's a leave request, deduct from leave balance
+  if (status === 'approved' && request.request_type === 'leave' && request.leave_requests) {
+    const leaveRequest = Array.isArray(request.leave_requests) 
+      ? request.leave_requests[0] 
+      : request.leave_requests
+    
+    if (leaveRequest) {
+      const startDate = new Date(leaveRequest.start_date)
+      const { deductLeaveFromBalance } = await import('./policy-actions')
+      
+      try {
+        await deductLeaveFromBalance(
+          request.employee_id,
+          leaveRequest.total_days,
+          startDate.getMonth() + 1,
+          startDate.getFullYear()
+        )
+      } catch (balanceError: any) {
+        // If deduction fails, log but don't fail the approval
+        console.error('Failed to deduct leave balance:', balanceError)
+      }
+    }
+  }
 
   revalidatePath('/requests')
   revalidatePath('/admin/approvals')

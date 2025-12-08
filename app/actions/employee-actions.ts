@@ -57,6 +57,7 @@ export async function createEmployee(data: {
   department_id?: string
   designation_id?: string
   phone?: string
+  policy_id?: string
 }) {
   const adminClient = createAdminClient()
 
@@ -87,17 +88,26 @@ export async function createEmployee(data: {
 
     // Create employee record using admin client to bypass RLS
     const employeeId = `EMP${Date.now().toString().slice(-6)}`
+    const joiningDate = new Date()
     const { error: employeeError } = await adminClient
       .from('employees')
       .insert({
         id: authData.user.id,
         employee_id: employeeId,
-        joining_date: new Date().toISOString().split('T')[0],
+        joining_date: joiningDate.toISOString().split('T')[0],
         department_id: data.department_id,
         designation_id: data.designation_id,
+        policy_id: data.policy_id,
+        policy_assigned_date: data.policy_id ? joiningDate.toISOString().split('T')[0] : null,
       })
 
     if (employeeError) throw employeeError
+
+    // Initialize leave balance if policy is assigned
+    if (data.policy_id) {
+      const { initializeEmployeeLeaveBalance } = await import('./policy-actions')
+      await initializeEmployeeLeaveBalance(authData.user.id, data.policy_id, joiningDate)
+    }
 
     revalidatePath('/admin/employees')
     return { success: true, employeeId: authData.user.id }
