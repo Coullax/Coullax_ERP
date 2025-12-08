@@ -33,7 +33,8 @@ export async function markAttendance(
 ) {
   const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
-  const currentTime = new Date().toISOString()
+  const now = new Date()
+  const currentTime = now.toTimeString().split(' ')[0] // HH:MM:SS format
 
   // Check if attendance exists for today
   const { data: existing } = await supabase

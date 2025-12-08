@@ -83,11 +83,11 @@ export function EmployeeDashboardClient({
               {todayAttendance ? (
                 <div className="space-y-1">
                   <p className="text-sm opacity-80">
-                    Checked in at {new Date(todayAttendance.check_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    Checked in at {new Date(`${todayAttendance.date}T${todayAttendance.check_in}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   {todayAttendance.check_out && (
                     <p className="text-sm opacity-80">
-                      Checked out at {new Date(todayAttendance.check_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      Checked out at {new Date(`${todayAttendance.date}T${todayAttendance.check_out}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   )}
                 </div>
