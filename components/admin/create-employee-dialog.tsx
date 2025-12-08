@@ -43,6 +43,7 @@ export function CreateEmployeeDialog({
         ...formData,
         department_id: formData.department_id || undefined,
         designation_id: formData.designation_id || undefined,
+        policy_id: formData.policy_id || undefined,
       })
       toast.success('Employee created successfully!')
       window.location.reload()

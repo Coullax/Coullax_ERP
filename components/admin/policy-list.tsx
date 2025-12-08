@@ -46,10 +46,10 @@ export function PolicyList({ policies, onUpdate }: PolicyListProps) {
 
     const getPolicyTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
-            '5_day_permanent': '5 Day Permanent',
-            '6_day_permanent': '6 Day Permanent',
+            permanent: 'Permanent',
             intern: 'Intern',
             contract: 'Contract',
+            parttime: 'Part Time',
         }
         return labels[type] || type
     }
@@ -64,7 +64,7 @@ export function PolicyList({ policies, onUpdate }: PolicyListProps) {
                     >
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <h3 className="text-lg font-semibold">{policy.name}</h3>
                                     <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">
                                         {getPolicyTypeLabel(policy.policy_type)}

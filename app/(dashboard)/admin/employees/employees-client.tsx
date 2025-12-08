@@ -5,11 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { toast } from 'sonner'
 import { updateEmployeeRole, updateEmployeeTeam } from '@/app/actions/employee-actions'
-import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus } from 'lucide-react'
+import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus, Edit, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getInitials, formatDate } from '@/lib/utils'
 import { CreateEmployeeDialog } from '@/components/admin/create-employee-dialog'
+import { EditEmployeeDialog } from '@/components/admin/edit-employee-dialog'
+import { EmployeeDetailsDialog } from '@/components/admin/employee-details-dialog'
 
 interface EmployeesPageClientProps {
   employees: any[]
@@ -29,46 +39,25 @@ export function EmployeesPageClient({
   const [loading, setLoading] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null)
+  const [viewingEmployee, setViewingEmployee] = useState<any | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const filteredEmployees = filter === 'all'
     ? employees
     : employees.filter(emp => emp.profile?.role === filter)
 
-  const handleRoleChange = async (employeeId: string, newRole: 'employee' | 'admin' | 'super_admin') => {
-    if (employeeId === currentUserId) {
-      toast.error("You cannot change your own role!")
-      return
-    }
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex)
 
-    setLoading(employeeId)
-    try {
-      await updateEmployeeRole(employeeId, newRole)
-      toast.success('Role updated successfully!')
-      window.location.reload()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update role')
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  const handleTeamUpdate = async (
-    employeeId: string,
-    field: 'department_id' | 'designation_id',
-    value: string
-  ) => {
-    setLoading(employeeId)
-    try {
-      await updateEmployeeTeam(employeeId, {
-        [field]: value || null,
-      })
-      toast.success('Team updated successfully!')
-      window.location.reload()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update team')
-    } finally {
-      setLoading(null)
-    }
+  // Reset to page 1 when filter changes
+  const handleFilterChange = (newFilter: string) => {
+    setFilter(newFilter)
+    setCurrentPage(1)
   }
 
   const getRoleBadge = (role: string) => {
@@ -109,6 +98,25 @@ export function EmployeesPageClient({
           departments={departments}
           designations={designations}
           policies={policies}
+        />
+      )}
+
+      {/* Edit Employee Dialog */}
+      {editingEmployee && (
+        <EditEmployeeDialog
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+          departments={departments}
+          designations={designations}
+          policies={policies}
+        />
+      )}
+
+      {/* View Employee Details Dialog */}
+      {viewingEmployee && (
+        <EmployeeDetailsDialog
+          employee={viewingEmployee}
+          onClose={() => setViewingEmployee(null)}
         />
       )}
 
@@ -166,7 +174,7 @@ export function EmployeesPageClient({
           <Button
             key={status}
             variant={filter === status ? 'default' : 'outline'}
-            onClick={() => setFilter(status)}
+            onClick={() => handleFilterChange(status)}
             className="capitalize"
           >
             {status === 'super_admin' ? 'Super Admin' : status}
@@ -174,140 +182,159 @@ export function EmployeesPageClient({
         ))}
       </div>
 
-      {/* Employees List */}
+      {/* Employees Table */}
       <Card>
         <CardHeader>
           <CardTitle>Employees ({filteredEmployees.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredEmployees.map((employee) => (
-              <div
-                key={employee.id}
-                className="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage src={employee.profile?.avatar_url} />
-                    <AvatarFallback className="text-lg">
-                      {employee.profile ? getInitials(employee.profile.full_name) : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  {/* Employee Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          {employee.profile?.full_name || 'Unknown'}
-                        </h3>
-                        <p className="text-sm text-gray-500">ID: {employee.employee_id}</p>
-                      </div>
-                      {getRoleBadge(employee.profile?.role || 'employee')}
-                    </div>
-
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Mail className="w-4 h-4" />
-                        <span className="truncate">{employee.profile?.email}</span>
-                      </div>
-                      {employee.profile?.phone && (
-                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                          <Phone className="w-4 h-4" />
-                          <span>{employee.profile.phone}</span>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Designation</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedEmployees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      No employees found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      {/* Employee Info */}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarImage src={employee.profile?.avatar_url} />
+                            <AvatarFallback>
+                              {employee.profile ? getInitials(employee.profile.full_name) : 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">
+                              {employee.profile?.full_name || 'Unknown'}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {employee.profile?.email}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Calendar className="w-4 h-4" />
-                        <span>Joined {formatDate(employee.joining_date)}</span>
-                      </div>
-                      {employee.department && (
-                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                          <Building2 className="w-4 h-4" />
-                          <span>{employee.department.name}</span>
-                        </div>
-                      )}
-                      {employee.designation && (
-                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                          <Briefcase className="w-4 h-4" />
-                          <span>{employee.designation.title}</span>
-                        </div>
-                      )}
-                    </div>
+                      </TableCell>
 
-                    {/* Team Assignment */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500">Department</label>
-                        <select
-                          value={employee.department?.id || ''}
-                          onChange={(e) => handleTeamUpdate(employee.id, 'department_id', e.target.value)}
+                      {/* Role */}
+                      <TableCell>
+                        {getRoleBadge(employee.profile?.role || 'employee')}
+                      </TableCell>
+
+                      {/* Department */}
+                      <TableCell>
+                        {employee.department ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Building2 className="w-4 h-4 text-gray-400" />
+                            {employee.department.name}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </TableCell>
+
+                      {/* Designation */}
+                      <TableCell>
+                        {employee.designation ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Briefcase className="w-4 h-4 text-gray-400" />
+                            {employee.designation.title}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </TableCell>
+
+                      {/* Joined Date */}
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          {formatDate(employee.joining_date)}
+                        </div>
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingEmployee(employee)
+                          }}
                           disabled={loading === employee.id}
-                          className="flex h-9 w-full rounded-lg border-2 border-gray-200 bg-white px-3 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
                         >
-                          <option value="">No Department</option>
-                          {departments.map((dept) => (
-                            <option key={dept.id} value={dept.id}>
-                              {dept.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-500">Designation</label>
-                        <select
-                          value={employee.designation?.id || ''}
-                          onChange={(e) => handleTeamUpdate(employee.id, 'designation_id', e.target.value)}
-                          disabled={loading === employee.id}
-                          className="flex h-9 w-full rounded-lg border-2 border-gray-200 bg-white px-3 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
-                        >
-                          <option value="">No Designation</option>
-                          {designations.map((desig) => (
-                            <option key={desig.id} value={desig.id}>
-                              {desig.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Role Change Buttons */}
-                    <div className="flex gap-2 mt-4">
-                      <span className="text-sm text-gray-500 mr-2">Change Role:</span>
-                      <Button
-                        size="sm"
-                        variant={employee.profile?.role === 'employee' ? 'default' : 'outline'}
-                        onClick={() => handleRoleChange(employee.id, 'employee')}
-                        disabled={loading === employee.id || employee.id === currentUserId}
-                      >
-                        Employee
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={employee.profile?.role === 'admin' ? 'default' : 'outline'}
-                        onClick={() => handleRoleChange(employee.id, 'admin')}
-                        disabled={loading === employee.id || employee.id === currentUserId}
-                      >
-                        Admin
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={employee.profile?.role === 'super_admin' ? 'destructive' : 'outline'}
-                        onClick={() => handleRoleChange(employee.id, 'super_admin')}
-                        disabled={loading === employee.id || employee.id === currentUserId}
-                      >
-                        Super Admin
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredEmployees.length)} of{' '}
+                {filteredEmployees.length} employees
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
+

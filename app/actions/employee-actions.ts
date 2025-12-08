@@ -13,6 +13,8 @@ export async function getAllEmployees() {
       id,
       employee_id,
       joining_date,
+      policy_id,
+      policy_assigned_date,
       department:departments(id, name),
       designation:designations(id, title),
       profile:profiles!employees_id_fkey(
@@ -142,6 +144,88 @@ export async function getDesignations() {
 
   if (error) throw error
   return data
+}
+
+// Update employee (comprehensive update including policy)
+export async function updateEmployee(
+  employeeId: string,
+  data: {
+    full_name?: string
+    phone?: string
+    email?: string
+    role?: 'employee' | 'admin' | 'super_admin'
+    department_id?: string | null
+    designation_id?: string | null
+    policy_id?: string | null
+  }
+) {
+  const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  // Track if policy is being changed
+  let policyChanged = false
+  let oldPolicyId: string | null = null
+
+  if (data.policy_id !== undefined) {
+    // Check current policy
+    const { data: currentEmployee } = await supabase
+      .from('employees')
+      .select('policy_id')
+      .eq('id', employeeId)
+      .single()
+
+    if (currentEmployee && currentEmployee.policy_id !== data.policy_id) {
+      policyChanged = true
+      oldPolicyId = currentEmployee.policy_id
+    }
+  }
+
+  // Update profile if profile-related fields are provided
+  if (data.full_name !== undefined || data.phone !== undefined || data.role !== undefined || data.email !== undefined) {
+    const profileUpdate: any = {}
+    if (data.full_name !== undefined) profileUpdate.full_name = data.full_name
+    if (data.phone !== undefined) profileUpdate.phone = data.phone
+    if (data.role !== undefined) profileUpdate.role = data.role
+    if (data.email !== undefined) profileUpdate.email = data.email
+
+    const { error: profileError } = await adminClient
+      .from('profiles')
+      .update(profileUpdate)
+      .eq('id', employeeId)
+
+    if (profileError) throw profileError
+  }
+
+  // Update employee record if employee-related fields are provided
+  if (
+    data.department_id !== undefined ||
+    data.designation_id !== undefined ||
+    data.policy_id !== undefined
+  ) {
+    const employeeUpdate: any = {}
+    if (data.department_id !== undefined) employeeUpdate.department_id = data.department_id
+    if (data.designation_id !== undefined) employeeUpdate.designation_id = data.designation_id
+    if (data.policy_id !== undefined) {
+      employeeUpdate.policy_id = data.policy_id
+      employeeUpdate.policy_assigned_date = data.policy_id ? new Date().toISOString().split('T')[0] : null
+    }
+
+    const { error: employeeError } = await adminClient
+      .from('employees')
+      .update(employeeUpdate)
+      .eq('id', employeeId)
+
+    if (employeeError) throw employeeError
+  }
+
+  // Initialize or reinitialize leave balance if policy was changed
+  if (policyChanged && data.policy_id) {
+    const { initializeEmployeeLeaveBalance } = await import('./policy-actions')
+    await initializeEmployeeLeaveBalance(employeeId, data.policy_id, new Date())
+  }
+
+  revalidatePath('/admin/employees')
+  return { success: true }
 }
 
 // Update employee department/designation

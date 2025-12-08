@@ -66,7 +66,7 @@ export async function getPoliciesWithEmployeeCount() {
 // Create new policy
 export async function createPolicy(data: {
   name: string
-  policy_type: '5_day_permanent' | '6_day_permanent' | 'intern' | 'contract'
+  policy_type: 'permanent' | 'intern' | 'contract' | 'parttime'
   working_days_per_week: number
   leave_days_per_month: number
   carry_forward_enabled: boolean
@@ -99,7 +99,7 @@ export async function updatePolicy(
   policyId: string,
   data: {
     name?: string
-    policy_type?: '5_day_permanent' | '6_day_permanent' | 'intern' | 'contract'
+    policy_type?: 'permanent' | 'intern' | 'contract' | 'parttime'
     working_days_per_week?: number
     leave_days_per_month?: number
     carry_forward_enabled?: boolean

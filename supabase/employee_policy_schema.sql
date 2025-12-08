@@ -5,7 +5,7 @@
 -- ENUM TYPES
 -- =============================================
 
-CREATE TYPE policy_type AS ENUM ('5_day_permanent', '6_day_permanent', 'intern', 'contract');
+CREATE TYPE policy_type AS ENUM ('permanent', 'intern', 'contract', 'parttime');
 CREATE TYPE renewal_period AS ENUM ('yearly', 'custom');
 
 -- =============================================
@@ -142,10 +142,11 @@ CREATE INDEX idx_employees_policy ON employees(policy_id);
 
 -- Insert default policies
 INSERT INTO employee_policies (name, policy_type, working_days_per_week, leave_days_per_month, carry_forward_enabled, description) VALUES
-  ('5 Day Workers - Permanent', '5_day_permanent', 5, 2.00, true, '2 day leave per month, carry forward enabled, renewed every year'),
-  ('6 Day Workers - Permanent', '6_day_permanent', 6, 2.00, true, '2 day leave per month, carry forward enabled, renewed every year'),
-  ('Interns', 'intern', 5, 0.00, false, '0 day leave per month, renewed every year'),
-  ('Contract Workers', 'contract', 5, 0.00, true, 'Customized based on working days, can be modified per employee');
+  ('Permanent - 5 Day Work', 'permanent', 5, 2.00, true, '2 day leave per month, carry forward enabled, renewed every year'),
+  ('Permanent - 6 Day Work', 'permanent', 6, 2.00, true, '2 day leave per month, carry forward enabled, renewed every year'),
+  ('Intern', 'intern', 5, 0.00, false, '0 day leave per month, renewed every year'),
+  ('Contract Worker', 'contract', 5, 0.00, true, 'Customized based on working days, can be modified per employee'),
+  ('Part Time Worker', 'parttime', 5, 1.00, true, '1 day leave per month for part time workers');
 
 -- =============================================
 -- COMMENTS

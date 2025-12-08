@@ -21,7 +21,7 @@ export function PolicyFormDialog({ onClose, onSuccess, policy }: PolicyFormDialo
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
         name: policy?.name || '',
-        policy_type: policy?.policy_type || '5_day_permanent',
+        policy_type: policy?.policy_type || 'permanent',
         working_days_per_week: policy?.working_days_per_week || 5,
         leave_days_per_month: policy?.leave_days_per_month || 2,
         carry_forward_enabled: policy?.carry_forward_enabled ?? true,
@@ -50,10 +50,10 @@ export function PolicyFormDialog({ onClose, onSuccess, policy }: PolicyFormDialo
     }
 
     const policyTypes = [
-        { value: '5_day_permanent', label: '5 Day Workers - Permanent' },
-        { value: '6_day_permanent', label: '6 Day Workers - Permanent' },
-        { value: 'intern', label: 'Interns' },
-        { value: 'contract', label: 'Contract Workers' },
+        { value: 'permanent', label: 'Permanent' },
+        { value: 'intern', label: 'Intern' },
+        { value: 'contract', label: 'Contract' },
+        { value: 'parttime', label: 'Part Time' },
     ]
 
     return (
@@ -74,7 +74,7 @@ export function PolicyFormDialog({ onClose, onSuccess, policy }: PolicyFormDialo
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 required
-                                placeholder="e.g., 5 Day Workers - Permanent"
+                                placeholder="e.g., Permanent - 5 Day Work"
                             />
                         </div>
 

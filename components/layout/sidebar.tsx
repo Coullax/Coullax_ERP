@@ -28,7 +28,8 @@ import {
   ChevronDown,
   Search,
   Plus,
-  Paperclip
+  Paperclip,
+  Briefcase
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ const adminNavItems = [
   { icon: Paperclip, label: "Policies", href: "/admin/policies" },
   { icon: FileCheck, label: "Verifications", href: "/admin/verifications" },
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
+  { icon: Briefcase, label: "Designations", href: "/admin/designations" },
   {
     icon: FolderOpen,
     label: "Document Requests",
