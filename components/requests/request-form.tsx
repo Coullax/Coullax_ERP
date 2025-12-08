@@ -377,6 +377,17 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
               </div>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="asset_specification">Asset Specification</Label>
+              <textarea
+                id="asset_specification"
+                name="asset_specification"
+                onChange={handleChange}
+                rows={3}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Specify details like model, RAM, storage, etc..."
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="reason">Reason *</Label>
               <textarea
                 id="reason"
@@ -456,7 +467,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {renderFormFields()}
-          
+
           <div className="flex gap-2 justify-end pt-4">
             <Button
               type="button"
