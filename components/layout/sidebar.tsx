@@ -47,6 +47,7 @@ const adminNavItems = [
   { icon: Users, label: 'Employees', href: '/admin/employees' },
   { icon: FileCheck, label: 'Verifications', href: '/admin/verifications' },
   { icon: FileText, label: 'Approvals', href: '/admin/approvals' },
+  { icon: FolderOpen, label: 'Document Requests', href: '/admin/document-requests' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
 ]
 
@@ -73,11 +74,11 @@ export function Sidebar() {
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
-      
+
       // Clear auth store
       setUser(null)
       setProfile(null)
-      
+
       toast.success('Logged out successfully')
       router.push('/login')
       router.refresh()
@@ -139,8 +140,8 @@ export function Sidebar() {
             <p className="text-xs text-gray-500 capitalize">{profile?.role || 'Employee'}</p>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={handleLogout}
           className="w-full mt-2 justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
         >
