@@ -17,7 +17,7 @@ interface DocumentUploadProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     categories: DocumentCategory[]
-    onSuccess?: () => void
+    onSuccess?: (document?: any) => void
 }
 
 export function DocumentUpload({ open, onOpenChange, categories, onSuccess }: DocumentUploadProps) {
@@ -96,11 +96,13 @@ export function DocumentUpload({ open, onOpenChange, categories, onSuccess }: Do
                 throw new Error(error.error || 'Failed to upload')
             }
 
+            const result = await response.json()
+
             toast.success('Document uploaded successfully')
             onOpenChange(false)
             setFile(null)
             setFormData({ title: '', description: '', category_id: '', is_public: false, tags: '' })
-            onSuccess?.()
+            onSuccess?.(result.document)
         } catch (error: any) {
             toast.error(error.message || 'Failed to upload document')
         } finally {

@@ -151,7 +151,7 @@ export function PolicyList({ policies, onUpdate }: PolicyListProps) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Policy</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete "{selectedPolicy?.name}"? This action cannot be undone.
+                            Are you sure you want to delete &quot;{selectedPolicy?.name}&quot;? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -180,3 +180,4 @@ export function PolicyList({ policies, onUpdate }: PolicyListProps) {
         </>
     )
 }
+

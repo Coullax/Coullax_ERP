@@ -246,7 +246,7 @@ export default function AdminDocumentRequestsPage() {
                                             {request.employee && (
                                                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                                                     <span className="font-medium">Requested by:</span>
-                                                    <span>{request.employee.profiles.full_name}</span>
+                                                    <span>{request.employee.full_name}</span>
                                                     <span className="text-gray-400">({request.employee.employee_id})</span>
                                                 </div>
                                             )}

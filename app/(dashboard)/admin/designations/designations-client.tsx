@@ -116,7 +116,7 @@ export function DesignationsPageClient({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Designation</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete "{deletingDesignation?.title}"? This action cannot be
+                            Are you sure you want to delete &quot;{deletingDesignation?.title}&quot;? This action cannot be
                             undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
