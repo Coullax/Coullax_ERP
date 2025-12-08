@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -78,7 +78,7 @@ export function VerificationPageClient({
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
       pending: { variant: 'secondary', icon: Clock, label: 'Pending' },
-      approved: { variant: 'success', icon: CheckCircle, label: 'Approved' },
+      verified: { variant: 'success', icon: CheckCircle, label: 'Approved' },
       rejected: { variant: 'destructive', icon: XCircle, label: 'Rejected' },
     }
     const config = variants[status] || { variant: 'secondary', icon: Clock, label: status }
@@ -90,6 +90,10 @@ export function VerificationPageClient({
       </Badge>
     )
   }
+
+  // useEffect(() => {
+  //   console.log('Documents:', documents)
+  // }, [documents])
 
   return (
     <div className="space-y-6">
@@ -112,25 +116,42 @@ export function VerificationPageClient({
                 <CardTitle>Upload Documents</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {['aadhar', 'pan', 'passport', 'driving_license', 'education', 'experience'].map((docType) => (
-                  <div key={docType} className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
-                    <Label htmlFor={`upload-${docType}`} className="cursor-pointer">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <Upload className="w-8 h-8 text-gray-400" />
-                        <span className="font-medium capitalize">{docType.replace('_', ' ')}</span>
-                        <span className="text-xs text-gray-500">Click to upload</span>
-                      </div>
-                    </Label>
-                    <input
-                      id={`upload-${docType}`}
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileUpload(e, docType)}
-                      disabled={loading}
-                    />
-                  </div>
-                ))}
+                {['aadhar', 'pan', 'passport', 'driving_license', 'education', 'experience'].map((docType) => {
+                  const existingDoc = documents.find(doc => doc.document_type === docType)
+                  const isPending = existingDoc?.status === 'pending'
+                  
+                  return (
+                    <div 
+                      key={docType} 
+                      className={`p-4 border-2 border-dashed rounded-xl ${
+                        isPending 
+                          ? 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-60' 
+                          : 'border-gray-300 dark:border-gray-700'
+                      }`}
+                    >
+                      <Label 
+                        htmlFor={`upload-${docType}`} 
+                        className={isPending ? 'cursor-not-allowed' : 'cursor-pointer'}
+                      >
+                        <div className="flex flex-col items-center gap-2 text-center">
+                          <Upload className="w-8 h-8 text-gray-400" />
+                          <span className="font-medium capitalize">{docType.replace('_', ' ')}</span>
+                          <span className="text-xs text-gray-500">
+                            {isPending ? 'Verification pending...' : 'Click to upload'}
+                          </span>
+                        </div>
+                      </Label>
+                      <input
+                        id={`upload-${docType}`}
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileUpload(e, docType)}
+                        disabled={loading || isPending}
+                      />
+                    </div>
+                  )
+                })}
               </CardContent>
             </Card>
 
