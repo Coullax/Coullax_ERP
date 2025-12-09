@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { b2 } from '@/lib/storage/s3'
+import { uploadToB2 } from './upload-actions'
 
 export async function getEmployeeProfile(userId: string) {
   const supabase = await createClient()
@@ -168,40 +168,22 @@ export async function uploadAvatar(formData: FormData) {
   if (!file) throw new Error('No file provided')
 
   try {
-    const arrayBuffer = await file.arrayBuffer()
-    const fileBuffer = Buffer.from(arrayBuffer)
     const fileExt = file.name.split('.').pop()
     const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`
 
-    await b2.authorize()
+    // Add filename to formData for uploadToB2
+    formData.append('filename', fileName)
 
-    const bucketId = process.env.B2_BUCKET_ID
-    const bucketName = process.env.B2_BUCKET_NAME
+    const result = await uploadToB2(formData)
 
-    if (!bucketId || !bucketName) {
-      throw new Error('Backblaze configuration missing')
+    if (!result.success || !result.publicUrl) {
+      throw new Error(result.error || 'Upload failed')
     }
 
-    const uploadUrl = await b2.getUploadUrl({
-      bucketId: bucketId
-    })
-
-    const result = await b2.uploadFile({
-      uploadUrl: uploadUrl.data.uploadUrl,
-      uploadAuthToken: uploadUrl.data.authorizationToken,
-      fileName: fileName,
-      data: fileBuffer,
-      mime: file.type,
-    })
-
-    // Construct public URL
-    // Using hardcoded f000 as per request pattern
-    const publicUrl = `https://f000.backblazeb2.com/file/${bucketName}/${fileName}`
-
     // Update profile with new avatar URL
-    await updateProfile(userId, { avatar_url: publicUrl })
+    await updateProfile(userId, { avatar_url: result.publicUrl })
 
-    return { url: publicUrl }
+    return { url: result.publicUrl }
   } catch (error: any) {
     console.error('Avatar upload failed:', error)
     throw error
