@@ -28,6 +28,11 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<any>({})
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  
+  // Check if dates are the same (for half-day leave)
+  const isSameDay = startDate && endDate && startDate === endDate
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
@@ -75,6 +80,13 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         }
       }
     } else {
+      // Track date changes for leave requests
+      if (e.target.name === 'start_date') {
+        setStartDate(e.target.value)
+      } else if (e.target.name === 'end_date') {
+        setEndDate(e.target.value)
+      }
+      
       setFormData({ ...formData, [e.target.name]: e.target.value })
     }
   }
@@ -177,6 +189,79 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
             </div>
+            
+            {/* Leave Duration Selection - Show for same day or multi-day */}
+            {(startDate && endDate) && (
+              <>
+                {isSameDay ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="leave_duration">Leave Duration *</Label>
+                    <select
+                      id="leave_duration"
+                      name="leave_duration"
+                      onChange={handleChange}
+                      required
+                      className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                    >
+                      <option value="">Select duration</option>
+                      <option value="full_day">Full Day</option>
+                      <option value="half_day_morning">Half Day - Morning</option>
+                      <option value="half_day_afternoon">Half Day - Afternoon</option>
+                      <option value="custom_time">Custom Time Range</option>
+                    </select>
+                    <p className="text-xs text-gray-500">
+                      {formData.leave_duration === 'full_day' && 'Full working day leave'}
+                      {formData.leave_duration === 'half_day_morning' && 'Leave for the morning session'}
+                      {formData.leave_duration === 'half_day_afternoon' && 'Leave for the afternoon session'}
+                      {formData.leave_duration === 'custom_time' && 'Specify custom start and end time'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Multi-day leave:</strong> Optionally specify times for the first and last day below.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Show time inputs for custom time or multi-day leaves */}
+                {((isSameDay && formData.leave_duration === 'custom_time') || !isSameDay) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="start_time">
+                        {isSameDay ? 'Start Time *' : 'Start Time (Optional)'}
+                      </Label>
+                      <Input
+                        id="start_time"
+                        name="start_time"
+                        type="time"
+                        onChange={handleChange}
+                        required={!!(isSameDay && formData.leave_duration === 'custom_time')}
+                      />
+                      <p className="text-xs text-gray-500">
+                        {isSameDay ? 'Leave start time' : 'Time on first day (if partial)'}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end_time">
+                        {isSameDay ? 'End Time *' : 'End Time (Optional)'}
+                      </Label>
+                      <Input
+                        id="end_time"
+                        name="end_time"
+                        type="time"
+                        onChange={handleChange}
+                        required={!!(isSameDay && formData.leave_duration === 'custom_time')}
+                      />
+                      <p className="text-xs text-gray-500">
+                        {isSameDay ? 'Leave end time' : 'Time on last day (if partial)'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="reason">Reason *</Label>
               <textarea
