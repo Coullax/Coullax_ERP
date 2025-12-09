@@ -133,6 +133,7 @@ export async function createOvertimeRequest(employeeId: string, data: {
   date: string
   hours: number
   reason: string
+  assigned_supervisor?: string
 }) {
   const supabase = await createClient()
 
@@ -156,6 +157,7 @@ export async function createOvertimeRequest(employeeId: string, data: {
       date: data.date,
       hours: data.hours,
       reason: data.reason,
+      assigned_supervisor: data.assigned_supervisor,
     })
 
   if (detailError) throw detailError
