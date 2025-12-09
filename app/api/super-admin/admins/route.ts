@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -79,8 +79,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
+    // Use admin client to bypass RLS policies
+    const adminSupabase = createAdminClient()
+
     // Update user role
-    const { data: updatedProfile, error } = await supabase
+    const { data: updatedProfile, error } = await adminSupabase
       .from('profiles')
       .update({ role })
       .eq('id', user_id)
