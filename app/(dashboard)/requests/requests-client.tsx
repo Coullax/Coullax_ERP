@@ -34,6 +34,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis
+} from '@/components/ui/pagination'
 import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns'
@@ -87,7 +96,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [editingRequest, setEditingRequest] = useState<any>(null)
   const [editData, setEditData] = useState('')
   const [saving, setSaving] = useState(false)
-  const limit = 15
+  const limit = 10
 
   // Filter by status and date
   const filteredRequests = useMemo(() => {
@@ -269,9 +278,9 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
   const formatTravelDetails = (requestData: any) => {
     if (!requestData) return null
-    
+
     const { check_out_time, check_in_time, destination } = requestData
-    
+
     return {
       hasTime: !!(check_out_time || check_in_time),
       checkOutTime: check_out_time,
@@ -567,43 +576,64 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <p className="text-sm text-gray-500">
-                    Page {currentPage} of {totalPages}
-                  </p>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setOffset(Math.max(0, offset - limit))}
-                      disabled={offset === 0}
-                    >
-                      Previous
-                    </Button>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const page = i + 1
-                      return (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setOffset((page - 1) * limit)}
-                          className="w-8"
-                        >
-                          {page}
-                        </Button>
-                      )
-                    })}
-                    {totalPages > 5 && <span className="px-2 py-1">...</span>}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setOffset(offset + limit)}
-                      disabled={offset + limit >= filteredRequests.length}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                <div className="mt-6 border-t pt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setOffset(Math.max(0, offset - limit))
+                          }}
+                          className={offset === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          // Show first page, last page, current page, and pages around current
+                          return (
+                            page === 1 ||
+                            page === totalPages ||
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          )
+                        })
+                        .map((page, index, array) => (
+                          <span key={page}>
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            )}
+                            <PaginationItem>
+                              <PaginationLink
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setOffset((page - 1) * limit)
+                                }}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </span>
+                        ))}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setOffset(Math.min((totalPages - 1) * limit, offset + limit))
+                          }}
+                          className={offset + limit >= filteredRequests.length ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
             </>
