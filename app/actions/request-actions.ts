@@ -414,6 +414,44 @@ export async function createResignation(employeeId: string, data: {
   return { success: true, requestId: request.id }
 }
 
+// Create Covering Request
+export async function createCoveringRequest(employeeId: string, data: {
+  covering_date: string
+  start_time: string
+  end_time: string
+  work_description: string
+}) {
+  const supabase = await createClient()
+
+  const { data: request, error: requestError } = await supabase
+    .from('requests')
+    .insert({
+      employee_id: employeeId,
+      request_type: 'covering',
+      status: 'pending',
+    })
+    .select()
+    .single()
+
+  if (requestError) throw requestError
+
+  const { error: detailError } = await supabase
+    .from('covering_requests')
+    .insert({
+      request_id: request.id,
+      employee_id: employeeId,
+      covering_date: data.covering_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      work_description: data.work_description,
+    })
+
+  if (detailError) throw detailError
+
+  revalidatePath('/requests')
+  return { success: true, requestId: request.id }
+}
+
 // Approve/Reject Request
 export async function updateRequestStatus(
   requestId: string,
