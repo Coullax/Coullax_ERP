@@ -2,10 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { b2 } from '@/lib/storage/s3'
 
 export async function getEmployeeProfile(userId: string) {
   const supabase = await createClient()
-  
+
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -161,27 +162,48 @@ export async function deleteSkill(id: string) {
 }
 
 export async function uploadAvatar(formData: FormData) {
-  const supabase = await createClient()
   const file = formData.get('file') as File
   const userId = formData.get('userId') as string
 
   if (!file) throw new Error('No file provided')
 
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${userId}-${Date.now()}.${fileExt}`
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const fileBuffer = Buffer.from(arrayBuffer)
+    const fileExt = file.name.split('.').pop()
+    const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, file, { upsert: true })
+    await b2.authorize()
 
-  if (uploadError) throw uploadError
+    const bucketId = process.env.B2_BUCKET_ID
+    const bucketName = process.env.B2_BUCKET_NAME
 
-  const { data } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(fileName)
+    if (!bucketId || !bucketName) {
+      throw new Error('Backblaze configuration missing')
+    }
 
-  // Update profile with new avatar URL
-  await updateProfile(userId, { avatar_url: data.publicUrl })
+    const uploadUrl = await b2.getUploadUrl({
+      bucketId: bucketId
+    })
 
-  return { url: data.publicUrl }
+    const result = await b2.uploadFile({
+      uploadUrl: uploadUrl.data.uploadUrl,
+      uploadAuthToken: uploadUrl.data.authorizationToken,
+      fileName: fileName,
+      data: fileBuffer,
+      mime: file.type,
+    })
+
+    // Construct public URL
+    // Using hardcoded f000 as per request pattern
+    const publicUrl = `https://f000.backblazeb2.com/file/${bucketName}/${fileName}`
+
+    // Update profile with new avatar URL
+    await updateProfile(userId, { avatar_url: publicUrl })
+
+    return { url: publicUrl }
+  } catch (error: any) {
+    console.error('Avatar upload failed:', error)
+    throw error
+  }
 }
