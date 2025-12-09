@@ -61,6 +61,7 @@ const REQUEST_LINKS = [
   { type: 'attendance_regularization', label: 'Attendance Regularization', description: 'Request attendance correction' },
   { type: 'asset', label: 'Asset Request', description: 'Request company assets or equipment' },
   { type: 'resignation', label: 'Resignation', description: 'Submit your resignation' },
+  { type: 'covering', label: 'Covering Request', description: 'Apply for covering request' },
 ]
 
 type DateFilter = '1d' | '7d' | '1m' | 'custom' | 'all'
