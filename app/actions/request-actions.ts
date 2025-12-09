@@ -128,6 +128,46 @@ export async function createLeaveRequest(employeeId: string, data: {
   return { success: true, requestId: request.id }
 }
 
+// Get Department Head for Employee (for overtime supervisor auto-fill)
+export async function getDepartmentHeadForEmployee(employeeId: string) {
+  const supabase = await createClient()
+
+  // Get employee's department
+  const { data: employee, error: employeeError } = await supabase
+    .from('employees')
+    .select('department_id')
+    .eq('id', employeeId)
+    .single()
+
+  if (employeeError) throw employeeError
+  if (!employee?.department_id) {
+    return { supervisor: null, message: 'No department assigned' }
+  }
+
+  // Get department head
+  const { data: department, error: deptError } = await supabase
+    .from('departments')
+    .select('head_id')
+    .eq('id', employee.department_id)
+    .single()
+
+  if (deptError) throw deptError
+  if (!department?.head_id) {
+    return { supervisor: null, message: 'No department head assigned' }
+  }
+
+  // Get supervisor profile
+  const { data: supervisor, error: supervisorError } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('id', department.head_id)
+    .single()
+
+  if (supervisorError) throw supervisorError
+
+  return { supervisor, message: null }
+}
+
 // Create Overtime Request
 export async function createOvertimeRequest(employeeId: string, data: {
   date: string
