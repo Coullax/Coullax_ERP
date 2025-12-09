@@ -8,6 +8,9 @@ import type { CreateEventInput, UpdateEventInput } from '@/lib/types/calendar';
 
 /**
  * Get all calendars accessible to the current user
+ * - Admins/Super Admins: See ALL calendars (from all employees)
+ * - Regular Users: See only their own calendars + shared/department calendars
+ * Access is controlled by RLS policies in the database
  */
 export async function getUserCalendars() {
   const supabase = await createClient();
@@ -15,6 +18,8 @@ export async function getUserCalendars() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // RLS policies automatically filter based on user role
+  // Admins will see all calendars, regular users see only accessible ones
   const { data, error } = await supabase
     .from('calendars')
     .select(`
@@ -64,6 +69,9 @@ export async function createCalendar(name: string, description?: string, type: '
 
 /**
  * Get events for a date range
+ * - Admins/Super Admins: See ALL events (from all employees)  
+ * - Regular Users: See only events in accessible calendars
+ * @param calendarIds Optional filter by specific calendar IDs
  */
 export async function getCalendarEvents(startDate: string, endDate: string, calendarIds?: string[]) {
   const supabase = await createClient();
@@ -71,6 +79,7 @@ export async function getCalendarEvents(startDate: string, endDate: string, cale
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // RLS policies automatically filter events based on user role and calendar access
   let query = supabase
     .from('calendar_events')
     .select(`
