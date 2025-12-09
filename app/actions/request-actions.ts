@@ -234,6 +234,40 @@ export async function uploadExpenseAttachment(formData: FormData) {
   }
 }
 
+// Upload Resignation Document
+export async function uploadResignationDocument(formData: FormData) {
+  const supabase = await createClient()
+  const file = formData.get('file') as File
+  const employeeId = formData.get('employeeId') as string
+
+  if (!file) throw new Error('No file provided')
+
+  // Validate file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('File size should be less than 10MB')
+  }
+
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${employeeId}/resignation-${Date.now()}.${fileExt}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('documents')
+    .upload(fileName, file)
+
+  if (uploadError) throw uploadError
+
+  const { data } = supabase.storage
+    .from('documents')
+    .getPublicUrl(fileName)
+
+  return {
+    url: data.publicUrl,
+    name: file.name,
+    type: file.type,
+    size: file.size
+  }
+}
+
 // Create Expense Reimbursement
 export async function createExpenseRequest(employeeId: string, data: {
   expense_type: string
@@ -348,6 +382,7 @@ export async function createResignation(employeeId: string, data: {
   last_working_date: string
   reason: string
   feedback?: string
+  document_url?: string
 }) {
   const supabase = await createClient()
 
