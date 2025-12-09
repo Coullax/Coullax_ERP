@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { uploadToB2 } from '@/app/actions/upload-actions'
 
 export async function GET(request: Request) {
   try {
@@ -138,25 +139,21 @@ export async function POST(request: Request) {
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+    const fileName = `documents/${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
 
-    // Upload file to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(fileName, file, {
-        contentType: file.type,
-        upsert: false
-      })
+    // Upload file to Backblaze B2
+    const uploadFormData = new FormData()
+    uploadFormData.append('file', file)
+    uploadFormData.append('filename', fileName)
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+    const uploadResult = await uploadToB2(uploadFormData)
+
+    if (!uploadResult.success || !uploadResult.publicUrl) {
+      console.error('B2 upload error:', uploadResult.error)
+      return NextResponse.json({ error: uploadResult.error || 'Failed to upload file to B2' }, { status: 500 })
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(fileName)
+    const publicUrl = uploadResult.publicUrl
 
     // Create document record
     const { data: document, error: dbError } = await supabase
@@ -182,8 +179,6 @@ export async function POST(request: Request) {
 
     if (dbError) {
       console.error('Database error:', dbError)
-      // Clean up uploaded file
-      await supabase.storage.from('documents').remove([fileName])
       return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
     }
 
