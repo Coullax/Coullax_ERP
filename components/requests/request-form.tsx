@@ -220,6 +220,16 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
               </div>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="assigned_supervisor">Assigned Supervisor *</Label>
+              <Input
+                id="assigned_supervisor"
+                name="assigned_supervisor"
+                onChange={handleChange}
+                required
+                placeholder="Enter supervisor name"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="reason">Reason *</Label>
               <textarea
                 id="reason"
