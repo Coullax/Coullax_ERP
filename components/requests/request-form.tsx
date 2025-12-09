@@ -381,6 +381,34 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="check_out_time">Check-Out Time *</Label>
+                <Input
+                  id="check_out_time"
+                  name="check_out_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Departure time on start date
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="check_in_time">Check-In Time *</Label>
+                <Input
+                  id="check_in_time"
+                  name="check_in_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Return/arrival time on end date
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="purpose">Purpose *</Label>
               <textarea
