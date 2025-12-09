@@ -163,7 +163,6 @@ export function CalendarClient() {
             events={events}
             onDateClick={(date) => {
               setSelectedDate(date);
-              setEventDialogOpen(true);
             }}
             onEventClick={(event) => {
               // Handle event click - could open event details dialog
