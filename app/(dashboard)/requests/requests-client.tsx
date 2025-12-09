@@ -231,6 +231,45 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     return <Badge variant={config.variant}>{config.label}</Badge>
   }
 
+  const formatLeaveDetails = (requestData: any) => {
+    if (!requestData) return null
+    
+    const { leave_duration, start_time, end_time, start_date, end_date } = requestData
+    
+    // Calculate duration display
+    let durationText = ''
+    if (start_date === end_date) {
+      // Same day leave
+      if (leave_duration === 'half_day_morning') {
+        durationText = '0.5 days (Half Day - Morning)'
+      } else if (leave_duration === 'half_day_afternoon') {
+        durationText = '0.5 days (Half Day - Afternoon)'
+      } else if (leave_duration === 'custom_time' && start_time && end_time) {
+        durationText = `Custom Time: ${start_time} - ${end_time}`
+      } else {
+        durationText = '1 day (Full Day)'
+      }
+    } else {
+      // Multi-day leave
+      const start = new Date(start_date)
+      const end = new Date(end_date)
+      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      durationText = `${daysDiff} days`
+      
+      if (start_time || end_time) {
+        durationText += ' (with custom times)'
+      }
+    }
+    
+    return {
+      duration: durationText,
+      hasCustomTime: leave_duration === 'custom_time' || start_time || end_time,
+      startTime: start_time,
+      endTime: end_time,
+      isHalfDay: leave_duration?.includes('half_day')
+    }
+  }
+
   const stats = {
     total: requests.length,
     pending: requests.filter(r => r.status === 'pending').length,
@@ -455,6 +494,17 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                           <p className="text-sm text-gray-500 mt-1">
                             Submitted on {formatDateTime(request.submitted_at)}
                           </p>
+                          {/* Show leave duration for leave requests */}
+                          {request.request_type === 'leave' && request.request_data && (() => {
+                            const leaveDetails = formatLeaveDetails(request.request_data)
+                            return leaveDetails && (
+                              <div className="mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {leaveDetails.duration}
+                                </Badge>
+                              </div>
+                            )
+                          })()}
                           {request.reviewed_at && (
                             <p className="text-sm text-gray-500">
                               Reviewed on {formatDateTime(request.reviewed_at)}
@@ -620,6 +670,39 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                     <p className="text-sm italic">&quot;{selectedRequest.review_notes}&quot;</p>
                   </div>
                 )}
+
+                {/* Leave Request Specific Details */}
+                {selectedRequest.request_type === 'leave' && selectedRequest.request_data && (() => {
+                  const leaveDetails = formatLeaveDetails(selectedRequest.request_data)
+                  return leaveDetails && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900 rounded-lg space-y-2">
+                      <p className="text-xs text-blue-600 dark:text-blue-300 font-medium mb-2">Leave Details</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
+                          <p className="text-sm font-medium">{leaveDetails.duration}</p>
+                        </div>
+                        {leaveDetails.hasCustomTime && (
+                          <>
+                            {leaveDetails.startTime && (
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Start Time</p>
+                                <p className="text-sm font-medium">{leaveDetails.startTime}</p>
+                              </div>
+                            )}
+                            {leaveDetails.endTime && (
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">End Time</p>
+                                <p className="text-sm font-medium">{leaveDetails.endTime}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
 
                 {selectedRequest.request_data && (
                   <div className="p-3 bg-gray-50 rounded-lg">
