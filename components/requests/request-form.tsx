@@ -16,6 +16,7 @@ import {
   createAssetRequest,
   createResignation,
   uploadExpenseAttachment,
+  uploadResignationDocument,
 } from '@/app/actions/request-actions'
 
 interface RequestFormProps {
@@ -50,6 +51,25 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
         } catch (error: any) {
           toast.error(error.message || 'Failed to upload files')
+        } finally {
+          setLoading(false)
+        }
+      }
+    } else if (e.target instanceof HTMLInputElement && e.target.type === 'file' && e.target.name === 'resignation_document') {
+      // Handle file input for resignation document
+      const file = e.target.files?.[0]
+      if (file) {
+        setLoading(true)
+        try {
+          const formDataToUpload = new FormData()
+          formDataToUpload.append('file', file)
+          formDataToUpload.append('employeeId', employeeId)
+
+          const result = await uploadResignationDocument(formDataToUpload)
+          setFormData({ ...formData, document_url: result.url })
+          toast.success('Document uploaded successfully!')
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to upload document')
         } finally {
           setLoading(false)
         }
@@ -493,8 +513,33 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 placeholder="Any feedback about your experience..."
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="resignation_document">Resignation Document (Optional)</Label>
+              <Input
+                id="resignation_document"
+                name="resignation_document"
+                type="file"
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleChange}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Upload your resignation letter or related document (PDF, DOC, DOCX, or Image, max 10MB)
+              </p>
+              {formData.document_url && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                    Document Uploaded Successfully
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
+                    {formData.document_url.split('/').pop()}
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )
+
 
       default:
         return <p>Invalid request type</p>
