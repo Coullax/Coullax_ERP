@@ -28,7 +28,7 @@ export function EventDialog({
 }: EventDialogProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<CreateEventInput>>({
-    calendar_id: calendars.find(c => c.is_default)?.id || calendars[0]?.id,
+    calendar_id: calendars.find(c => c.is_default)?.id || calendars[0]?.id || '',
     title: '',
     description: '',
     location: '',
@@ -89,32 +89,6 @@ export function EventDialog({
               placeholder="Event title"
               required
             />
-          </div>
-
-          {/* Calendar Selection */}
-          <div>
-            <Label htmlFor="calendar">Calendar *</Label>
-            <Select
-              value={formData.calendar_id}
-              onValueChange={value => setFormData(prev => ({ ...prev, calendar_id: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select calendar" />
-              </SelectTrigger>
-              <SelectContent>
-                {calendars.map(cal => (
-                  <SelectItem key={cal.id} value={cal.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: cal.color }}
-                      />
-                      {cal.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Date & Time */}
