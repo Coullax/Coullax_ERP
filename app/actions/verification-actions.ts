@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { uploadToB2 } from './upload-actions'
 
 // Get employee KYC documents
 export async function getEmployeeDocuments(employeeId: string) {
@@ -26,29 +27,33 @@ export async function uploadKYCDocument(formData: FormData) {
 
   if (!file) throw new Error('No file provided')
 
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${employeeId}/${documentType}-${Date.now()}.${fileExt}`
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `verification/${employeeId}/${documentType}-${Date.now()}.${fileExt}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('documents')
-    .upload(fileName, file)
+    // Add filename to formData for uploadToB2
+    formData.append('filename', fileName)
 
-  if (uploadError) throw uploadError
+    const result = await uploadToB2(formData)
 
-  const { data } = supabase.storage
-    .from('documents')
-    .getPublicUrl(fileName)
+    if (!result.success || !result.publicUrl) {
+      throw new Error(result.error || 'Document upload failed')
+    }
 
-  // Save document record
-  await supabase.from('kyc_documents').insert({
-    employee_id: employeeId,
-    document_type: documentType,
-    document_url: data.publicUrl,
-    status: 'pending',
-  })
+    // Save document record
+    await supabase.from('kyc_documents').insert({
+      employee_id: employeeId,
+      document_type: documentType,
+      document_url: result.publicUrl,
+      status: 'pending',
+    })
 
-  revalidatePath('/verification')
-  return { url: data.publicUrl }
+    revalidatePath('/verification')
+    return { url: result.publicUrl }
+  } catch (error: any) {
+    console.error('Document upload failed:', error)
+    throw error
+  }
 }
 
 // Get bank details
