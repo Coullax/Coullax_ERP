@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { uploadToB2 } from './upload-actions'
 
 // Get all requests for current user
 export async function getMyRequests(userId: string) {
@@ -244,7 +245,6 @@ export async function createTravelRequest(employeeId: string, data: {
 
 // Upload Expense Attachment
 export async function uploadExpenseAttachment(formData: FormData) {
-  const supabase = await createClient()
   const file = formData.get('file') as File
   const employeeId = formData.get('employeeId') as string
 
@@ -255,30 +255,33 @@ export async function uploadExpenseAttachment(formData: FormData) {
     throw new Error('File size should be less than 10MB')
   }
 
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${employeeId}/expense-${Date.now()}.${fileExt}`
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `expenses/${employeeId}/${Date.now()}.${fileExt}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('documents')
-    .upload(fileName, file)
+    // Add filename to formData for uploadToB2
+    formData.append('filename', fileName)
 
-  if (uploadError) throw uploadError
+    const result = await uploadToB2(formData)
 
-  const { data } = supabase.storage
-    .from('documents')
-    .getPublicUrl(fileName)
+    if (!result.success || !result.publicUrl) {
+      throw new Error(result.error || 'Upload failed')
+    }
 
-  return {
-    url: data.publicUrl,
-    name: file.name,
-    type: file.type,
-    size: file.size
+    return {
+      url: result.publicUrl,
+      name: file.name,
+      type: file.type,
+      size: file.size
+    }
+  } catch (error: any) {
+    console.error('Expense attachment upload failed:', error)
+    throw error
   }
 }
 
 // Upload Resignation Document
 export async function uploadResignationDocument(formData: FormData) {
-  const supabase = await createClient()
   const file = formData.get('file') as File
   const employeeId = formData.get('employeeId') as string
 
@@ -289,24 +292,28 @@ export async function uploadResignationDocument(formData: FormData) {
     throw new Error('File size should be less than 10MB')
   }
 
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${employeeId}/resignation-${Date.now()}.${fileExt}`
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `resignations/${employeeId}/${Date.now()}.${fileExt}`
 
-  const { error: uploadError } = await supabase.storage
-    .from('documents')
-    .upload(fileName, file)
+    // Add filename to formData for uploadToB2
+    formData.append('filename', fileName)
 
-  if (uploadError) throw uploadError
+    const result = await uploadToB2(formData)
 
-  const { data } = supabase.storage
-    .from('documents')
-    .getPublicUrl(fileName)
+    if (!result.success || !result.publicUrl) {
+      throw new Error(result.error || 'Upload failed')
+    }
 
-  return {
-    url: data.publicUrl,
-    name: file.name,
-    type: file.type,
-    size: file.size
+    return {
+      url: result.publicUrl,
+      name: file.name,
+      type: file.type,
+      size: file.size
+    }
+  } catch (error: any) {
+    console.error('Resignation document upload failed:', error)
+    throw error
   }
 }
 
