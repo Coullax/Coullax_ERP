@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -27,12 +27,7 @@ export default function AdminDocumentRequestsPage() {
     const [rejectionReason, setRejectionReason] = useState('')
     const [actionLoading, setActionLoading] = useState(false)
 
-    useEffect(() => {
-        fetchRequests()
-        fetchCategories()
-    }, [activeTab])
-
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         setLoading(true)
         try {
             const url = new URL('/api/admin/document-requests', window.location.origin)
@@ -50,9 +45,9 @@ export default function AdminDocumentRequestsPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [activeTab])
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         try {
             const response = await fetch('/api/documents/categories')
             if (!response.ok) throw new Error('Failed to fetch categories')
@@ -62,7 +57,12 @@ export default function AdminDocumentRequestsPage() {
         } catch (error) {
             console.error('Failed to load categories:', error)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        fetchRequests()
+        fetchCategories()
+    }, [fetchRequests, fetchCategories])
 
     const handleFulfill = (request: DocumentRequest) => {
         setSelectedRequest(request)

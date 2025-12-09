@@ -14,7 +14,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      
+
       if (session?.user) {
         // Fetch profile
         supabase
@@ -24,18 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single()
           .then(({ data }) => {
             setProfile(data)
-            
+
             // Fetch notifications
             if (data) {
               fetchNotifications(data.id)
-              
+
               // Subscribe to real-time notifications
               const unsubscribe = subscribeToNotifications(data.id)
               return () => unsubscribe()
             }
           })
       }
-      
+
       setLoading(false)
     })
 
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      
+
       if (session?.user) {
         supabase
           .from('profiles')
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return <>{children}</>

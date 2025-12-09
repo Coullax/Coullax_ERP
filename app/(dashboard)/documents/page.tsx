@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,13 +26,7 @@ export default function DocumentsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [activeTab, setActiveTab] = useState('all')
 
-  useEffect(() => {
-    fetchDocuments()
-    fetchCategories()
-    fetchRequests()
-  }, [])
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     setLoading(true)
     try {
       const url = new URL('/api/documents', window.location.origin)
@@ -49,9 +43,9 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, selectedCategory])
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch('/api/documents/categories')
       if (!response.ok) throw new Error('Failed to fetch categories')
@@ -61,9 +55,9 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error('Failed to load categories:', error)
     }
-  }
+  }, [])
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       const response = await fetch('/api/documents/requests')
       if (!response.ok) throw new Error('Failed to fetch requests')
@@ -73,7 +67,13 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error('Failed to load requests:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchDocuments()
+    fetchCategories()
+    fetchRequests()
+  }, [fetchDocuments, fetchCategories, fetchRequests])
 
   const handleSearch = () => {
     fetchDocuments()

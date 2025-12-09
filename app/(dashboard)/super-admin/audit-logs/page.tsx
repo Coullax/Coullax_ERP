@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -114,11 +114,7 @@ export default function AuditLogsPage() {
   const [offset, setOffset] = useState(0)
   const limit = 50
 
-  useEffect(() => {
-    fetchLogs()
-  }, [offset, selectedAction, selectedResource])
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
       const url = new URL('/api/super-admin/audit-logs', window.location.origin)
@@ -138,7 +134,11 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [offset, selectedAction, selectedResource, limit])
+
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
 
   const handleClearFilters = () => {
     setSelectedAction('')
@@ -324,7 +324,7 @@ export default function AuditLogsPage() {
           <History className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <h3 className="text-lg font-semibold mb-2">No audit logs found</h3>
           <p className="text-sm text-gray-500">
-            {searchQuery || selectedAction 
+            {searchQuery || selectedAction
               ? 'Try adjusting your filters'
               : 'Audit logs will appear here as actions are performed'}
           </p>

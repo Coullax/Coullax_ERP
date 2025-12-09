@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -92,12 +92,7 @@ export default function NotificationsPage() {
   })
   const [savingPreferences, setSavingPreferences] = useState(false)
 
-  useEffect(() => {
-    fetchNotifications()
-    fetchPreferences()
-  }, [activeTab])
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true)
     try {
       const url = new URL('/api/notifications', window.location.origin)
@@ -116,9 +111,9 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeTab])
 
-  const fetchPreferences = async () => {
+  const fetchPreferences = useCallback(async () => {
     try {
       const response = await fetch('/api/notifications/preferences')
       if (!response.ok) throw new Error('Failed to fetch preferences')
@@ -128,7 +123,12 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error('Failed to load preferences:', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchNotifications()
+    fetchPreferences()
+  }, [fetchNotifications, fetchPreferences])
 
   const handleMarkAsRead = async (id: string) => {
     try {
