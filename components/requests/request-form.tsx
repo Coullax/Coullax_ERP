@@ -15,6 +15,7 @@ import {
   createAttendanceRegularization,
   createAssetRequest,
   createResignation,
+  createCoveringRequest,
   uploadExpenseAttachment,
   uploadResignationDocument,
 } from '@/app/actions/request-actions'
@@ -130,6 +131,9 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           break
         case 'resignation':
           result = await createResignation(employeeId, formData)
+          break
+        case 'covering':
+          result = await createCoveringRequest(employeeId, formData)
           break
         default:
           throw new Error('Invalid request type')
@@ -635,6 +639,55 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           </>
         )
 
+      case 'covering':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="covering_date">Covering Date *</Label>
+              <Input
+                id="covering_date"
+                name="covering_date"
+                type="date"
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_time">Start Time *</Label>
+                <Input
+                  id="start_time"
+                  name="start_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end_time">End Time *</Label>
+                <Input
+                  id="end_time"
+                  name="end_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="work_description">What are the works you doing? *</Label>
+              <textarea
+                id="work_description"
+                name="work_description"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Describe the work you will be doing during this coverage period..."
+              />
+            </div>
+          </>
+        )
 
       default:
         return <p>Invalid request type</p>
@@ -650,6 +703,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       attendance_regularization: 'Attendance Regularization',
       asset: 'Asset Request',
       resignation: 'Resignation',
+      covering: 'Covering Request',
     }
     return titles[requestType] || 'Request'
   }
