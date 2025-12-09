@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { CalendarView } from "@/components/calendar-view";
 import { EventDialog } from "@/components/event-dialog";
 import { IntegrationSettings } from "@/components/integration-settings";
+import { EventsList } from "@/components/admin/events-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Settings, Calendar } from "lucide-react";
+import { Settings, Calendar, List } from "lucide-react";
 import type {
   CalendarEventWithDetails,
   Calendar as CalendarType,
@@ -22,6 +23,8 @@ import {
   disconnectGoogleCalendar,
   createAppleSubscription,
   getAppleSubscriptions,
+  isAdmin,
+  deleteEvent,
 } from "./actions";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 
@@ -35,6 +38,8 @@ export function CalendarClient() {
   const [loading, setLoading] = useState(true);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEventWithDetails | undefined>();
 
   useEffect(() => {
     loadData();
@@ -43,16 +48,22 @@ export function CalendarClient() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [calendarsData, integrationsData, subscriptionsData] =
+      const [calendarsData, integrationsData, subscriptionsData, adminStatus] =
         await Promise.all([
           getUserCalendars(),
           getCalendarIntegrations(),
           getAppleSubscriptions(),
+          isAdmin(),
         ]);
 
       setCalendars(calendarsData);
       setIntegrations(integrationsData);
       setSubscriptions(subscriptionsData);
+      setIsUserAdmin(adminStatus);
+      
+      // Debug logging
+      console.log('Admin status check:', adminStatus);
+      console.log('Is user admin:', adminStatus);
 
       // Load events for current month
       const startDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
@@ -133,6 +144,22 @@ export function CalendarClient() {
     }
   };
 
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await deleteEvent(eventId);
+      toast.success("Event deleted successfully");
+      await loadData(); // Reload data
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  const handleEditEvent = (event: CalendarEventWithDetails) => {
+    setSelectedEvent(event);
+    setEventDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -145,7 +172,7 @@ export function CalendarClient() {
   }
 
   return (
-    <div className="h-full p-6">
+    <div className="h-full">
       <Tabs defaultValue="calendar" className="h-full">
         <TabsList className="mb-4">
           <TabsTrigger value="calendar" className="flex items-center gap-2">
@@ -156,6 +183,12 @@ export function CalendarClient() {
             <Settings className="h-4 w-4" />
             Integrations
           </TabsTrigger>
+          {isUserAdmin && (
+            <TabsTrigger value="events" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Events
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="calendar" className="h-[calc(100%-60px)]">
@@ -170,6 +203,7 @@ export function CalendarClient() {
             }}
             onCreateEvent={() => {
               setSelectedDate(undefined);
+              setSelectedEvent(undefined);
               setEventDialogOpen(true);
             }}
           />
@@ -186,6 +220,22 @@ export function CalendarClient() {
             onSyncNow={handleSyncNow}
           />
         </TabsContent>
+
+        {isUserAdmin && (
+          <TabsContent value="events">
+            <EventsList
+              events={events}
+              calendars={calendars}
+              onCreateEvent={() => {
+                setSelectedDate(undefined);
+                setSelectedEvent(undefined);
+                setEventDialogOpen(true);
+              }}
+              onEditEvent={handleEditEvent}
+              onDeleteEvent={handleDeleteEvent}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <EventDialog
