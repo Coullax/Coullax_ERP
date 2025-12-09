@@ -7,6 +7,33 @@ import { createCalendarSubscription, getUserSubscriptions } from '@/lib/integrat
 import type { CreateEventInput, UpdateEventInput } from '@/lib/types/calendar';
 
 /**
+ * Get the current user's role
+ * @returns User role string or null
+ */
+export async function getCurrentUserRole() {
+  const supabase = await createClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  return profile?.role || null;
+}
+
+/**
+ * Check if current user is admin or super admin
+ */
+export async function isAdmin() {
+  const role = await getCurrentUserRole();
+  return role === 'admin' || role === 'super_admin';
+}
+
+/**
  * Get all calendars accessible to the current user
  * - Admins/Super Admins: See ALL calendars (from all employees)
  * - Regular Users: See only their own calendars + shared/department calendars
