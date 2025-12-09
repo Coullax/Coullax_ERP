@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { updateRequestStatus } from '@/app/actions/request-actions'
-import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays } from 'lucide-react'
+import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays, MoreHorizontal, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { generateRequestPDF, generateRequestsExcel } from '@/lib/export-utils'
 import { format, subDays, subMonths, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns'
@@ -27,6 +27,12 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface ApprovalsPageClientProps {
   requests: any[]
@@ -171,7 +177,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
     }
   }
 
-  const handleRowClick = (request: any) => {
+  const handleViewDetails = (request: any) => {
     setSelectedRequest(request)
     setDialogOpen(true)
     setNotes('')
@@ -183,14 +189,15 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pending: { variant: 'secondary', label: 'Pending', className: 'bg-yellow-100 text-yellow-700' },
-      approved: { variant: 'success', label: 'Approved', className: 'bg-green-100 text-green-700' },
-      rejected: { variant: 'destructive', label: 'Rejected', className: 'bg-red-100 text-red-700' },
-      cancelled: { variant: 'outline', label: 'Cancelled', className: 'bg-gray-100 text-gray-700' },
+    const variants: Record<string, string> = {
+      pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
+      rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
+      cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
     }
-    const config = variants[status] || { variant: 'secondary', label: status, className: '' }
-    return <Badge className={config.className}>{config.label}</Badge>
+    const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
+    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    return <span className={className}>{label}</span>
   }
 
   // Helper to render request details in a structured way
@@ -224,7 +231,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           className="gap-2"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          Export to Excel
+          Export
         </Button>
       </div>
 
@@ -373,16 +380,18 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
       {/* Requests Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center justify-between text-lg">
             <span>
               {statusFilter === 'all' ? 'All Requests' :
                 statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) + ' Requests'}
-              ({filteredRequests.length})
+            </span>
+            <span className="text-sm font-normal text-gray-500">
+              Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
             </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredRequests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -406,41 +415,51 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                 </TableHeader>
                 <TableBody>
                   {paginatedRequests.map((request) => (
-                    <TableRow
-                      key={request.id}
-                      className="cursor-pointer"
-                      onClick={() => handleRowClick(request)}
-                    >
+                    <TableRow key={request.id}>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                            <FileText className="w-4 h-4" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                           </div>
-                          {REQUEST_TYPE_LABELS[request.request_type] || request.request_type}
+                          <span className="text-sm">
+                            {REQUEST_TYPE_LABELS[request.request_type] || request.request_type}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900 dark:text-gray-100">
                           {request.employee?.profile?.full_name || 'Unknown'}
-                        </div>
+                        </span>
                       </TableCell>
-                      <TableCell>{request.employee?.employee_id || 'N/A'}</TableCell>
-                      <TableCell>{formatDateTime(request.submitted_at)}</TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {request.employee?.employee_id || 'N/A'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {formatDateTime(request.submitted_at)}
+                        </span>
+                      </TableCell>
                       <TableCell>{getStatusBadge(request.status)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDownloadPDF(request)
-                          }}
-                          className="h-8 gap-1"
-                        >
-                          <Download className="w-3 h-3" />
-                          PDF
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewDetails(request)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPDF(request)}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -449,11 +468,11 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between px-6 py-4 border-t">
                   <p className="text-sm text-gray-500">
-                    Showing {offset + 1} to {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length} requests
+                    Page {currentPage} of {totalPages}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       variant="outline"
                       size="sm"
@@ -462,11 +481,21 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                     >
                       Previous
                     </Button>
-                    <div className="flex items-center gap-2 px-3">
-                      <span className="text-sm">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                    </div>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const page = i + 1
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setOffset((page - 1) * limit)}
+                          className="w-8"
+                        >
+                          {page}
+                        </Button>
+                      )
+                    })}
+                    {totalPages > 5 && <span className="px-2 py-1">...</span>}
                     <Button
                       variant="outline"
                       size="sm"

@@ -2,21 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import {
@@ -29,8 +19,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns'
 import { Label } from '@/components/ui/label'
@@ -73,7 +77,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [dateField, setDateField] = useState<DateField>('submitted_at')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [offset, setOffset] = useState(0)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null)
@@ -83,7 +87,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [editingRequest, setEditingRequest] = useState<any>(null)
   const [editData, setEditData] = useState('')
   const [saving, setSaving] = useState(false)
-  const itemsPerPage = 10
+  const limit = 15
 
   // Filter by status and date
   const filteredRequests = useMemo(() => {
@@ -123,23 +127,20 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     return filtered
   }, [requests, filter, dateFilter, dateField, customStartDate, customEndDate])
 
-  // Pagination
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage)
-  const paginatedRequests = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredRequests.slice(startIndex, endIndex)
-  }, [filteredRequests, currentPage, itemsPerPage])
+  // Paginate filtered requests
+  const paginatedRequests = filteredRequests.slice(offset, offset + limit)
+  const totalPages = Math.ceil(filteredRequests.length / limit)
+  const currentPage = Math.floor(offset / limit) + 1
 
   // Reset to page 1 when filters change
   const handleFilterChange = (newFilter: string) => {
     setFilter(newFilter)
-    setCurrentPage(1)
+    setOffset(0)
   }
 
   const handleDateFilterChange = (newDateFilter: DateFilter) => {
     setDateFilter(newDateFilter)
-    setCurrentPage(1)
+    setOffset(0)
   }
 
   const handleDeleteClick = (requestId: string) => {
@@ -163,7 +164,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
       toast.success('Request deleted successfully')
       setDeleteDialogOpen(false)
-      // Refresh the page to update the list
       window.location.reload()
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete request')
@@ -189,7 +189,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
     setSaving(true)
     try {
-      // Parse the JSON data
       let parsedData
       try {
         parsedData = JSON.parse(editData)
@@ -212,7 +211,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
       toast.success('Request updated successfully')
       setEditDialogOpen(false)
-      // Refresh the page to update the list
       window.location.reload()
     } catch (error: any) {
       toast.error(error.message || 'Failed to update request')
@@ -222,25 +220,24 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pending: { variant: 'secondary', label: 'Pending' },
-      approved: { variant: 'success', label: 'Approved' },
-      rejected: { variant: 'destructive', label: 'Rejected' },
-      cancelled: { variant: 'outline', label: 'Cancelled' },
+    const variants: Record<string, string> = {
+      pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
+      rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
+      cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
     }
-    const config = variants[status] || { variant: 'secondary', label: status }
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
+    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    return <span className={className}>{label}</span>
   }
 
   const formatLeaveDetails = (requestData: any) => {
     if (!requestData) return null
-    
+
     const { leave_duration, start_time, end_time, start_date, end_date } = requestData
-    
-    // Calculate duration display
+
     let durationText = ''
     if (start_date === end_date) {
-      // Same day leave
       if (leave_duration === 'half_day_morning') {
         durationText = '0.5 days (Half Day - Morning)'
       } else if (leave_duration === 'half_day_afternoon') {
@@ -251,17 +248,16 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
         durationText = '1 day (Full Day)'
       }
     } else {
-      // Multi-day leave
       const start = new Date(start_date)
       const end = new Date(end_date)
       const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
       durationText = `${daysDiff} days`
-      
+
       if (start_time || end_time) {
         durationText += ' (with custom times)'
       }
     }
-    
+
     return {
       duration: durationText,
       hasCustomTime: leave_duration === 'custom_time' || start_time || end_time,
@@ -283,7 +279,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Requests</h1>
+          <h1 className="text-3xl font-bold">My Requests</h1>
           <p className="text-gray-500 mt-1">Manage all your requests</p>
         </div>
       </div>
@@ -348,7 +344,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {REQUEST_LINKS.map((link) => (
               <Link key={link.type} href={`/requests/new/${link.type}`}>
-                <Card className="hover:shadow-card-hover transition-shadow cursor-pointer h-full">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-1">{link.label}</h3>
                     <p className="text-sm text-gray-500">{link.description}</p>
@@ -360,109 +356,111 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
         </CardContent>
       </Card>
 
-      {/* Filter Tabs */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm font-medium flex items-center mr-2">Status:</span>
-          {['all', 'pending', 'approved', 'rejected'].map((status) => (
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-medium flex items-center mr-2">Status:</span>
+            {['all', 'pending', 'approved', 'rejected'].map((status) => (
+              <Button
+                key={status}
+                variant={filter === status ? 'default' : 'outline'}
+                onClick={() => handleFilterChange(status)}
+                className="capitalize"
+                size="sm"
+              >
+                {status}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-medium flex items-center mr-2">
+              <CalendarDays className="w-4 h-4 mr-2" />
+              Date Range:
+            </span>
+            <Select value={dateField} onValueChange={(value: DateField) => setDateField(value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="submitted_at">Submit Date</SelectItem>
+                <SelectItem value="reviewed_at">Review Date</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
-              key={status}
-              variant={filter === status ? 'default' : 'outline'}
-              onClick={() => handleFilterChange(status)}
-              className="capitalize"
+              variant={dateFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => handleDateFilterChange('all')}
               size="sm"
             >
-              {status}
+              All Time
             </Button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-sm font-medium flex items-center mr-2">
-            <CalendarDays className="w-4 h-4 mr-2" />
-            Date Range:
-          </span>
-          <Select value={dateField} onValueChange={(value: DateField) => setDateField(value)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="submitted_at">Submit Date</SelectItem>
-              <SelectItem value="reviewed_at">Review Date</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant={dateFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => handleDateFilterChange('all')}
-            size="sm"
-          >
-            All Time
-          </Button>
-          <Button
-            variant={dateFilter === '1d' ? 'default' : 'outline'}
-            onClick={() => handleDateFilterChange('1d')}
-            size="sm"
-          >
-            Last 24h
-          </Button>
-          <Button
-            variant={dateFilter === '7d' ? 'default' : 'outline'}
-            onClick={() => handleDateFilterChange('7d')}
-            size="sm"
-          >
-            Last 7 Days
-          </Button>
-          <Button
-            variant={dateFilter === '1m' ? 'default' : 'outline'}
-            onClick={() => handleDateFilterChange('1m')}
-            size="sm"
-          >
-            Last Month
-          </Button>
-          <Button
-            variant={dateFilter === 'custom' ? 'default' : 'outline'}
-            onClick={() => handleDateFilterChange('custom')}
-            size="sm"
-          >
-            Custom Range
-          </Button>
-        </div>
-
-        {dateFilter === 'custom' && (
-          <div className="flex flex-wrap gap-3 items-center p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">From:</label>
-              <Input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">To:</label>
-              <Input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
+            <Button
+              variant={dateFilter === '1d' ? 'default' : 'outline'}
+              onClick={() => handleDateFilterChange('1d')}
+              size="sm"
+            >
+              Last 24h
+            </Button>
+            <Button
+              variant={dateFilter === '7d' ? 'default' : 'outline'}
+              onClick={() => handleDateFilterChange('7d')}
+              size="sm"
+            >
+              Last 7 Days
+            </Button>
+            <Button
+              variant={dateFilter === '1m' ? 'default' : 'outline'}
+              onClick={() => handleDateFilterChange('1m')}
+              size="sm"
+            >
+              Last Month
+            </Button>
+            <Button
+              variant={dateFilter === 'custom' ? 'default' : 'outline'}
+              onClick={() => handleDateFilterChange('custom')}
+              size="sm"
+            >
+              Custom Range
+            </Button>
           </div>
-        )}
-      </div>
 
-      {/* Requests List */}
+          {dateFilter === 'custom' && (
+            <div className="flex flex-wrap gap-3 items-center p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">From:</label>
+                <Input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">To:</label>
+                <Input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Requests Table */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>My Requests</CardTitle>
-            <p className="text-sm text-gray-500">
-              Showing {paginatedRequests.length} of {filteredRequests.length} requests
-            </p>
-          </div>
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center justify-between text-lg">
+            <span>My Requests</span>
+            <span className="text-sm font-normal text-gray-500">
+              Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
+            </span>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredRequests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -472,145 +470,129 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {paginatedRequests.map((request) => {
-                const typeConfig = REQUEST_TYPES[request.request_type] || { label: request.request_type, icon: FileText, color: 'gray' }
-                const Icon = typeConfig.icon
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Request Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted Date</TableHead>
+                    <TableHead>Reviewed Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedRequests.map((request) => {
+                    const typeConfig = REQUEST_TYPES[request.request_type] || { label: request.request_type, icon: FileText, color: 'gray' }
+                    const Icon = typeConfig.icon
 
-                return (
-                  <motion.div
-                    key={request.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors cursor-pointer"
-                    onClick={() => handleViewDetails(request)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{typeConfig.label}</h4>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Submitted on {formatDateTime(request.submitted_at)}
-                          </p>
-                          {/* Show leave duration for leave requests */}
-                          {request.request_type === 'leave' && request.request_data && (() => {
-                            const leaveDetails = formatLeaveDetails(request.request_data)
-                            return leaveDetails && (
-                              <div className="mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                  {leaveDetails.duration}
-                                </Badge>
-                              </div>
-                            )
-                          })()}
-                          {request.reviewed_at && (
-                            <p className="text-sm text-gray-500">
-                              Reviewed on {formatDateTime(request.reviewed_at)}
-                              {request.reviewer && ` by ${request.reviewer.full_name}`}
-                            </p>
-                          )}
-                          {request.review_notes && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 italic">
-                              &quot;{request.review_notes}&quot;
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        {getStatusBadge(request.status)}
-                        {request.status === 'pending' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditClick(request)}
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteClick(request.id)}
-                              disabled={deleting === request.id}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
+                    return (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                              <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium">{typeConfig.label}</span>
+                              {request.request_type === 'leave' && request.request_data && (() => {
+                                const leaveDetails = formatLeaveDetails(request.request_data)
+                                return leaveDetails && (
+                                  <p className="text-xs text-gray-500 mt-0.5">{leaveDetails.duration}</p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(request.status)}</TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {formatDateTime(request.submitted_at)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {request.reviewed_at ? formatDateTime(request.reviewed_at) : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(request)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {request.status === 'pending' && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEditClick(request)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(request.id)}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-6 border-t pt-4">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(prev => Math.max(1, prev - 1))
-                      }}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => {
-                      // Show first page, last page, current page, and pages around current
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <p className="text-sm text-gray-500">
+                    Page {currentPage} of {totalPages}
+                  </p>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOffset(Math.max(0, offset - limit))}
+                      disabled={offset === 0}
+                    >
+                      Previous
+                    </Button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const page = i + 1
                       return (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setOffset((page - 1) * limit)}
+                          className="w-8"
+                        >
+                          {page}
+                        </Button>
                       )
-                    })
-                    .map((page, index, array) => (
-                      <span key={page}>
-                        {index > 0 && array[index - 1] !== page - 1 && (
-                          <PaginationItem>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        )}
-                        <PaginationItem>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setCurrentPage(page)
-                            }}
-                            isActive={currentPage === page}
-                            className="cursor-pointer"
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      </span>
-                    ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setCurrentPage(prev => Math.min(totalPages, prev + 1))
-                      }}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                    })}
+                    {totalPages > 5 && <span className="px-2 py-1">...</span>}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOffset(offset + limit)}
+                      disabled={offset + limit >= filteredRequests.length}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -704,7 +686,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                   )
                 })()}
 
-
                 {selectedRequest.request_data && (
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-2">Request Details</p>
@@ -781,7 +762,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                   >
                     {saving ? (
                       <>
-                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Saving...
                       </>
                     ) : (
@@ -820,9 +801,16 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
-              disabled={!!deleting}
+              disabled={deleting !== null}
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
