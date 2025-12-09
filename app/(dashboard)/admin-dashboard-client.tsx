@@ -7,6 +7,7 @@ import { Users, FileText, Clock, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { CalendarClient } from './calendar/calendar-client'
 
 // Mock data - replace with real data from Supabase
 const stats = [
@@ -77,6 +78,8 @@ export function AdminDashboardClient() {
           />
         ))}
       </div>
+
+      <CalendarClient />
 
       {/* Charts and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
