@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,7 @@ import {
   createCoveringRequest,
   uploadExpenseAttachment,
   uploadResignationDocument,
+  getDepartmentHeadForEmployee,
 } from '@/app/actions/request-actions'
 
 interface RequestFormProps {
@@ -31,9 +32,35 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [formData, setFormData] = useState<any>({})
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  
+  const [supervisorName, setSupervisorName] = useState('')
+  const [supervisorId, setSupervisorId] = useState('')
+  const [supervisorLoading, setSupervisorLoading] = useState(false)
+
   // Check if dates are the same (for half-day leave)
   const isSameDay = startDate && endDate && startDate === endDate
+
+  // Fetch department head for overtime requests
+  useEffect(() => {
+    if (requestType === 'overtime' && employeeId) {
+      setSupervisorLoading(true)
+      getDepartmentHeadForEmployee(employeeId)
+        .then((result) => {
+          if (result.supervisor) {
+            setSupervisorName(result.supervisor.full_name)
+            setSupervisorId(result.supervisor.id)
+            setFormData((prev: any) => ({ ...prev, assigned_supervisor: result.supervisor.id }))
+          } else if (result.message) {
+            toast.info(result.message)
+          }
+        })
+        .catch((error) => {
+          toast.error('Failed to fetch supervisor: ' + error.message)
+        })
+        .finally(() => {
+          setSupervisorLoading(false)
+        })
+    }
+  }, [requestType, employeeId])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
@@ -87,7 +114,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       } else if (e.target.name === 'end_date') {
         setEndDate(e.target.value)
       }
-      
+
       setFormData({ ...formData, [e.target.name]: e.target.value })
     }
   }
@@ -193,7 +220,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
             </div>
-            
+
             {/* Leave Duration Selection - Show for same day or multi-day */}
             {(startDate && endDate) && (
               <>
@@ -227,7 +254,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                     </p>
                   </div>
                 )}
-                
+
                 {/* Show time inputs for custom time or multi-day leaves */}
                 {((isSameDay && formData.leave_duration === 'custom_time') || !isSameDay) && (
                   <div className="grid grid-cols-2 gap-4">
@@ -265,7 +292,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 )}
               </>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="reason">Reason *</Label>
               <textarea
@@ -313,10 +340,23 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
               <Input
                 id="assigned_supervisor"
                 name="assigned_supervisor"
-                onChange={handleChange}
+                value={supervisorName}
+                readOnly
+                disabled={supervisorLoading}
                 required
-                placeholder="Enter supervisor name"
+                placeholder={supervisorLoading ? "Loading supervisor..." : "Auto-assigned based on department"}
+                className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
               />
+              {supervisorName && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  ✓ Department head auto-assigned
+                </p>
+              )}
+              {!supervisorName && !supervisorLoading && (
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                  ⚠ No department head assigned. Please contact admin.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="reason">Reason *</Label>
@@ -379,6 +419,34 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   onChange={handleChange}
                   required
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="check_out_time">Check-Out Time *</Label>
+                <Input
+                  id="check_out_time"
+                  name="check_out_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Departure time on start date
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="check_in_time">Check-In Time *</Label>
+                <Input
+                  id="check_in_time"
+                  name="check_in_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Return/arrival time on end date
+                </p>
               </div>
             </div>
             <div className="space-y-2">

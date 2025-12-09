@@ -267,6 +267,20 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     }
   }
 
+  const formatTravelDetails = (requestData: any) => {
+    if (!requestData) return null
+    
+    const { check_out_time, check_in_time, destination } = requestData
+    
+    return {
+      hasTime: !!(check_out_time || check_in_time),
+      checkOutTime: check_out_time,
+      checkInTime: check_in_time,
+      destination: destination
+    }
+  }
+
+
   const stats = {
     total: requests.length,
     pending: requests.filter(r => r.status === 'pending').length,
@@ -685,6 +699,36 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                     </div>
                   )
                 })()}
+
+
+
+                {/* Travel Request Specific Details */}
+                {selectedRequest.request_type === 'travel_request' && selectedRequest.request_data && (() => {
+                  const travelDetails = formatTravelDetails(selectedRequest.request_data)
+                  return travelDetails && travelDetails.hasTime && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900 rounded-lg space-y-2">
+                      <p className="text-xs text-green-600 dark:text-green-300 font-medium mb-2">Travel Details</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {travelDetails.checkOutTime && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-Out Time</p>
+                            <p className="text-sm font-medium">{travelDetails.checkOutTime}</p>
+                            <p className="text-xs text-gray-400">Departure time</p>
+                          </div>
+                        )}
+                        {travelDetails.checkInTime && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-In Time</p>
+                            <p className="text-sm font-medium">{travelDetails.checkInTime}</p>
+                            <p className="text-xs text-gray-400">Return time</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+
 
                 {selectedRequest.request_data && (
                   <div className="p-3 bg-gray-50 rounded-lg">
