@@ -17,6 +17,57 @@ const REQUEST_TYPE_LABELS: Record<string, string> = {
   covering: 'Covering Request',
 }
 
+// Add PDF Header with company branding
+function addPDFHeader(doc: jsPDF) {
+  // Coullax branding
+  doc.setFontSize(24)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('coullax', 14, 15)
+  
+  // Contact information
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(60, 60, 60)
+  doc.text('www.coullax.com', 14, 22)
+  doc.text('support@coullax.com', 14, 27)
+  doc.text('+94 11 22 77 111  |  +94 70 11 777 11', 14, 32)
+  
+  // Separator line
+  doc.setDrawColor(220, 220, 220)
+  doc.setLineWidth(0.5)
+  doc.line(14, 36, 196, 36)
+}
+
+// Add PDF Footer with company address and info
+function addPDFFooter(doc: jsPDF) {
+  const pageHeight = doc.internal.pageSize.height
+  const footerY = pageHeight - 25
+  
+  // Top separator line for footer
+  doc.setDrawColor(220, 220, 220)
+  doc.setLineWidth(0.5)
+  doc.line(14, footerY - 5, 196, footerY - 5)
+  
+  // Footer background (dark)
+  doc.setFillColor(40, 40, 40)
+  doc.rect(0, footerY, 210, 30, 'F')
+  
+  // Address (left side)
+  doc.setFontSize(8)
+  doc.setTextColor(255, 255, 255)
+  doc.text('No: 256/56, 2nd Lane,', 14, footerY + 5)
+  doc.text('New city Garden, Weliwita, Kaduwela,', 14, footerY + 9)
+  doc.text('Sri Lanka', 14, footerY + 13)
+  
+  // Social media and reference (right side)
+  doc.setFontSize(8)
+  doc.text('@coullax', 196, footerY + 7, { align: 'right' })
+  doc.setFontSize(7)
+  doc.setTextColor(200, 200, 200)
+  doc.text('PV - 00256728', 196, footerY + 13, { align: 'right' })
+}
+
 // Get request details as formatted text
 export function getRequestDetailsText(request: any): string {
   const details: string[] = []
@@ -45,57 +96,63 @@ export function generateRequestPDF(request: any) {
   const doc = new jsPDF()
   
   // Add header
-  doc.setFontSize(20)
+  addPDFHeader(doc)
+  
+  // Add title below header
+  doc.setFontSize(18)
   doc.setTextColor(40, 40, 40)
-  doc.text('Request Details', 14, 20)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Request Details', 14, 46)
   
   // Add metadata
-  doc.setFontSize(10)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
   doc.setTextColor(100, 100, 100)
-  doc.text(`Generated on: ${formatDateTime(new Date())}`, 14, 28)
+  doc.text(`Generated on: ${formatDateTime(new Date())}`, 14, 52)
   
   // Draw separator line
-  doc.setDrawColor(200, 200, 200)
-  doc.line(14, 32, 196, 32)
+  doc.setDrawColor(220, 220, 220)
+  doc.setLineWidth(0.3)
+  doc.line(14, 56, 196, 56)
   
   // Request information
-  doc.setFontSize(12)
+  doc.setFontSize(11)
   doc.setTextColor(40, 40, 40)
   
-  let yPos = 42
+  let yPos = 64
   
   // Request Type
   doc.setFont('helvetica', 'bold')
   doc.text('Request Type:', 14, yPos)
   doc.setFont('helvetica', 'normal')
   doc.text(REQUEST_TYPE_LABELS[request.request_type] || request.request_type, 60, yPos)
-  yPos += 8
+  yPos += 7
   
   // Employee Information
   doc.setFont('helvetica', 'bold')
   doc.text('Employee:', 14, yPos)
   doc.setFont('helvetica', 'normal')
   doc.text(request.employee?.profile?.full_name || 'Unknown', 60, yPos)
-  yPos += 8
+  yPos += 7
   
   doc.setFont('helvetica', 'bold')
   doc.text('Employee ID:', 14, yPos)
   doc.setFont('helvetica', 'normal')
   doc.text(request.employee?.employee_id || 'N/A', 60, yPos)
-  yPos += 8
+  yPos += 7
   
   doc.setFont('helvetica', 'bold')
   doc.text('Email:', 14, yPos)
   doc.setFont('helvetica', 'normal')
   doc.text(request.employee?.profile?.email || 'N/A', 60, yPos)
-  yPos += 10
+  yPos += 9
   
   // Request Details
   doc.setFont('helvetica', 'bold')
   doc.text('Submitted Date:', 14, yPos)
   doc.setFont('helvetica', 'normal')
   doc.text(formatDateTime(request.submitted_at), 60, yPos)
-  yPos += 8
+  yPos += 7
   
   // Status with color
   doc.setFont('helvetica', 'bold')
@@ -113,41 +170,40 @@ export function generateRequestPDF(request: any) {
   doc.setFont('helvetica', 'bold')
   doc.text(request.status.toUpperCase(), 60, yPos)
   doc.setTextColor(40, 40, 40)
-  yPos += 10
+  yPos += 9
   
   // Review information if available
   if (request.reviewed_by) {
+    doc.setDrawColor(220, 220, 220)
     doc.line(14, yPos, 196, yPos)
-    yPos += 8
+    yPos += 7
     
     doc.setFont('helvetica', 'bold')
     doc.text('Reviewed By:', 14, yPos)
     doc.setFont('helvetica', 'normal')
     doc.text(request.reviewer?.full_name || 'Unknown', 60, yPos)
-    yPos += 8
+    yPos += 7
     
     doc.setFont('helvetica', 'bold')
     doc.text('Reviewed Date:', 14, yPos)
     doc.setFont('helvetica', 'normal')
     doc.text(formatDateTime(request.reviewed_at), 60, yPos)
-    yPos += 8
+    yPos += 7
     
     if (request.review_notes) {
       doc.setFont('helvetica', 'bold')
       doc.text('Review Notes:', 14, yPos)
-      yPos += 6
+      yPos += 5
       
       doc.setFont('helvetica', 'normal')
       const splitNotes = doc.splitTextToSize(request.review_notes, 170)
       doc.text(splitNotes, 14, yPos)
-      yPos += splitNotes.length * 6 + 4
+      yPos += splitNotes.length * 5 + 4
     }
   }
   
   // Add footer
-  doc.setFontSize(8)
-  doc.setTextColor(150, 150, 150)
-  doc.text('This is a system-generated document.', 14, 285)
+  addPDFFooter(doc)
   
   // Generate filename
   const fileName = `Request_${request.request_type}_${request.employee?.employee_id || 'unknown'}_${new Date().getTime()}.pdf`

@@ -68,7 +68,15 @@ export async function getAllRequests(status?: string) {
         employee_id,
         profile:profiles!employees_id_fkey(full_name, email)
       ),
-      reviewer:profiles!requests_reviewed_by_fkey(full_name)
+      reviewer:profiles!requests_reviewed_by_fkey(full_name),
+      leave_requests(*),
+      overtime_requests(*),
+      expense_reimbursements(*),
+      travel_requests(*),
+      attendance_regularization_requests(*),
+      asset_requests(*),
+      resignations(*),
+      covering_requests(*)
     `)
 
   // Apply status filter if provided

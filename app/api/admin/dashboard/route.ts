@@ -101,12 +101,23 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
 
+    // Get current month's event count
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+    const { count: monthEventCount } = await supabase
+      .from('calendar_events')
+      .select('*', { count: 'exact', head: true })
+      .gte('start_time', `${monthStart}T00:00:00`)
+      .lte('start_time', `${monthEnd}T23:59:59`)
+
     return NextResponse.json({
       requestDistribution,
       recentRequests: formattedRequests,
       stats: {
         totalEmployees: totalEmployees || 0,
-        pendingRequests: pendingRequests || 0
+        pendingRequests: pendingRequests || 0,
+        monthEventCount: monthEventCount || 0
       }
     })
   } catch (error: any) {
