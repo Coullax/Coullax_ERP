@@ -268,7 +268,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     switch (request.request_type) {
       case 'leave':
         if (data.leave_type) details.push({ label: 'Leave Type', value: data.leave_type })
-        if (data.leave_duration) details.push({ label: 'Leave Duration', value: data.leave_duration.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) })
+        if (data.leave_duration) details.push({ label: 'Leave Duration', value: String(data.leave_duration).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) })
         if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy'), highlight: true })
         if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy'), highlight: true })
         if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
@@ -355,7 +355,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
         // Generic fallback for unknown request types
         Object.entries(data).forEach(([key, value]) => {
           details.push({
-            label: key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()),
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
           })
         })
@@ -883,42 +883,94 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                       <p className="text-gray-500 text-xs">Status</p>
                       <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
                     </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Submitted On</p>
-                      <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
-                    </div>
-                    {selectedRequest.reviewed_at && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Reviewed On</p>
-                        <p className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</p>
-                      </div>
-                    )}
-                    {selectedRequest.reviewer && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Reviewed By</p>
-                        <p className="font-medium">{selectedRequest.reviewer.full_name}</p>
-                      </div>
-                    )}
-                    {selectedRequest.created_at && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Created At</p>
-                        <p className="font-medium text-xs">{formatDateTime(selectedRequest.created_at)}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                <Separator />
+                {selectedRequest.reviewer && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">Reviewed By</p>
+                    <p className="text-sm font-medium">{selectedRequest.reviewer.full_name}</p>
+                  </div>
+                )}
 
                 {selectedRequest.review_notes && (
-                  <>
-                    <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
-                      <h4 className="font-semibold mb-2 text-sm">Review Notes</h4>
-                      <p className="text-sm italic bg-white dark:bg-gray-900 p-2 rounded">&quot;{selectedRequest.review_notes}&quot;</p>
-                    </div>
-                    <Separator />
-                  </>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">Review Notes</p>
+                    <p className="text-sm italic">&quot;{selectedRequest.review_notes}&quot;</p>
+                  </div>
                 )}
+
+                {/* Leave Request Specific Details */}
+                {selectedRequest.request_type === 'leave' && selectedRequest.leave_requests && (() => {
+                  const leaveData = Array.isArray(selectedRequest.leave_requests)
+                    ? selectedRequest.leave_requests[0]
+                    : selectedRequest.leave_requests
+
+                  if (!leaveData) return null
+
+                  return (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg space-y-3">
+                      <p className="text-sm text-blue-600 dark:text-blue-300 font-semibold mb-3">Leave Request Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Leave Type</p>
+                          <p className="text-sm font-medium capitalize">{leaveData.leave_type?.replace('_', ' ')}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Days</p>
+                          <p className="text-sm font-medium">{leaveData.total_days} {leaveData.total_days === 1 ? 'day' : 'days'}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</p>
+                          <p className="text-sm font-medium">{leaveData.start_date}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</p>
+                          <p className="text-sm font-medium">{leaveData.end_date}</p>
+                        </div>
+
+                        {leaveData.leave_duration && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Leave Duration</p>
+                            <p className="text-sm font-medium capitalize">
+                              {leaveData.leave_duration.replace(/_/g, ' ')}
+                            </p>
+                          </div>
+                        )}
+
+                        {(leaveData.start_time || leaveData.end_time) && (
+                          <>
+                            {leaveData.start_time && (
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Start Time</p>
+                                <p className="text-sm font-medium">{leaveData.start_time}</p>
+                              </div>
+                            )}
+                            {leaveData.end_time && (
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">End Time</p>
+                                <p className="text-sm font-medium">{leaveData.end_time}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {leaveData.reason && (
+                        <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
+                          <p className="text-sm">{leaveData.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                <Separator />
 
                 {/* Remove old leave/travel specific sections since they're now in renderAllRequestDetails */}
 
