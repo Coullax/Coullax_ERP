@@ -104,6 +104,8 @@ export function EmployeesPageClient({
     employees: employees.filter(e => e.profile?.role === 'employee').length,
     admins: employees.filter(e => e.profile?.role === 'admin').length,
     superAdmins: employees.filter(e => e.profile?.role === 'super_admin').length,
+    active: employees.filter(e => e.is_active !== false).length,
+    deactivated: employees.filter(e => e.is_active === false).length,
   }
 
   return (
@@ -150,7 +152,7 @@ export function EmployeesPageClient({
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -192,6 +194,28 @@ export function EmployeesPageClient({
                 <p className="text-2xl font-bold">{stats.superAdmins}</p>
               </div>
               <Users className="w-8 h-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Active</p>
+                <p className="text-2xl font-bold">{stats.active}</p>
+              </div>
+              <UserCheck className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Deactivated</p>
+                <p className="text-2xl font-bold">{stats.deactivated}</p>
+              </div>
+              <UserX className="w-8 h-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
