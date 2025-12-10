@@ -102,7 +102,7 @@ export function DocumentUpload({ open, onOpenChange, categories, onSuccess }: Do
             onOpenChange(false)
             setFile(null)
             setFormData({ title: '', description: '', category_id: '', is_public: false, tags: '' })
-            onSuccess?.(result.document)
+            onSuccess?.(result)
         } catch (error: any) {
             toast.error(error.message || 'Failed to upload document')
         } finally {
