@@ -26,10 +26,12 @@ export default function AdminDocumentRequestsPage() {
     const [uploadOpen, setUploadOpen] = useState(false)
     const [rejectionReason, setRejectionReason] = useState('')
     const [actionLoading, setActionLoading] = useState(false)
+    const [totalRequests, setTotalRequests] = useState(0)
 
     const fetchRequests = useCallback(async () => {
         setLoading(true)
         try {
+            // Fetch filtered requests based on active tab
             const url = new URL('/api/admin/document-requests', window.location.origin)
             if (activeTab !== 'all') {
                 url.searchParams.set('status', activeTab)
@@ -40,6 +42,19 @@ export default function AdminDocumentRequestsPage() {
 
             const data = await response.json()
             setRequests(data.requests || [])
+
+            // If we're on a filtered tab, also fetch the total count
+            if (activeTab !== 'all') {
+                const totalUrl = new URL('/api/admin/document-requests', window.location.origin)
+                const totalResponse = await fetch(totalUrl.toString())
+                if (totalResponse.ok) {
+                    const totalData = await totalResponse.json()
+                    setTotalRequests(totalData.requests?.length || 0)
+                }
+            } else {
+                // If we're on the 'all' tab, the current requests length is the total
+                setTotalRequests(data.requests?.length || 0)
+            }
         } catch (error) {
             toast.error('Failed to load document requests')
         } finally {
@@ -227,9 +242,9 @@ export default function AdminDocumentRequestsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="all">
                         All Requests
-                        {requests.length > 0 && (
+                        {totalRequests > 0 && (
                             <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
-                                {requests.length}
+                                {totalRequests}
                             </Badge>
                         )}
                     </TabsTrigger>
