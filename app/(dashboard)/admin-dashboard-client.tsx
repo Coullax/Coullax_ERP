@@ -32,6 +32,7 @@ interface DashboardData {
   stats: {
     totalEmployees: number
     pendingRequests: number
+    monthEventCount: number
   }
 }
 
@@ -76,9 +77,9 @@ export function AdminDashboardClient() {
       icon: <FileText className="w-5 h-5" />,
     },
     {
-      title: 'Attendance Rate',
-      value: '94.2%',
-      change: 2.4,
+      title: "Total Events",
+      value: dashboardData?.stats.monthEventCount.toString() || '0',
+      change: 0,
       trend: 'up' as const,
       icon: <Clock className="w-5 h-5" />,
     },

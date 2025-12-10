@@ -203,95 +203,136 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
   // Helper to render request details in a structured way based on request type
   const renderRequestDetails = (request: any) => {
-    if (!request.request_data) return []
-
-    const data = request.request_data
     const details: { label: string; value: any; highlight?: boolean }[] = []
 
     switch (request.request_type) {
       case 'leave':
-        if (data.leave_type) details.push({ label: 'Leave Type', value: data.leave_type })
-        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy'), highlight: true })
-        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy'), highlight: true })
-        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
-        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
-        if (data.check_in_time) details.push({ label: 'Check-in Time', value: data.check_in_time })
-        if (data.check_out_time) details.push({ label: 'Check-out Time', value: data.check_out_time })
-        if (data.duration) details.push({ label: 'Duration', value: `${data.duration} day(s)`, highlight: true })
-        if (data.reason) details.push({ label: 'Reason', value: data.reason })
-        if (data.description) details.push({ label: 'Description', value: data.description })
+        // Prioritize data from leave_requests table over request_data
+        const leaveData = Array.isArray(request.leave_requests)
+          ? request.leave_requests[0]
+          : request.leave_requests || request.request_data
+        
+        if (leaveData) {
+          if (leaveData.leave_type) details.push({ label: 'Leave Type', value: leaveData.leave_type })
+          if (leaveData.start_date) details.push({ label: 'Start Date', value: format(new Date(leaveData.start_date), 'MMMM dd, yyyy'), highlight: true })
+          if (leaveData.end_date) details.push({ label: 'End Date', value: format(new Date(leaveData.end_date), 'MMMM dd, yyyy'), highlight: true })
+          if (leaveData.start_time) details.push({ label: 'Start Time', value: leaveData.start_time })
+          if (leaveData.end_time) details.push({ label: 'End Time', value: leaveData.end_time })
+          if (leaveData.check_in_time) details.push({ label: 'Check-in Time', value: leaveData.check_in_time })
+          if (leaveData.check_out_time) details.push({ label: 'Check-out Time', value: leaveData.check_out_time })
+          if (leaveData.total_days) details.push({ label: 'Total Days', value: `${leaveData.total_days} day(s)`, highlight: true })
+          if (leaveData.reason) details.push({ label: 'Reason', value: leaveData.reason })
+          if (leaveData.description) details.push({ label: 'Description', value: leaveData.description })
+        }
         break
 
       case 'overtime':
-        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
-        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
-        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
-        if (data.hours) details.push({ label: 'Hours', value: `${data.hours} hour(s)`, highlight: true })
-        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        const overtimeData = Array.isArray(request.overtime_requests)
+          ? request.overtime_requests[0]
+          : request.overtime_requests || request.request_data
+        
+        if (overtimeData) {
+          if (overtimeData.date) details.push({ label: 'Date', value: format(new Date(overtimeData.date), 'MMMM dd, yyyy'), highlight: true })
+          if (overtimeData.start_time) details.push({ label: 'Start Time', value: overtimeData.start_time })
+          if (overtimeData.end_time) details.push({ label: 'End Time', value: overtimeData.end_time })
+          if (overtimeData.hours) details.push({ label: 'Hours', value: `${overtimeData.hours} hour(s)`, highlight: true })
+          if (overtimeData.reason) details.push({ label: 'Reason', value: overtimeData.reason })
+          if (overtimeData.assigned_supervisor) details.push({ label: 'Assigned Supervisor ID', value: overtimeData.assigned_supervisor })
+        }
         break
 
       case 'travel_request':
-        if (data.destination) details.push({ label: 'Destination', value: data.destination, highlight: true })
-        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
-        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
-        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
-        if (data.estimated_cost) details.push({ label: 'Estimated Cost', value: `$${data.estimated_cost}` })
-        if (data.transport_mode) details.push({ label: 'Transport Mode', value: data.transport_mode })
+        const travelData = Array.isArray(request.travel_requests)
+          ? request.travel_requests[0]
+          : request.travel_requests || request.request_data
+        
+        if (travelData) {
+          if (travelData.destination) details.push({ label: 'Destination', value: travelData.destination, highlight: true })
+          if (travelData.start_date) details.push({ label: 'Start Date', value: format(new Date(travelData.start_date), 'MMMM dd, yyyy') })
+          if (travelData.end_date) details.push({ label: 'End Date', value: format(new Date(travelData.end_date), 'MMMM dd, yyyy') })
+          if (travelData.purpose) details.push({ label: 'Purpose', value: travelData.purpose })
+          if (travelData.estimated_cost) details.push({ label: 'Estimated Cost', value: `$${travelData.estimated_cost}` })
+          if (travelData.transport_mode) details.push({ label: 'Transport Mode', value: travelData.transport_mode })
+        }
         break
 
       case 'expense_reimbursement':
-        if (data.expense_type) details.push({ label: 'Expense Type', value: data.expense_type })
-        if (data.amount) details.push({ label: 'Amount', value: `$${data.amount}`, highlight: true })
-        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy') })
-        if (data.description) details.push({ label: 'Description', value: data.description })
-        if (data.receipt_url) details.push({ label: 'Receipt', value: 'Attached' })
+        const expenseData = Array.isArray(request.expense_reimbursements)
+          ? request.expense_reimbursements[0]
+          : request.expense_reimbursements || request.request_data
+        
+        if (expenseData) {
+          if (expenseData.expense_type) details.push({ label: 'Expense Type', value: expenseData.expense_type })
+          if (expenseData.amount) details.push({ label: 'Amount', value: `$${expenseData.amount}`, highlight: true })
+          if (expenseData.expense_date) details.push({ label: 'Expense Date', value: format(new Date(expenseData.expense_date), 'MMMM dd, yyyy') })
+          if (expenseData.description) details.push({ label: 'Description', value: expenseData.description })
+          if (expenseData.attachments && expenseData.attachments.length > 0) {
+            details.push({ label: 'Attachments', value: `${expenseData.attachments.length} file(s) attached` })
+          }
+        }
         break
 
       case 'attendance_regularization':
-        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
-        if (data.actual_in_time) details.push({ label: 'Actual In Time', value: data.actual_in_time })
-        if (data.actual_out_time) details.push({ label: 'Actual Out Time', value: data.actual_out_time })
-        if (data.requested_in_time) details.push({ label: 'Requested In Time', value: data.requested_in_time })
-        if (data.requested_out_time) details.push({ label: 'Requested Out Time', value: data.requested_out_time })
-        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        const attendanceData = Array.isArray(request.attendance_regularization_requests)
+          ? request.attendance_regularization_requests[0]
+          : request.attendance_regularization_requests || request.request_data
+        
+        if (attendanceData) {
+          if (attendanceData.date) details.push({ label: 'Date', value: format(new Date(attendanceData.date), 'MMMM dd, yyyy'), highlight: true })
+          if (attendanceData.actual_time) details.push({ label: 'Actual Time', value: attendanceData.actual_time })
+          if (attendanceData.requested_time) details.push({ label: 'Requested Time', value: attendanceData.requested_time })
+          if (attendanceData.reason) details.push({ label: 'Reason', value: attendanceData.reason })
+        }
         break
 
       case 'asset_request':
-        if (data.asset_type) details.push({ label: 'Asset Type', value: data.asset_type, highlight: true })
-        if (data.quantity) details.push({ label: 'Quantity', value: data.quantity })
-        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
-        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
-        if (data.expected_return_date) details.push({ label: 'Expected Return Date', value: format(new Date(data.expected_return_date), 'MMMM dd, yyyy') })
+        const assetData = Array.isArray(request.asset_requests)
+          ? request.asset_requests[0]
+          : request.asset_requests || request.request_data
+        
+        if (assetData) {
+          if (assetData.asset_type) details.push({ label: 'Asset Type', value: assetData.asset_type, highlight: true })
+          if (assetData.quantity) details.push({ label: 'Quantity', value: assetData.quantity })
+          if (assetData.reason) details.push({ label: 'Reason', value: assetData.reason })
+        }
         break
 
       case 'resignation':
-        if (data.resignation_date) details.push({ label: 'Resignation Date', value: format(new Date(data.resignation_date), 'MMMM dd, yyyy'), highlight: true })
-        if (data.last_working_day) details.push({ label: 'Last Working Day', value: format(new Date(data.last_working_day), 'MMMM dd, yyyy'), highlight: true })
-        if (data.notice_period) details.push({ label: 'Notice Period', value: `${data.notice_period} days` })
-        if (data.reason) details.push({ label: 'Reason', value: data.reason })
-        break
-
-      case 'document_request':
-        if (data.document_type) details.push({ label: 'Document Type', value: data.document_type, highlight: true })
-        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
-        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
+        const resignationData = Array.isArray(request.resignations)
+          ? request.resignations[0]
+          : request.resignations || request.request_data
+        
+        if (resignationData) {
+          if (resignationData.last_working_date) details.push({ label: 'Last Working Date', value: format(new Date(resignationData.last_working_date), 'MMMM dd, yyyy'), highlight: true })
+          if (resignationData.reason) details.push({ label: 'Reason', value: resignationData.reason })
+          if (resignationData.feedback) details.push({ label: 'Feedback', value: resignationData.feedback })
+          if (resignationData.document_url) details.push({ label: 'Document', value: 'Attached' })
+        }
         break
 
       case 'covering':
-        if (data.covered_employee) details.push({ label: 'Covering For', value: data.covered_employee, highlight: true })
-        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
-        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
-        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        const coveringData = Array.isArray(request.covering_requests)
+          ? request.covering_requests[0]
+          : request.covering_requests || request.request_data
+        
+        if (coveringData) {
+          if (coveringData.covering_date) details.push({ label: 'Covering Date', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
+          if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
+          if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
+          if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
+        }
         break
 
       default:
-        // Generic fallback for unknown request types
-        Object.entries(data).forEach(([key, value]) => {
-          details.push({
-            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+        // Generic fallback for unknown request types - try request_data
+        if (request.request_data) {
+          Object.entries(request.request_data).forEach(([key, value]) => {
+            details.push({
+              label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+            })
           })
-        })
+        }
     }
 
     return details
