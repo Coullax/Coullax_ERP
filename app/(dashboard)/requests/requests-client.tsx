@@ -43,7 +43,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis
 } from '@/components/ui/pagination'
-import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns'
 import { Label } from '@/components/ui/label'
@@ -86,6 +86,9 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [dateField, setDateField] = useState<DateField>('submitted_at')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'status' | 'submitted_at' | 'reviewed_at' | null>(null)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [offset, setOffset] = useState(0)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -98,9 +101,27 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [saving, setSaving] = useState(false)
   const limit = 10
 
-  // Filter by status and date
+  // Filter by status, date, and search query
   const filteredRequests = useMemo(() => {
     let filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
+
+    // Apply search filtering
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(r => {
+        const typeConfig = REQUEST_TYPES[r.request_type]
+        const typeLabel = typeConfig?.label || r.request_type
+        const statusLabel = r.status
+        const requestDataStr = JSON.stringify(r.request_data || {}).toLowerCase()
+        
+        return (
+          typeLabel.toLowerCase().includes(query) ||
+          statusLabel.toLowerCase().includes(query) ||
+          requestDataStr.includes(query) ||
+          r.id.toLowerCase().includes(query)
+        )
+      })
+    }
 
     // Apply date filtering
     if (dateFilter !== 'all') {
@@ -133,8 +154,39 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       })
     }
 
+    // Apply sorting
+    if (sortBy) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        if (sortBy === 'status') {
+          aValue = a.status
+          bValue = b.status
+          // Compare as strings
+          const comparison = aValue.localeCompare(bValue)
+          return sortOrder === 'asc' ? comparison : -comparison
+        } else if (sortBy === 'submitted_at' || sortBy === 'reviewed_at') {
+          aValue = a[sortBy]
+          bValue = b[sortBy]
+          
+          // Handle null dates (put them at the end)
+          if (!aValue && !bValue) return 0
+          if (!aValue) return 1
+          if (!bValue) return -1
+          
+          // Compare dates
+          const dateA = new Date(aValue).getTime()
+          const dateB = new Date(bValue).getTime()
+          return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
+        }
+        
+        return 0
+      })
+    }
+
     return filtered
-  }, [requests, filter, dateFilter, dateField, customStartDate, customEndDate])
+  }, [requests, filter, dateFilter, dateField, customStartDate, customEndDate, searchQuery, sortBy, sortOrder])
 
   // Paginate filtered requests
   const paginatedRequests = filteredRequests.slice(offset, offset + limit)
@@ -149,6 +201,18 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
   const handleDateFilterChange = (newDateFilter: DateFilter) => {
     setDateFilter(newDateFilter)
+    setOffset(0)
+  }
+
+  const handleSort = (field: 'status' | 'submitted_at' | 'reviewed_at') => {
+    if (sortBy === field) {
+      // Toggle sort order if clicking the same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new sort field with default descending order
+      setSortBy(field)
+      setSortOrder('desc')
+    }
     setOffset(0)
   }
 
@@ -381,29 +445,63 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm font-medium flex items-center mr-2">Status:</span>
-            {['all', 'pending', 'approved', 'rejected'].map((status) => (
-              <Button
-                key={status}
-                variant={filter === status ? 'default' : 'outline'}
-                onClick={() => handleFilterChange(status)}
-                className="capitalize"
-                size="sm"
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
+        <CardContent className="p-4">
+          {/* All Filters in One Line */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Bar */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search requests..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setOffset(0)
+                }}
+                className="pl-10"
+              />
+            </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm font-medium flex items-center mr-2">
-              <CalendarDays className="w-4 h-4 mr-2" />
-              Date Range:
-            </span>
+            {/* Status Filter Dropdown */}
+            <Select value={filter} onValueChange={(value) => handleFilterChange(value)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Sort By Dropdown */}
+            {/* <Select 
+              value={sortBy || 'none'} 
+              onValueChange={(value) => {
+                if (value === 'none') {
+                  setSortBy(null)
+                  setOffset(0)
+                } else {
+                  handleSort(value as 'status' | 'submitted_at' | 'reviewed_at')
+                }
+              }}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Sort By" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Sorting</SelectItem>
+                <SelectItem value="status">Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}</SelectItem>
+                <SelectItem value="submitted_at">Submit Date {sortBy === 'submitted_at' && (sortOrder === 'asc' ? '↑' : '↓')}</SelectItem>
+                <SelectItem value="reviewed_at">Review Date {sortBy === 'reviewed_at' && (sortOrder === 'asc' ? '↑' : '↓')}</SelectItem>
+              </SelectContent>
+            </Select> */}
+
+            {/* Date Field Selector */}
             <Select value={dateField} onValueChange={(value: DateField) => setDateField(value)}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -411,65 +509,60 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                 <SelectItem value="reviewed_at">Review Date</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant={dateFilter === 'all' ? 'default' : 'outline'}
-              onClick={() => handleDateFilterChange('all')}
-              size="sm"
-            >
-              All Time
-            </Button>
-            <Button
-              variant={dateFilter === '1d' ? 'default' : 'outline'}
-              onClick={() => handleDateFilterChange('1d')}
-              size="sm"
-            >
-              Last 24h
-            </Button>
-            <Button
-              variant={dateFilter === '7d' ? 'default' : 'outline'}
-              onClick={() => handleDateFilterChange('7d')}
-              size="sm"
-            >
-              Last 7 Days
-            </Button>
-            <Button
-              variant={dateFilter === '1m' ? 'default' : 'outline'}
-              onClick={() => handleDateFilterChange('1m')}
-              size="sm"
-            >
-              Last Month
-            </Button>
-            <Button
-              variant={dateFilter === 'custom' ? 'default' : 'outline'}
-              onClick={() => handleDateFilterChange('custom')}
-              size="sm"
-            >
-              Custom Range
-            </Button>
-          </div>
 
-          {dateFilter === 'custom' && (
-            <div className="flex flex-wrap gap-3 items-center p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">From:</label>
+            {/* Date Range Filter */}
+            <Select value={dateFilter} onValueChange={(value: DateFilter) => handleDateFilterChange(value)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="1d">Last 24h</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="1m">Last Month</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Custom Date Range */}
+            {dateFilter === 'custom' && (
+              <>
                 <Input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-40"
+                  className="w-[150px]"
+                  placeholder="From"
                 />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">To:</label>
                 <Input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-40"
+                  className="w-[150px]"
+                  placeholder="To"
                 />
-              </div>
-            </div>
-          )}
+              </>
+            )}
+
+            {/* Clear All Filters Button */}
+            {(searchQuery || filter !== 'all' || sortBy || dateFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('')
+                  setFilter('all')
+                  setSortBy(null)
+                  setDateFilter('all')
+                  setCustomStartDate('')
+                  setCustomEndDate('')
+                  setOffset(0)
+                }}
+              >
+                Clear All
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -488,8 +581,8 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No requests found</p>
-              {(dateFilter !== 'all' || filter !== 'all') && (
-                <p className="text-sm mt-2">Try adjusting your filters</p>
+              {(dateFilter !== 'all' || filter !== 'all' || searchQuery) && (
+                <p className="text-sm mt-2">Try adjusting your filters or search query</p>
               )}
             </div>
           ) : (
