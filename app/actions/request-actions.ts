@@ -17,7 +17,15 @@ export async function getMyRequests(userId: string) {
         employee_id,
         profile:profiles!employees_id_fkey(full_name)
       ),
-      reviewer:profiles!requests_reviewed_by_fkey(full_name)
+      reviewer:profiles!requests_reviewed_by_fkey(full_name),
+      leave_requests(*),
+      overtime_requests(*),
+      travel_requests(*),
+      expense_reimbursements(*),
+      attendance_regularization_requests(*),
+      asset_requests(*),
+      resignations(*),
+      covering_requests(*)
     `)
     .eq('employee_id', userId)
     .order('submitted_at', { ascending: false })
@@ -81,6 +89,9 @@ export async function createLeaveRequest(employeeId: string, data: {
   start_date: string
   end_date: string
   reason: string
+  start_time?: string
+  end_time?: string
+  leave_duration?: string
 }) {
   const supabase = await createClient()
 
@@ -121,6 +132,9 @@ export async function createLeaveRequest(employeeId: string, data: {
       end_date: data.end_date,
       total_days: totalDays,
       reason: data.reason,
+      start_time: data.start_time || null,
+      end_time: data.end_time || null,
+      leave_duration: data.leave_duration || null,
     })
 
   if (detailError) throw detailError
