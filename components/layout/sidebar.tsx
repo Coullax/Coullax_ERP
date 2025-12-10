@@ -169,7 +169,7 @@ export function Sidebar() {
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
                 <h1 className="font-bold text-base truncate">COULLAX</h1>
-                <p className="text-xs text-gray-500">ERP System</p>
+                <p className="text-xs text-gray-500">Employee Management Portal</p>
               </div>
             )}
           </Link>
