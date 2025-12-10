@@ -113,7 +113,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
         const typeLabel = typeConfig?.label || r.request_type
         const statusLabel = r.status
         const requestDataStr = JSON.stringify(r.request_data || {}).toLowerCase()
-        
+
         return (
           typeLabel.toLowerCase().includes(query) ||
           statusLabel.toLowerCase().includes(query) ||
@@ -169,18 +169,18 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
         } else if (sortBy === 'submitted_at' || sortBy === 'reviewed_at') {
           aValue = a[sortBy]
           bValue = b[sortBy]
-          
+
           // Handle null dates (put them at the end)
           if (!aValue && !bValue) return 0
           if (!aValue) return 1
           if (!bValue) return -1
-          
+
           // Compare dates
           const dateA = new Date(aValue).getTime()
           const dateB = new Date(bValue).getTime()
           return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
         }
-        
+
         return 0
       })
     }
@@ -431,7 +431,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {REQUEST_LINKS.map((link) => (
               <Link key={link.type} href={`/requests/new/${link.type}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                <Card className="border-2 border-gray-200 dark:border-gray-800 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all cursor-pointer h-full">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-1">{link.label}</h3>
                     <p className="text-sm text-gray-500">{link.description}</p>
