@@ -29,8 +29,8 @@ import {
   PaginationEllipsis
 } from '@/components/ui/pagination'
 import { toast } from 'sonner'
-import { updateEmployeeRole, updateEmployeeTeam } from '@/app/actions/employee-actions'
-import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus, Edit, MoreHorizontal, Eye } from 'lucide-react'
+import { updateEmployeeRole, updateEmployeeTeam, toggleEmployeeActiveStatus } from '@/app/actions/employee-actions'
+import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus, Edit, MoreHorizontal, Eye, UserCheck, UserX } from 'lucide-react'
 import { getInitials, formatDate } from '@/lib/utils'
 import { CreateEmployeeDialog } from '@/components/admin/create-employee-dialog'
 import { EditEmployeeDialog } from '@/components/admin/edit-employee-dialog'
@@ -82,6 +82,21 @@ export function EmployeesPageClient({
     }
     const config = variants[role] || { variant: 'secondary', label: role }
     return <Badge variant={config.variant}>{config.label}</Badge>
+  }
+
+  const handleToggleActive = async (employee: any, newStatus: boolean) => {
+    const action = newStatus ? 'activate' : 'deactivate'
+    setLoading(employee.id)
+    try {
+      await toggleEmployeeActiveStatus(employee.id, newStatus)
+      toast.success(`Employee ${action}d successfully`)
+      window.location.reload()
+    } catch (error) {
+      toast.error(`Failed to ${action} employee`)
+      console.error(error)
+    } finally {
+      setLoading(null)
+    }
   }
 
   const stats = {
@@ -313,6 +328,23 @@ export function EmployeesPageClient({
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              {employee.is_active !== false ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleActive(employee, false)}
+                                  className="text-orange-600"
+                                >
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleActive(employee, true)}
+                                  className="text-green-600"
+                                >
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Activate
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
