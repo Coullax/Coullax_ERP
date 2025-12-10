@@ -45,8 +45,9 @@ import {
 } from '@/components/ui/pagination'
 import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
-import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns'
+import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO, format } from 'date-fns'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 
 interface RequestsPageClientProps {
   requests: any[]
@@ -255,6 +256,112 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     setEditingRequest(request)
     setEditData(JSON.stringify(request.request_data || {}, null, 2))
     setEditDialogOpen(true)
+  }
+
+  // Helper to render all request details in a structured way based on request type
+  const renderAllRequestDetails = (request: any) => {
+    if (!request.request_data) return []
+
+    const data = request.request_data
+    const details: { label: string; value: any; highlight?: boolean }[] = []
+
+    switch (request.request_type) {
+      case 'leave':
+        if (data.leave_type) details.push({ label: 'Leave Type', value: data.leave_type })
+        if (data.leave_duration) details.push({ label: 'Leave Duration', value: data.leave_duration.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
+        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
+        if (data.check_in_time) details.push({ label: 'Check-in Time', value: data.check_in_time })
+        if (data.check_out_time) details.push({ label: 'Check-out Time', value: data.check_out_time })
+        if (data.duration) details.push({ label: 'Duration', value: `${data.duration} day(s)`, highlight: true })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        if (data.description) details.push({ label: 'Description', value: data.description })
+        if (data.comments) details.push({ label: 'Comments', value: data.comments })
+        // Add any other fields that might exist
+        Object.keys(data).forEach(key => {
+          if (!['leave_type', 'leave_duration', 'start_date', 'end_date', 'start_time', 'end_time', 'check_in_time', 'check_out_time', 'duration', 'reason', 'description', 'comments'].includes(key)) {
+            details.push({ label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value: String(data[key]) })
+          }
+        })
+        break
+
+      case 'overtime':
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
+        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
+        if (data.hours) details.push({ label: 'Hours', value: `${data.hours} hour(s)`, highlight: true })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'travel_request':
+        if (data.destination) details.push({ label: 'Destination', value: data.destination, highlight: true })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
+        if (data.check_out_time) details.push({ label: 'Check-Out Time', value: data.check_out_time })
+        if (data.check_in_time) details.push({ label: 'Check-In Time', value: data.check_in_time })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.estimated_cost) details.push({ label: 'Estimated Cost', value: `$${data.estimated_cost}` })
+        if (data.transport_mode) details.push({ label: 'Transport Mode', value: data.transport_mode })
+        break
+
+      case 'expense_reimbursement':
+        if (data.expense_type) details.push({ label: 'Expense Type', value: data.expense_type })
+        if (data.amount) details.push({ label: 'Amount', value: `$${data.amount}`, highlight: true })
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy') })
+        if (data.description) details.push({ label: 'Description', value: data.description })
+        if (data.receipt_url) details.push({ label: 'Receipt', value: 'Attached' })
+        break
+
+      case 'attendance_regularization':
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.actual_in_time) details.push({ label: 'Actual In Time', value: data.actual_in_time })
+        if (data.actual_out_time) details.push({ label: 'Actual Out Time', value: data.actual_out_time })
+        if (data.requested_in_time) details.push({ label: 'Requested In Time', value: data.requested_in_time })
+        if (data.requested_out_time) details.push({ label: 'Requested Out Time', value: data.requested_out_time })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'asset_request':
+        if (data.asset_type) details.push({ label: 'Asset Type', value: data.asset_type, highlight: true })
+        if (data.quantity) details.push({ label: 'Quantity', value: data.quantity })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
+        if (data.expected_return_date) details.push({ label: 'Expected Return Date', value: format(new Date(data.expected_return_date), 'MMMM dd, yyyy') })
+        break
+
+      case 'resignation':
+        if (data.resignation_date) details.push({ label: 'Resignation Date', value: format(new Date(data.resignation_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.last_working_day) details.push({ label: 'Last Working Day', value: format(new Date(data.last_working_day), 'MMMM dd, yyyy'), highlight: true })
+        if (data.notice_period) details.push({ label: 'Notice Period', value: `${data.notice_period} days` })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'document_request':
+        if (data.document_type) details.push({ label: 'Document Type', value: data.document_type, highlight: true })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
+        break
+
+      case 'covering':
+        if (data.covered_employee) details.push({ label: 'Covering For', value: data.covered_employee, highlight: true })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      default:
+        // Generic fallback for unknown request types
+        Object.entries(data).forEach(([key, value]) => {
+          details.push({
+            label: key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()),
+            value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+          })
+        })
+    }
+
+    return details
   }
 
   const handleEditSubmit = async () => {
@@ -758,107 +865,88 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium">Status</span>
-                  {getStatusBadge(selectedRequest.status)}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Submitted On</p>
-                    <p className="text-sm font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
-                  </div>
-
-                  {selectedRequest.reviewed_at && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Reviewed On</p>
-                      <p className="text-sm font-medium">{formatDateTime(selectedRequest.reviewed_at)}</p>
+                {/* Complete Record Information */}
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                  <h3 className="font-semibold text-sm mb-3">Record Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-500 text-xs">Request Type</p>
+                      <p className="font-medium">
+                        {REQUEST_TYPES[selectedRequest.request_type]?.label || selectedRequest.request_type}
+                      </p>
                     </div>
-                  )}
+                    <div>
+                      <p className="text-gray-500 text-xs">Request ID</p>
+                      <p className="font-medium font-mono text-xs">{selectedRequest.id.slice(0, 8)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Status</p>
+                      <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Submitted On</p>
+                      <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
+                    </div>
+                    {selectedRequest.reviewed_at && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Reviewed On</p>
+                        <p className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</p>
+                      </div>
+                    )}
+                    {selectedRequest.reviewer && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Reviewed By</p>
+                        <p className="font-medium">{selectedRequest.reviewer.full_name}</p>
+                      </div>
+                    )}
+                    {selectedRequest.created_at && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Created At</p>
+                        <p className="font-medium text-xs">{formatDateTime(selectedRequest.created_at)}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {selectedRequest.reviewer && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Reviewed By</p>
-                    <p className="text-sm font-medium">{selectedRequest.reviewer.full_name}</p>
-                  </div>
-                )}
+                <Separator />
 
                 {selectedRequest.review_notes && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Review Notes</p>
-                    <p className="text-sm italic">&quot;{selectedRequest.review_notes}&quot;</p>
-                  </div>
+                  <>
+                    <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+                      <h4 className="font-semibold mb-2 text-sm">Review Notes</h4>
+                      <p className="text-sm italic bg-white dark:bg-gray-900 p-2 rounded">&quot;{selectedRequest.review_notes}&quot;</p>
+                    </div>
+                    <Separator />
+                  </>
                 )}
 
-                {/* Leave Request Specific Details */}
-                {selectedRequest.request_type === 'leave' && selectedRequest.request_data && (() => {
-                  const leaveDetails = formatLeaveDetails(selectedRequest.request_data)
-                  return leaveDetails && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900 rounded-lg space-y-2">
-                      <p className="text-xs text-blue-600 dark:text-blue-300 font-medium mb-2">Leave Details</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Duration</p>
-                          <p className="text-sm font-medium">{leaveDetails.duration}</p>
-                        </div>
-                        {leaveDetails.hasCustomTime && (
-                          <>
-                            {leaveDetails.startTime && (
-                              <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Start Time</p>
-                                <p className="text-sm font-medium">{leaveDetails.startTime}</p>
-                              </div>
-                            )}
-                            {leaveDetails.endTime && (
-                              <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">End Time</p>
-                                <p className="text-sm font-medium">{leaveDetails.endTime}</p>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })()}
+                {/* Remove old leave/travel specific sections since they're now in renderAllRequestDetails */}
 
 
 
-                {/* Travel Request Specific Details */}
-                {selectedRequest.request_type === 'travel_request' && selectedRequest.request_data && (() => {
-                  const travelDetails = formatTravelDetails(selectedRequest.request_data)
-                  return travelDetails && travelDetails.hasTime && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900 rounded-lg space-y-2">
-                      <p className="text-xs text-green-600 dark:text-green-300 font-medium mb-2">Travel Details</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {travelDetails.checkOutTime && (
-                          <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-Out Time</p>
-                            <p className="text-sm font-medium">{travelDetails.checkOutTime}</p>
-                            <p className="text-xs text-gray-400">Departure time</p>
-                          </div>
-                        )}
-                        {travelDetails.checkInTime && (
-                          <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-In Time</p>
-                            <p className="text-sm font-medium">{travelDetails.checkInTime}</p>
-                            <p className="text-xs text-gray-400">Return time</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })()}
-
-
-
+                {/* Request Details - Structured Display */}
+                <Separator />
                 {selectedRequest.request_data && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-2">Request Details</p>
-                    <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-40">
-                      {JSON.stringify(selectedRequest.request_data, null, 2)}
-                    </pre>
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-500">Request Information</p>
+                    <div className="space-y-2.5">
+                      {renderAllRequestDetails(selectedRequest).map((detail, idx) => (
+                        <div key={idx} className={`border-b last:border-0 pb-2.5 last:pb-0 ${detail.highlight ? 'bg-blue-50 dark:bg-blue-950 px-3 py-2 rounded -mx-1' : ''}`}>
+                          <p className="text-xs font-medium text-gray-500 mb-1">
+                            {detail.label}
+                          </p>
+                          <div className={`text-sm ${detail.highlight ? 'font-semibold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                            {detail.value.includes('{') || detail.value.includes('[') ? (
+                              <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                                {detail.value}
+                              </pre>
+                            ) : (
+                              <p className="break-words">{detail.value}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
