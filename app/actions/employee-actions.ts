@@ -13,6 +13,7 @@ export async function getAllEmployees() {
       id,
       employee_id,
       joining_date,
+      is_active,
       policy_id,
       policy_assigned_date,
       department:departments(id, name),
@@ -42,6 +43,24 @@ export async function updateEmployeeRole(
   const { error } = await supabase
     .from('profiles')
     .update({ role })
+    .eq('id', employeeId)
+
+  if (error) throw error
+
+  revalidatePath('/admin/employees')
+  return { success: true }
+}
+
+// Toggle employee active status
+export async function toggleEmployeeActiveStatus(
+  employeeId: string,
+  isActive: boolean
+) {
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from('employees')
+    .update({ is_active: isActive })
     .eq('id', employeeId)
 
   if (error) throw error
