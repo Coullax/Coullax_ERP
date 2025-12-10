@@ -209,9 +209,30 @@ export default function AdminDocumentRequestsPage() {
                             </Badge>
                         )}
                     </TabsTrigger>
-                    <TabsTrigger value="fulfilled">Fulfilled</TabsTrigger>
-                    <TabsTrigger value="rejected">Rejected</TabsTrigger>
-                    <TabsTrigger value="all">All Requests</TabsTrigger>
+                    <TabsTrigger value="fulfilled">
+                        Fulfilled
+                        {stats.fulfilled > 0 && (
+                            <Badge variant="success" className="ml-2 px-1.5 py-0 text-xs">
+                                {stats.fulfilled}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected">
+                        Rejected
+                        {stats.rejected > 0 && (
+                            <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-xs">
+                                {stats.rejected}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="all">
+                        All Requests
+                        {requests.length > 0 && (
+                            <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
+                                {requests.length}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value={activeTab} className="mt-6">
