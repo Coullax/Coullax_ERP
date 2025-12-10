@@ -33,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Separator } from '@/components/ui/separator'
 
 interface ApprovalsPageClientProps {
   requests: any[]
@@ -200,18 +201,97 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
     return <span className={className}>{label}</span>
   }
 
-  // Helper to render request details in a structured way
+  // Helper to render request details in a structured way based on request type
   const renderRequestDetails = (request: any) => {
-    const details: { label: string; value: any }[] = []
+    if (!request.request_data) return []
 
-    // Add request-specific data
-    if (request.request_data) {
-      Object.entries(request.request_data).forEach(([key, value]) => {
-        details.push({
-          label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+    const data = request.request_data
+    const details: { label: string; value: any; highlight?: boolean }[] = []
+
+    switch (request.request_type) {
+      case 'leave':
+        if (data.leave_type) details.push({ label: 'Leave Type', value: data.leave_type })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
+        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
+        if (data.check_in_time) details.push({ label: 'Check-in Time', value: data.check_in_time })
+        if (data.check_out_time) details.push({ label: 'Check-out Time', value: data.check_out_time })
+        if (data.duration) details.push({ label: 'Duration', value: `${data.duration} day(s)`, highlight: true })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        if (data.description) details.push({ label: 'Description', value: data.description })
+        break
+
+      case 'overtime':
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
+        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
+        if (data.hours) details.push({ label: 'Hours', value: `${data.hours} hour(s)`, highlight: true })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'travel_request':
+        if (data.destination) details.push({ label: 'Destination', value: data.destination, highlight: true })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.estimated_cost) details.push({ label: 'Estimated Cost', value: `$${data.estimated_cost}` })
+        if (data.transport_mode) details.push({ label: 'Transport Mode', value: data.transport_mode })
+        break
+
+      case 'expense_reimbursement':
+        if (data.expense_type) details.push({ label: 'Expense Type', value: data.expense_type })
+        if (data.amount) details.push({ label: 'Amount', value: `$${data.amount}`, highlight: true })
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy') })
+        if (data.description) details.push({ label: 'Description', value: data.description })
+        if (data.receipt_url) details.push({ label: 'Receipt', value: 'Attached' })
+        break
+
+      case 'attendance_regularization':
+        if (data.date) details.push({ label: 'Date', value: format(new Date(data.date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.actual_in_time) details.push({ label: 'Actual In Time', value: data.actual_in_time })
+        if (data.actual_out_time) details.push({ label: 'Actual Out Time', value: data.actual_out_time })
+        if (data.requested_in_time) details.push({ label: 'Requested In Time', value: data.requested_in_time })
+        if (data.requested_out_time) details.push({ label: 'Requested Out Time', value: data.requested_out_time })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'asset_request':
+        if (data.asset_type) details.push({ label: 'Asset Type', value: data.asset_type, highlight: true })
+        if (data.quantity) details.push({ label: 'Quantity', value: data.quantity })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
+        if (data.expected_return_date) details.push({ label: 'Expected Return Date', value: format(new Date(data.expected_return_date), 'MMMM dd, yyyy') })
+        break
+
+      case 'resignation':
+        if (data.resignation_date) details.push({ label: 'Resignation Date', value: format(new Date(data.resignation_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.last_working_day) details.push({ label: 'Last Working Day', value: format(new Date(data.last_working_day), 'MMMM dd, yyyy'), highlight: true })
+        if (data.notice_period) details.push({ label: 'Notice Period', value: `${data.notice_period} days` })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      case 'document_request':
+        if (data.document_type) details.push({ label: 'Document Type', value: data.document_type, highlight: true })
+        if (data.purpose) details.push({ label: 'Purpose', value: data.purpose })
+        if (data.urgency) details.push({ label: 'Urgency', value: data.urgency })
+        break
+
+      case 'covering':
+        if (data.covered_employee) details.push({ label: 'Covering For', value: data.covered_employee, highlight: true })
+        if (data.start_date) details.push({ label: 'Start Date', value: format(new Date(data.start_date), 'MMMM dd, yyyy') })
+        if (data.end_date) details.push({ label: 'End Date', value: format(new Date(data.end_date), 'MMMM dd, yyyy') })
+        if (data.reason) details.push({ label: 'Reason', value: data.reason })
+        break
+
+      default:
+        // Generic fallback for unknown request types
+        Object.entries(data).forEach(([key, value]) => {
+          details.push({
+            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)
+          })
         })
-      })
     }
 
     return details
@@ -521,42 +601,73 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
           {selectedRequest && (
             <div className="space-y-4">
-              {/* Request Info */}
+              {/* Request ID and Type */}
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                <h3 className="font-semibold text-lg mb-3">
-                  {REQUEST_TYPE_LABELS[selectedRequest.request_type]}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-lg">
+                    {REQUEST_TYPE_LABELS[selectedRequest.request_type]}
+                  </h3>
+                  <span className="text-xs text-gray-500 font-mono">
+                    ID: {selectedRequest.id.slice(0, 8)}
+                  </span>
+                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-gray-500 text-xs">Employee</p>
+                      <p className="text-gray-500 text-xs">Request Type</p>
                       <p className="font-medium">
-                        {selectedRequest.employee?.profile?.full_name}
+                        {REQUEST_TYPE_LABELS [selectedRequest.request_type] || selectedRequest.request_type}
                       </p>
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs">Employee ID</p>
-                    <p className="font-medium">{selectedRequest.employee?.employee_id}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs">Email</p>
-                    <p className="font-medium">{selectedRequest.employee?.profile?.email}</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-gray-500 text-xs">Submitted</p>
-                      <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
+                    <div className="flex items-start gap-2">
+                      <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Employee</p>
+                        <p className="font-medium">
+                          {selectedRequest.employee?.profile?.full_name}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs">Status</p>
-                    <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
-                  </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Employee ID</p>
+                      <p className="font-medium">{selectedRequest.employee?.employee_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Email</p>
+                      <p className="font-medium">{selectedRequest.employee?.profile?.email}</p>
+                    </div>
+                    {selectedRequest.employee?.department && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Department</p>
+                        <p className="font-medium">{selectedRequest.employee.department.department_name}</p>
+                      </div>
+                    )}
+                    {selectedRequest.employee?.designation && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Designation</p>
+                        <p className="font-medium">{selectedRequest.employee.designation.designation_name}</p>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-gray-500 text-xs">Submitted</p>
+                        <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Status</p>
+                      <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                    </div>
+                    {selectedRequest.created_at && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Created At</p>
+                        <p className="font-medium text-xs">{formatDateTime(selectedRequest.created_at)}</p>
+                      </div>
+                    )}
                 </div>
               </div>
+
+              <Separator />
 
               {/* Request-specific data */}
               {selectedRequest.request_data && Object.keys(selectedRequest.request_data).length > 0 && (
@@ -567,57 +678,75 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                   </h4>
                   <div className="space-y-3">
                     {renderRequestDetails(selectedRequest).map((detail, idx) => (
-                      <div key={idx} className="grid grid-cols-3 gap-4 text-sm">
-                        <span className="font-medium text-gray-600 dark:text-gray-400 col-span-1">
-                          {detail.label}:
-                        </span>
-                        <span className="text-gray-900 dark:text-gray-100 col-span-2">
-                          {detail.value}
-                        </span>
+                      <div key={idx} className={`border-b last:border-0 pb-2 last:pb-0 ${detail.highlight ? 'bg-blue-50 dark:bg-blue-950 px-3 py-2 rounded -mx-1' : ''}`}>
+                        <p className="text-xs font-medium text-gray-500 mb-1">
+                          {detail.label}
+                        </p>
+                        <div className={`text-sm ${detail.highlight ? 'font-semibold text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                          {detail.value.includes('{') || detail.value.includes('[') ? (
+                            <pre className="bg-gray-50 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                              {detail.value}
+                            </pre>
+                          ) : (
+                            <p className="break-words">{detail.value}</p>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              <Separator />
+
               {/* Review Information */}
-              {selectedRequest.reviewed_by && (
-                <div className="border rounded-lg p-4">
+              {selectedRequest.reviewed_by ? (
+                <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
                   <h4 className="font-semibold mb-3">Review Information</h4>
                   <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Reviewed By:</span>
-                      <span className="col-span-2 font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
+                      <span className="font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Reviewed Date:</span>
-                      <span className="col-span-2 font-medium">{formatDateTime(selectedRequest.reviewed_at)}</span>
+                      <span className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</span>
                     </div>
                     {selectedRequest.review_notes && (
-                      <div className="grid grid-cols-3 gap-4">
-                        <span className="text-gray-600 dark:text-gray-400">Notes:</span>
-                        <p className="col-span-2 italic">{selectedRequest.review_notes}</p>
+                      <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                        <p className="text-gray-600 dark:text-gray-400 text-xs mb-1">Notes:</p>
+                        <p className="italic bg-white dark:bg-gray-900 p-2 rounded text-sm">{selectedRequest.review_notes}</p>
                       </div>
                     )}
                   </div>
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-900">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    This request has not been reviewed yet.
+                  </p>
                 </div>
               )}
 
               {/* Actions for pending requests */}
               {selectedRequest.status === 'pending' && (
-                <div className="border-t pt-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes (Optional for approval, Required for rejection)</Label>
-                    <textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={4}
-                      className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                      placeholder="Add your comments here..."
-                    />
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes (Optional for approval, Required for rejection)</Label>
+                      <textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={4}
+                        className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                        placeholder="Add your comments here..."
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
