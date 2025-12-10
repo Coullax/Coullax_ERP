@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,7 +17,11 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
-import { LeaveBalanceCard } from '@/components/employee/leave-balance-card'
+import { LeaveSection } from '@/components/employee/leave-section'
+import { DashboardCalendar } from '@/components/employee/dashboard-calendar'
+import { getCalendarEvents, getUserCalendars } from '@/app/(dashboard)/calendar/actions'
+import type { CalendarEventWithDetails } from '@/lib/types/calendar'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 interface EmployeeDashboardClientProps {
   profile: any
@@ -33,6 +38,39 @@ export function EmployeeDashboardClient({
   attendanceStats,
   recentRequests,
 }: EmployeeDashboardClientProps) {
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventWithDetails[]>([])
+  const [calendarLoading, setCalendarLoading] = useState(true)
+
+  useEffect(() => {
+    const loadCalendarEvents = async () => {
+      try {
+        setCalendarLoading(true)
+        const startDate = format(startOfMonth(new Date()), "yyyy-MM-dd")
+        const endDate = format(endOfMonth(new Date()), "yyyy-MM-dd")
+        
+        // Get user's calendars and filter for personal calendars only
+        const calendars = await getUserCalendars()
+        const personalCalendarIds = calendars
+          .filter(cal => cal.type === 'personal' && cal.owner_id === profile.id)
+          .map(cal => cal.id)
+        
+        // Fetch events only from personal calendars to avoid showing other employees' events
+        const events = personalCalendarIds.length > 0
+          ? await getCalendarEvents(startDate, endDate, personalCalendarIds)
+          : []
+        
+        setCalendarEvents(events)
+      } catch (error) {
+        console.error('Failed to load calendar events:', error)
+        setCalendarEvents([])
+      } finally {
+        setCalendarLoading(false)
+      }
+    }
+
+    loadCalendarEvents()
+  }, [profile.id])
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
       pending: { variant: 'secondary', icon: Clock, label: 'Pending' },
@@ -137,9 +175,6 @@ export function EmployeeDashboardClient({
         </Card>
       </div>
 
-      {/* Leave Balance */}
-      <LeaveBalanceCard employeeId={employee.id} />
-
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -174,6 +209,15 @@ export function EmployeeDashboardClient({
           </div>
         </CardContent>
       </Card>
+
+      {/* Leave Balance & Calendar - Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Leave Balance & History */}
+        <LeaveSection employeeId={employee.id} />
+
+        {/* Right: Events Calendar */}
+        <DashboardCalendar events={calendarEvents} loading={calendarLoading} />
+      </div>
 
       {/* Recent Requests */}
       <Card>
