@@ -119,25 +119,30 @@ export function VerificationPageClient({
                 {['aadhar', 'pan', 'passport', 'driving_license', 'education', 'experience'].map((docType) => {
                   const existingDoc = documents.find(doc => doc.document_type === docType)
                   const isPending = existingDoc?.status === 'pending'
-                  
+                  const isApproved = existingDoc?.status === 'verified'
+                  const isDisabled = isPending || isApproved
+
                   return (
-                    <div 
-                      key={docType} 
-                      className={`p-4 border-2 border-dashed rounded-xl ${
-                        isPending 
-                          ? 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-60' 
+                    <div
+                      key={docType}
+                      className={`p-4 border-2 border-dashed rounded-xl ${isDisabled
+                          ? 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-60'
                           : 'border-gray-300 dark:border-gray-700'
-                      }`}
+                        }`}
                     >
-                      <Label 
-                        htmlFor={`upload-${docType}`} 
-                        className={isPending ? 'cursor-not-allowed' : 'cursor-pointer'}
+                      <Label
+                        htmlFor={`upload-${docType}`}
+                        className={isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}
                       >
                         <div className="flex flex-col items-center gap-2 text-center">
-                          <Upload className="w-8 h-8 text-gray-400" />
+                          {isApproved ? (
+                            <CheckCircle className="w-8 h-8 text-green-500" />
+                          ) : (
+                            <Upload className="w-8 h-8 text-gray-400" />
+                          )}
                           <span className="font-medium capitalize">{docType.replace('_', ' ')}</span>
                           <span className="text-xs text-gray-500">
-                            {isPending ? 'Verification pending...' : 'Click to upload'}
+                            {isPending ? 'Verification pending...' : isApproved ? 'Document approved' : 'Click to upload'}
                           </span>
                         </div>
                       </Label>
@@ -147,7 +152,7 @@ export function VerificationPageClient({
                         className="hidden"
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleFileUpload(e, docType)}
-                        disabled={loading || isPending}
+                        disabled={loading || isDisabled}
                       />
                     </div>
                   )
