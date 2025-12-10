@@ -6,8 +6,12 @@ import { EventDialog } from "@/components/event-dialog";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { EventsList } from "@/components/admin/events-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Settings, Calendar, List } from "lucide-react";
+import { Settings, Calendar, List, MapPin, Clock, Users, Bell, Repeat } from "lucide-react";
 import type {
   CalendarEventWithDetails,
   Calendar as CalendarType,
@@ -37,9 +41,11 @@ export function CalendarClient() {
   );
   const [loading, setLoading] = useState(true);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventWithDetails | undefined>();
+  const [viewingEvent, setViewingEvent] = useState<CalendarEventWithDetails | undefined>();
 
   useEffect(() => {
     loadData();
@@ -198,8 +204,8 @@ export function CalendarClient() {
               setSelectedDate(date);
             }}
             onEventClick={(event) => {
-              // Handle event click - could open event details dialog
-              console.log("Event clicked:", event);
+              setViewingEvent(event);
+              setEventDetailsOpen(true);
             }}
             onCreateEvent={() => {
               setSelectedDate(undefined);
@@ -245,6 +251,192 @@ export function CalendarClient() {
         defaultDate={selectedDate}
         onSave={handleCreateEvent}
       />
+
+      {/* Event Details Dialog */}
+      <Dialog open={eventDetailsOpen} onOpenChange={setEventDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {viewingEvent && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold">
+                  {viewingEvent.title}
+                </DialogTitle>
+                {viewingEvent.description && (
+                  <DialogDescription className="text-base mt-2">
+                    {viewingEvent.description}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {/* Status and Visibility Badges */}
+                <div className="flex gap-2">
+                  <Badge variant={viewingEvent.status === 'confirmed' ? 'default' : viewingEvent.status === 'tentative' ? 'secondary' : 'destructive'}>
+                    {viewingEvent.status}
+                  </Badge>
+                  <Badge variant="outline">
+                    {viewingEvent.visibility}
+                  </Badge>
+                  {viewingEvent.is_all_day && (
+                    <Badge variant="outline">All Day</Badge>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Time Information */}
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm text-gray-500">Time</p>
+                    <p className="text-sm">
+                      {new Date(viewingEvent.start_time).toLocaleString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: viewingEvent.is_all_day ? undefined : '2-digit',
+                        minute: viewingEvent.is_all_day ? undefined : '2-digit',
+                      })}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      to {new Date(viewingEvent.end_time).toLocaleString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: viewingEvent.is_all_day ? undefined : '2-digit',
+                        minute: viewingEvent.is_all_day ? undefined : '2-digit',
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Timezone: {viewingEvent.timezone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location */}
+                {viewingEvent.location && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500">Location</p>
+                      <p className="text-sm">{viewingEvent.location}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Calendar */}
+                {viewingEvent.calendar && (
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500">Calendar</p>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: viewingEvent.calendar.color }}
+                        />
+                        <p className="text-sm">{viewingEvent.calendar.name}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Creator */}
+                {viewingEvent.creator && (
+                  <div className="flex items-start gap-3">
+                    <Avatar className="w-5 h-5 mt-0.5">
+                      <AvatarImage src={viewingEvent.creator.avatar_url} />
+                      <AvatarFallback className="text-xs">
+                        {viewingEvent.creator.full_name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500">Created By</p>
+                      <p className="text-sm">{viewingEvent.creator.full_name}</p>
+                      <p className="text-xs text-gray-500">{viewingEvent.creator.email}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Attendees */}
+                {viewingEvent.attendees && viewingEvent.attendees.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Users className="w-5 h-5 text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500 mb-2">Attendees ({viewingEvent.attendees.length})</p>
+                      <div className="space-y-2">
+                        {viewingEvent.attendees.map((attendee) => (
+                          <div key={attendee.id} className="flex items-center justify-between text-sm">
+                            <span>{attendee.email}</span>
+                            <Badge 
+                              variant={attendee.response_status === 'accepted' ? 'default' : 
+                                      attendee.response_status === 'declined' ? 'destructive' : 
+                                      'secondary'}
+                              className="text-xs"
+                            >
+                              {attendee.response_status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reminders */}
+                {viewingEvent.reminders && viewingEvent.reminders.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Bell className="w-5 h-5 text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500 mb-2">Reminders</p>
+                      <div className="space-y-1">
+                        {viewingEvent.reminders.map((reminder) => (
+                          <div key={reminder.id} className="text-sm flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {reminder.method}
+                            </Badge>
+                            <span>{reminder.minutes_before} minutes before</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recurrence */}
+                {viewingEvent.is_recurring && (
+                  <div className="flex items-start gap-3">
+                    <Repeat className="w-5 h-5 text-gray-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-500">Recurrence</p>
+                      {viewingEvent.recurrence_rule && (
+                        <p className="text-sm">{viewingEvent.recurrence_rule}</p>
+                      )}
+                      {viewingEvent.recurrence_end_date && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Until {new Date(viewingEvent.recurrence_end_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <Separator />
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>Created: {new Date(viewingEvent.created_at).toLocaleString()}</p>
+                  <p>Last updated: {new Date(viewingEvent.updated_at).toLocaleString()}</p>
+                  {viewingEvent.google_event_id && (
+                    <p>Google Event ID: {viewingEvent.google_event_id}</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
