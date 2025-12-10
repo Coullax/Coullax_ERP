@@ -17,6 +17,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 export default function AdminDocumentRequestsPage() {
     const [requests, setRequests] = useState<DocumentRequest[]>([])
+    const [allRequests, setAllRequests] = useState<DocumentRequest[]>([])
     const [categories, setCategories] = useState<DocumentCategory[]>([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('pending')
@@ -31,29 +32,28 @@ export default function AdminDocumentRequestsPage() {
     const fetchRequests = useCallback(async () => {
         setLoading(true)
         try {
-            // Fetch filtered requests based on active tab
-            const url = new URL('/api/admin/document-requests', window.location.origin)
+            // Always fetch all requests first for accurate stats
+            const allUrl = new URL('/api/admin/document-requests', window.location.origin)
+            const allResponse = await fetch(allUrl.toString())
+            if (!allResponse.ok) throw new Error('Failed to fetch all requests')
+
+            const allData = await allResponse.json()
+            setAllRequests(allData.requests || [])
+            setTotalRequests(allData.requests?.length || 0)
+
+            // Then fetch filtered requests based on active tab
             if (activeTab !== 'all') {
-                url.searchParams.set('status', activeTab)
-            }
+                const filteredUrl = new URL('/api/admin/document-requests', window.location.origin)
+                filteredUrl.searchParams.set('status', activeTab)
 
-            const response = await fetch(url.toString())
-            if (!response.ok) throw new Error('Failed to fetch requests')
+                const filteredResponse = await fetch(filteredUrl.toString())
+                if (!filteredResponse.ok) throw new Error('Failed to fetch filtered requests')
 
-            const data = await response.json()
-            setRequests(data.requests || [])
-
-            // If we're on a filtered tab, also fetch the total count
-            if (activeTab !== 'all') {
-                const totalUrl = new URL('/api/admin/document-requests', window.location.origin)
-                const totalResponse = await fetch(totalUrl.toString())
-                if (totalResponse.ok) {
-                    const totalData = await totalResponse.json()
-                    setTotalRequests(totalData.requests?.length || 0)
-                }
+                const filteredData = await filteredResponse.json()
+                setRequests(filteredData.requests || [])
             } else {
-                // If we're on the 'all' tab, the current requests length is the total
-                setTotalRequests(data.requests?.length || 0)
+                // For 'all' tab, use all requests
+                setRequests(allData.requests || [])
             }
         } catch (error) {
             toast.error('Failed to load document requests')
@@ -159,9 +159,9 @@ export default function AdminDocumentRequestsPage() {
     }
 
     const stats = {
-        pending: requests.filter(r => r.status === 'pending').length,
-        fulfilled: requests.filter(r => r.status === 'fulfilled').length,
-        rejected: requests.filter(r => r.status === 'rejected').length,
+        pending: allRequests.filter(r => r.status === 'pending').length,
+        fulfilled: allRequests.filter(r => r.status === 'fulfilled').length,
+        rejected: allRequests.filter(r => r.status === 'rejected').length,
     }
 
     return (
