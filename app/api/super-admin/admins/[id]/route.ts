@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(
@@ -37,8 +37,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cannot demote yourself' }, { status: 400 })
     }
 
+    // Use admin client to bypass RLS policies
+    const adminSupabase = createAdminClient()
+
     // Update role
-    const { data: updatedProfile, error } = await supabase
+    const { data: updatedProfile, error } = await adminSupabase
       .from('profiles')
       .update({ role })
       .eq('id', id)
@@ -86,8 +89,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot demote yourself' }, { status: 400 })
     }
 
+    // Use admin client to bypass RLS policies
+    const adminSupabase = createAdminClient()
+
     // Demote to employee instead of delete
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('profiles')
       .update({ role: 'employee' })
       .eq('id', id)
