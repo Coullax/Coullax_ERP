@@ -59,6 +59,7 @@ const adminNavItems = [
   { icon: FileCheck, label: "Verifications", href: "/admin/verifications" },
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
   { icon: Briefcase, label: "Designations", href: "/admin/designations" },
+  { icon: Clock, label: "Attendance", href: "/admin/attendance" },
   {
     icon: FolderOpen,
     label: "Document Requests",
