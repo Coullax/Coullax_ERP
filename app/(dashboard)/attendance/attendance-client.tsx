@@ -311,14 +311,7 @@ export function AttendancePageClient({
           <CardTitle>Attendance Calendar</CardTitle>
         </CardHeader>
         <CardContent>
-          {logs.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No attendance records found</p>
-            </div>
-          ) : (
-            <AttendanceCalendar logs={logs} leaves={leaves} />
-          )}
+          <AttendanceCalendar logs={logs} leaves={leaves} />
         </CardContent>
       </Card>
     </div>
