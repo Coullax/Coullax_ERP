@@ -16,6 +16,8 @@ import {
   Coffee,
 } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
+import { AttendanceCalendar } from '@/components/attendance-calendar'
+
 
 interface AttendancePageClientProps {
   userId: string
@@ -93,8 +95,8 @@ export function AttendancePageClient({
                 {todayLog?.check_in && !todayLog?.check_out
                   ? 'You are checked in'
                   : todayLog?.check_out
-                  ? 'Attendance marked for today'
-                  : 'Mark your attendance'}
+                    ? 'Attendance marked for today'
+                    : 'Mark your attendance'}
               </h2>
               {todayLog?.check_in && (
                 <div className="flex flex-col gap-2 mt-4">
@@ -192,10 +194,10 @@ export function AttendancePageClient({
         </Card>
       </div>
 
-      {/* Attendance History */}
+      {/* Attendance Calendar */}
       <Card>
         <CardHeader>
-          <CardTitle>Attendance History</CardTitle>
+          <CardTitle>Attendance Calendar</CardTitle>
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
@@ -204,47 +206,7 @@ export function AttendancePageClient({
               <p>No attendance records found</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-800"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="font-semibold">
-                          {new Date(log.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          {log.check_in && (
-                            <span className="flex items-center gap-1">
-                              <LogIn className="w-4 h-4" />
-                              {formatTime(log.check_in)}
-                            </span>
-                          )}
-                          {log.check_out && (
-                            <span className="flex items-center gap-1">
-                              <LogOut className="w-4 h-4" />
-                              {formatTime(log.check_out)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {getStatusBadge(log.status)}
-                  </div>
-                  {log.notes && (
-                    <p className="text-sm text-gray-500 mt-2 italic">Note: {log.notes}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <AttendanceCalendar logs={logs} />
           )}
         </CardContent>
       </Card>
