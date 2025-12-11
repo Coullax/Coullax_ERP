@@ -23,12 +23,14 @@ interface AttendancePageClientProps {
   userId: string
   logs: any[]
   summary: any
+  leaves: any[]
 }
 
 export function AttendancePageClient({
   userId,
   logs,
   summary,
+  leaves,
 }: AttendancePageClientProps) {
   const [loading, setLoading] = useState(false)
 
@@ -206,7 +208,7 @@ export function AttendancePageClient({
               <p>No attendance records found</p>
             </div>
           ) : (
-            <AttendanceCalendar logs={logs} />
+            <AttendanceCalendar logs={logs} leaves={leaves} />
           )}
         </CardContent>
       </Card>
