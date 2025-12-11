@@ -38,6 +38,62 @@ export function AttendancePageClient({
     (log) => log.date === new Date().toISOString().split('T')[0]
   )
 
+  // Calculate working hours in minutes
+  const calculateWorkingMinutes = (checkIn: string, checkOut: string) => {
+    const [inHours, inMinutes] = checkIn.split(':').map(Number)
+    const [outHours, outMinutes] = checkOut.split(':').map(Number)
+    const inTotalMinutes = inHours * 60 + inMinutes
+    const outTotalMinutes = outHours * 60 + outMinutes
+    return outTotalMinutes - inTotalMinutes
+  }
+
+  // Get the start and end of current week (Sunday to Saturday)
+  const getWeekRange = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - dayOfWeek)
+    startOfWeek.setHours(0, 0, 0, 0)
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    endOfWeek.setHours(23, 59, 59, 999)
+    return { start: startOfWeek, end: endOfWeek }
+  }
+
+  // Get the start and end of current month
+  const getMonthRange = () => {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    endOfMonth.setHours(23, 59, 59, 999)
+    return { start: startOfMonth, end: endOfMonth }
+  }
+
+  // Calculate total working hours for a date range
+  const calculateTotalHours = (startDate: Date, endDate: Date) => {
+    const filteredLogs = logs.filter((log) => {
+      const logDate = new Date(log.date)
+      return logDate >= startDate && logDate <= endDate && log.check_in && log.check_out
+    })
+
+    const totalMinutes = filteredLogs.reduce((acc, log) => {
+      if (log.check_in && log.check_out) {
+        return acc + calculateWorkingMinutes(log.check_in, log.check_out)
+      }
+      return acc
+    }, 0)
+
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return { hours, minutes, totalMinutes, count: filteredLogs.length }
+  }
+
+  // Calculate weekly and monthly stats
+  const weekRange = getWeekRange()
+  const monthRange = getMonthRange()
+  const weeklyStats = calculateTotalHours(weekRange.start, weekRange.end)
+  const monthlyStats = calculateTotalHours(monthRange.start, monthRange.end)
+
   const handleCheckIn = async () => {
     setLoading(true)
     try {
@@ -191,6 +247,59 @@ export function AttendancePageClient({
               <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
               <p className="text-sm text-gray-500">Half Day</p>
               <p className="text-2xl font-bold">{summary.halfDay}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Working Hours Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 border-2 border-purple-200 dark:border-purple-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">This Week</h3>
+                </div>
+                <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">
+                  {weeklyStats.hours}h {weeklyStats.minutes}m
+                </p>
+                <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                  {weeklyStats.count} {weeklyStats.count === 1 ? 'day' : 'days'} worked
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="bg-purple-200 dark:bg-purple-800 rounded-full p-4">
+                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{weeklyStats.count}</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-300">Days</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-2 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">This Month</h3>
+                </div>
+                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+                  {monthlyStats.hours}h {monthlyStats.minutes}m
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                  {monthlyStats.count} {monthlyStats.count === 1 ? 'day' : 'days'} worked
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="bg-blue-200 dark:bg-blue-800 rounded-full p-4">
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{monthlyStats.count}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">Days</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
