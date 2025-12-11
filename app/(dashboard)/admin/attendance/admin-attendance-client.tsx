@@ -346,6 +346,7 @@ export function AdminAttendanceClient({
                   type="date"
                   value={formData.date}
                   onChange={e => setFormData({ ...formData, date: e.target.value })}
+                  max={format(new Date(), 'yyyy-MM-dd')}
                   required
                 />
               </div>
