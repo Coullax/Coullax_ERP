@@ -105,6 +105,41 @@ export async function getAttendanceSummary(employeeId: string, month: string) {
   return summary
 }
 
+// Get user leave requests for a given month
+export async function getUserLeaveRequests(employeeId: string, month?: string) {
+  const supabase = await createClient()
+
+  let query = supabase
+    .from('leave_requests')
+    .select(`
+      *,
+      request:requests!leave_requests_request_id_fkey(
+        id,
+        status,
+        submitted_at,
+        reviewed_at,
+        reviewed_by,
+        review_notes
+      )
+    `)
+    .eq('employee_id', employeeId)
+
+  if (month) {
+    const startDate = new Date(month)
+    const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0)
+
+    // Filter leaves that overlap with the month
+    query = query
+      .lte('start_date', endDate.toISOString().split('T')[0])
+      .gte('end_date', startDate.toISOString().split('T')[0])
+  }
+
+  const { data, error } = await query.order('start_date', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
 // Get all employees attendance (Admin)
 export async function getAllAttendance(date: string) {
   const supabase = await createClient()
