@@ -124,7 +124,7 @@ export function AttendanceCalendar({ logs }: AttendanceCalendarProps) {
             <div className="grid grid-cols-7 gap-2">
                 {calendarDays.map((day, index) => {
                     if (day === null) {
-                        return <div key={`empty-${index}`} className="aspect-square" />
+                        return <div key={`empty-${index}`} className="min-h-[80px] sm:aspect-square" />
                     }
 
                     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -138,56 +138,86 @@ export function AttendanceCalendar({ logs }: AttendanceCalendarProps) {
                         <div
                             key={day}
                             className={`
-                aspect-square p-2 rounded-lg border-2 transition-all
+                min-h-[80px] sm:aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all overflow-hidden
                 ${isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-800'}
                 ${log ? 'hover:shadow-lg cursor-pointer' : ''}
               `}
                         >
-                            <div className="h-full flex flex-col">
+                            <div className="h-full flex flex-col overflow-hidden">
                                 {/* Day Number */}
-                                <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                                <div className={`text-xs sm:text-sm font-semibold mb-1 flex-shrink-0 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                                     {day}
                                 </div>
 
                                 {/* Attendance Info */}
                                 {log && (
-                                    <div className="flex-1 flex flex-col gap-2">
-                                        {/* Status Badge */}
-                                        <div className="flex items-center justify-center">
-                                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${getStatusColor(log.status)}`}>
-                                                {log.status === 'present' && 'Present'}
-                                                {log.status === 'absent' && 'Absent'}
-                                                {log.status === 'leave' && 'Leave'}
-                                                {log.status === 'half_day' && 'Half Day'}
+                                    <>
+                                        {/* Simplified view for small screens */}
+                                        <div className="flex-1 flex flex-col gap-0.5 sm:hidden overflow-hidden">
+                                            {/* Status Dot */}
+                                            <div className="flex items-center justify-center flex-shrink-0">
+                                                <div className={`w-2 h-2 rounded-full ${getStatusColor(log.status)}`} />
+                                            </div>
+                                            {/* Compact time indicators */}
+                                            <div className="space-y-0.5 overflow-hidden">
+                                                {log.check_in && (
+                                                    <div className="flex items-center gap-0.5 overflow-hidden">
+                                                        <LogIn className="w-2 h-2 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                                        <span className="text-[8px] font-semibold text-green-700 dark:text-green-300 truncate">
+                                                            {formatTime(log.check_in)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {log.check_out && (
+                                                    <div className="flex items-center gap-0.5 overflow-hidden">
+                                                        <LogOut className="w-2 h-2 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                                        <span className="text-[8px] font-semibold text-red-700 dark:text-red-300 truncate">
+                                                            {formatTime(log.check_out)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
-                                        {/* Check In Time */}
-                                        {log.check_in && (
-                                            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md p-1.5">
-                                                <div className="flex items-center gap-1 mb-0.5">
-                                                    <LogIn className="w-3 h-3 text-green-600 dark:text-green-400" />
-                                                    <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">In</span>
-                                                </div>
-                                                <div className="text-xs font-bold text-green-900 dark:text-green-100 pl-4">
-                                                    {formatTime(log.check_in)}
+                                        {/* Full view for larger screens */}
+                                        <div className="hidden sm:flex flex-1 flex-col gap-2 overflow-hidden">
+                                            {/* Status Badge */}
+                                            <div className="flex items-center justify-center flex-shrink-0">
+                                                <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${getStatusColor(log.status)}`}>
+                                                    {log.status === 'present' && 'Present'}
+                                                    {log.status === 'absent' && 'Absent'}
+                                                    {log.status === 'leave' && 'Leave'}
+                                                    {log.status === 'half_day' && 'Half Day'}
                                                 </div>
                                             </div>
-                                        )}
 
-                                        {/* Check Out Time */}
-                                        {log.check_out && (
-                                            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-1.5">
-                                                <div className="flex items-center gap-1 mb-0.5">
-                                                    <LogOut className="w-3 h-3 text-red-600 dark:text-red-400" />
-                                                    <span className="text-[10px] font-semibold text-red-700 dark:text-red-300">Out</span>
+                                            {/* Check In Time */}
+                                            {log.check_in && (
+                                                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md p-1.5 flex-shrink-0">
+                                                    <div className="flex items-center gap-1 mb-0.5">
+                                                        <LogIn className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                                        <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">In</span>
+                                                    </div>
+                                                    <div className="text-xs font-bold text-green-900 dark:text-green-100 pl-4">
+                                                        {formatTime(log.check_in)}
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs font-bold text-red-900 dark:text-red-100 pl-4">
-                                                    {formatTime(log.check_out)}
+                                            )}
+
+                                            {/* Check Out Time */}
+                                            {log.check_out && (
+                                                <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-1.5 flex-shrink-0">
+                                                    <div className="flex items-center gap-1 mb-0.5">
+                                                        <LogOut className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                                        <span className="text-[10px] font-semibold text-red-700 dark:text-red-300">Out</span>
+                                                    </div>
+                                                    <div className="text-xs font-bold text-red-900 dark:text-red-100 pl-4">
+                                                        {formatTime(log.check_out)}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>
