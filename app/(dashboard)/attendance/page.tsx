@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AttendancePageClient } from './attendance-client'
-import { getAttendanceLogs, getAttendanceSummary } from '@/app/actions/attendance-actions'
+import { getAttendanceLogs, getAttendanceSummary, getUserLeaveRequests } from '@/app/actions/attendance-actions'
 
 export default async function AttendancePage() {
   const supabase = await createClient()
@@ -12,10 +12,11 @@ export default async function AttendancePage() {
   }
 
   const currentMonth = new Date().toISOString().slice(0, 7)
-  
-  const [logs, summary] = await Promise.all([
+
+  const [logs, summary, leaves] = await Promise.all([
     getAttendanceLogs(user.id, currentMonth),
     getAttendanceSummary(user.id, currentMonth),
+    getUserLeaveRequests(user.id, currentMonth),
   ])
 
   return (
@@ -23,6 +24,7 @@ export default async function AttendancePage() {
       userId={user.id}
       logs={logs}
       summary={summary}
+      leaves={leaves}
     />
   )
 }
