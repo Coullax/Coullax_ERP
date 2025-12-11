@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -15,6 +19,7 @@ import {
   LogIn,
   LogOut,
   Coffee,
+  UserPlus,
 } from 'lucide-react'
 import {
   format,
@@ -35,6 +40,8 @@ import {
   getEmployeesOnLeaveByDate,
   getMonthAttendanceData,
 } from '@/app/actions/admin-attendance-actions'
+import { getAllEmployees } from '@/app/actions/employee-actions'
+import { adminMarkAttendance } from '@/app/actions/attendance-actions'
 import { formatTime } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -65,6 +72,7 @@ interface LeaveRecord {
   total_days: number
   reason: string
   request_id: string
+  request_status: string
 }
 
 interface AdminAttendanceClientProps {
@@ -93,6 +101,42 @@ export function AdminAttendanceClient({
   const [summary, setSummary] = useState(initialSummary)
   const [monthData, setMonthData] = useState(initialMonthData)
   const [loading, setLoading] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [employees, setEmployees] = useState<any[]>([])
+  const [employeeSearch, setEmployeeSearch] = useState('')
+  const [formData, setFormData] = useState({
+    employeeId: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+    checkIn: '',
+    checkOut: '',
+    status: 'present',
+    notes: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  // Fetch employees when dialog opens
+  useEffect(() => {
+    if (dialogOpen && employees.length === 0) {
+      getAllEmployees().then(data => {
+        setEmployees(data || [])
+      }).catch(err => {
+        console.error('Error fetching employees:', err)
+        toast.error('Failed to load employees')
+      })
+    }
+  }, [dialogOpen, employees.length])
+
+  // Filter employees based on search
+  const filteredEmployees = useMemo(() => {
+    if (!employeeSearch) return employees
+    const search = employeeSearch.toLowerCase()
+    return employees.filter(
+      emp =>
+        emp.employee_id?.toLowerCase().includes(search) ||
+        emp.profile?.full_name?.toLowerCase().includes(search) ||
+        emp.profile?.email?.toLowerCase().includes(search)
+    )
+  }, [employees, employeeSearch])
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
@@ -144,12 +188,99 @@ export function AdminAttendanceClient({
     fetchMonthData()
   }, [currentMonth])
 
+  // Auto-fill form when employee or date changes
+  useEffect(() => {
+    const fetchExistingAttendance = async () => {
+      if (!formData.employeeId || !formData.date) return
+
+      try {
+        const attendance = await getEmployeesAttendanceByDate(formData.date)
+        const employeeRecord = attendance.find(a => a.employee.id === formData.employeeId)
+
+        if (employeeRecord) {
+          // Pre-fill the form with existing data
+          setFormData(prev => ({
+            ...prev,
+            checkIn: employeeRecord.check_in || '',
+            checkOut: employeeRecord.check_out || '',
+            status: employeeRecord.status || 'present',
+            notes: employeeRecord.notes || '',
+          }))
+        } else {
+          // Reset time fields if no record exists
+          setFormData(prev => ({
+            ...prev,
+            checkIn: '',
+            checkOut: '',
+            status: 'present',
+            notes: '',
+          }))
+        }
+      } catch (error) {
+        console.error('Error fetching existing attendance:', error)
+      }
+    }
+
+    if (dialogOpen && formData.employeeId && formData.date) {
+      fetchExistingAttendance()
+    }
+  }, [formData.employeeId, formData.date, dialogOpen])
+
   const previousMonth = () => setCurrentMonth(prev => subMonths(prev, 1))
   const nextMonth = () => setCurrentMonth(prev => addMonths(prev, 1))
   const goToToday = () => {
     const today = new Date()
     setCurrentMonth(today)
     handleDateClick(today)
+  }
+
+  const handleMarkAttendance = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      if (!formData.employeeId) {
+        toast.error('Please select an employee')
+        return
+      }
+
+      await adminMarkAttendance(formData.employeeId, formData.date, {
+        check_in: formData.checkIn || undefined,
+        check_out: formData.checkOut || undefined,
+        status: formData.status,
+        notes: formData.notes || undefined,
+      })
+
+      toast.success('Attendance marked successfully')
+      setDialogOpen(false)
+      
+      // Reset form
+      setFormData({
+        employeeId: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        checkIn: '',
+        checkOut: '',
+        status: 'present',
+        notes: '',
+      })
+      setEmployeeSearch('')
+
+      // Refresh data if the marked date is the selected date
+      if (formData.date === format(selectedDate, 'yyyy-MM-dd')) {
+        handleDateClick(selectedDate)
+      }
+
+      // Refresh month data
+      const year = currentMonth.getFullYear()
+      const month = currentMonth.getMonth()
+      const data = await getMonthAttendanceData(year, month)
+      setMonthData(data)
+    } catch (error: any) {
+      console.error('Error marking attendance:', error)
+      toast.error(error.message || 'Failed to mark attendance')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const getLeaveTypeBadge = (type: string) => {
@@ -169,14 +300,162 @@ export function AdminAttendanceClient({
     )
   }
 
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: any; className: string }> = {
+      approved: { variant: 'default', className: 'bg-green-500 hover:bg-green-600' },
+      pending: { variant: 'secondary', className: 'bg-yellow-500 hover:bg-yellow-600 text-white' },
+      rejected: { variant: 'destructive', className: '' },
+    }
+    const config = variants[status] || { variant: 'secondary', className: '' }
+    return (
+      <Badge variant={config.variant} className={cn('capitalize', config.className)}>
+        {status}
+      </Badge>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Attendance Management</h1>
-        <p className="text-gray-500 mt-1">
-          View and manage employee attendance and leave records
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Attendance Management</h1>
+          <p className="text-gray-500 mt-1">
+            View and manage employee attendance and leave records
+          </p>
+        </div>
+        
+        {/* Mark Attendance Button */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Mark Attendance
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Mark Employee Attendance</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleMarkAttendance} className="space-y-4">
+              {/* Date */}
+              <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={e => setFormData({ ...formData, date: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Employee Search/Select */}
+              <div className="space-y-2">
+                <Label htmlFor="employee-search">Employee</Label>
+                <Input
+                  id="employee-search"
+                  type="text"
+                  placeholder="Search by name, ID, or email..."
+                  value={employeeSearch}
+                  onChange={e => setEmployeeSearch(e.target.value)}
+                  className="mb-2"
+                />
+                <Select
+                  value={formData.employeeId}
+                  onValueChange={value => setFormData({ ...formData, employeeId: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredEmployees.length > 0 ? (
+                      filteredEmployees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.profile?.full_name} ({emp.employee_id})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1 text-sm text-gray-500">
+                        {employeeSearch ? 'No employees found' : 'Loading employees...'}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={value => setFormData({ ...formData, status: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="present">Present</SelectItem>
+                    <SelectItem value="absent">Absent</SelectItem>
+                    <SelectItem value="half_day">Half Day</SelectItem>
+                    <SelectItem value="leave">Leave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Check-in Time */}
+              <div className="space-y-2">
+                <Label htmlFor="check-in">Check-in Time (Optional)</Label>
+                <Input
+                  id="check-in"
+                  type="time"
+                  value={formData.checkIn}
+                  onChange={e => setFormData({ ...formData, checkIn: e.target.value })}
+                />
+              </div>
+
+              {/* Check-out Time */}
+              <div className="space-y-2">
+                <Label htmlFor="check-out">Check-out Time (Optional)</Label>
+                <Input
+                  id="check-out"
+                  type="time"
+                  value={formData.checkOut}
+                  onChange={e => setFormData({ ...formData, checkOut: e.target.value })}
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Input
+                  id="notes"
+                  type="text"
+                  placeholder="Add any notes..."
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Mark Attendance'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Summary Cards */}
@@ -402,7 +681,10 @@ export function AdminAttendanceClient({
                                   {leave.employee.employee_id}
                                 </p>
                               </div>
-                              {getLeaveTypeBadge(leave.leave_type)}
+                              <div className="flex flex-row gap-1">
+                                {getLeaveTypeBadge(leave.leave_type)}
+                                {getStatusBadge(leave.request_status)}
+                              </div>
                             </div>
                             <div className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                               <p>

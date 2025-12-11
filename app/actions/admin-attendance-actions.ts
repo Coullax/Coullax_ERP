@@ -89,7 +89,6 @@ export async function getEmployeesOnLeaveByDate(date: string) {
     `)
     .lte('start_date', date)
     .gte('end_date', date)
-    .eq('request.status', 'approved')
     .order('start_date', { ascending: true })
 
   if (error) throw error
@@ -107,6 +106,7 @@ export async function getEmployeesOnLeaveByDate(date: string) {
     total_days: leave.total_days,
     reason: leave.reason,
     request_id: leave.request?.id,
+    request_status: leave.request?.status || 'pending',
   })) || []
 }
 

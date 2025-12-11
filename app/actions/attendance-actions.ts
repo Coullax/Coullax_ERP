@@ -176,11 +176,16 @@ export async function adminMarkAttendance(
 
   const { error } = await supabase
     .from('attendance_logs')
-    .upsert({
-      employee_id: employeeId,
-      date,
-      ...data,
-    })
+    .upsert(
+      {
+        employee_id: employeeId,
+        date,
+        ...data,
+      },
+      {
+        onConflict: 'employee_id,date',
+      }
+    )
 
   if (error) throw error
 
