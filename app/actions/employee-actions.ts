@@ -74,6 +74,7 @@ export async function createEmployee(data: {
   email: string
   password: string
   full_name: string
+  employee_no: string
   role: 'employee' | 'admin' | 'super_admin'
   department_id?: string
   designation_id?: string
@@ -115,6 +116,7 @@ export async function createEmployee(data: {
       .insert({
         id: authData.user.id,
         employee_id: employeeId,
+        employee_no: data.employee_no,
         joining_date: joiningDate.toISOString().split('T')[0],
         department_id: data.department_id,
         designation_id: data.designation_id,
