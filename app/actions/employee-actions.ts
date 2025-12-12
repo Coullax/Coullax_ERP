@@ -12,6 +12,7 @@ export async function getAllEmployees() {
     .select(`
       id,
       employee_id,
+      employee_no,
       joining_date,
       is_active,
       policy_id,
@@ -65,7 +66,7 @@ export async function toggleEmployeeActiveStatus(
 
   if (error) throw error
 
-  revalidatePath('/admin/employees')
+  revalidatePath('/admin/employees')  
   return { success: true }
 }
 
