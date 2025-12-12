@@ -17,6 +17,18 @@ export async function getAllEmployees() {
       is_active,
       policy_id,
       policy_assigned_date,
+      date_of_birth,
+      gender,
+      blood_group,
+      marital_status,
+      address,
+      city,
+      state,
+      postal_code,
+      country,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_contact_relationship,
       department:departments(id, name),
       designation:designations(id, title),
       profile:profiles!employees_id_fkey(
@@ -66,7 +78,7 @@ export async function toggleEmployeeActiveStatus(
 
   if (error) throw error
 
-  revalidatePath('/admin/employees')  
+  revalidatePath('/admin/employees')
   return { success: true }
 }
 
