@@ -36,6 +36,24 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getInitials } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -84,6 +102,7 @@ const superAdminSections = [
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, setUser, setProfile } =
@@ -233,50 +252,109 @@ export function Sidebar() {
 
       {/* User Profile Section */}
       <div className="p-3 border-t border-gray-200 dark:border-gray-800">
-        {!isCollapsed && (
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors cursor-pointer mb-2">
-            <Avatar className="w-9 h-9">
-              <AvatarImage src={profile?.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {profile ? getInitials(profile.full_name) : "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {profile?.full_name || "User"}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {profile?.email || ""}
-              </p>
-            </div>
-            <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          </div>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            {!isCollapsed && (
+              <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors cursor-pointer">
+                <Avatar className="w-9 h-9">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {profile ? getInitials(profile.full_name) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {profile?.full_name || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {profile?.email || ""}
+                  </p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </div>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            align="end" 
+            className="w-56"
+            side="top"
+            sideOffset={5}
+          >
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
+              <UserCircle className="w-4 h-4 mr-2" />
+              View Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={() => setShowLogoutDialog(true)}
+              className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Log Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {isCollapsed && (
-          <div className="flex justify-center mb-2">
-            <Avatar className="w-9 h-9 cursor-pointer ring-2 ring-primary/20">
-              <AvatarImage src={profile?.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {profile ? getInitials(profile.full_name) : "U"}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex justify-center">
+                <Avatar className="w-9 h-9 cursor-pointer ring-2 ring-primary/20 hover:ring-primary/40 transition-all">
+                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {profile ? getInitials(profile.full_name) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="end" 
+              className="w-56"
+              side="top"
+              sideOffset={5}
+            >
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/profile')}>
+                <UserCircle className="w-4 h-4 mr-2" />
+                View Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => setShowLogoutDialog(true)}
+                className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Log Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-
-        <Button
-          variant="ghost"
-          onClick={handleLogout}
-          className={cn(
-            "w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950",
-            isCollapsed ? "justify-center px-2" : "justify-start"
-          )}
-          size="sm"
-        >
-          <LogOut className={cn("w-4 h-4", !isCollapsed && "mr-2")} />
-          {!isCollapsed && "Logout"}
-        </Button>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be redirected to the login page and will need to sign in again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.aside>
   );
 }
