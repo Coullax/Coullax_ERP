@@ -102,6 +102,13 @@ export function EmployeeDetailsDialog({
                                     <span>{employee.employee_id}</span>
                                 </div>
                             </div>
+                            <div className="space-y-1">
+                                <label className="text-sm text-gray-500">Employee No</label>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <User className="w-4 h-4 text-gray-400" />
+                                    <span>{employee.employee_no || 'Not assigned'}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
