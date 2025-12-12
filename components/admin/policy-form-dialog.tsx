@@ -26,6 +26,8 @@ export function PolicyFormDialog({ onClose, onSuccess, policy }: PolicyFormDialo
         leave_days_per_month: policy?.leave_days_per_month || 2,
         carry_forward_enabled: policy?.carry_forward_enabled ?? true,
         description: policy?.description || '',
+        working_start_time: policy?.working_start_time || '09:00',
+        working_end_time: policy?.working_end_time || '18:00',
     })
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +120,30 @@ export function PolicyFormDialog({ onClose, onSuccess, policy }: PolicyFormDialo
                                     min="0"
                                     value={formData.leave_days_per_month}
                                     onChange={(e) => setFormData({ ...formData, leave_days_per_month: parseFloat(e.target.value) || 0 })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="working_start_time">Working Start Time *</Label>
+                                <Input
+                                    id="working_start_time"
+                                    type="time"
+                                    value={formData.working_start_time}
+                                    onChange={(e) => setFormData({ ...formData, working_start_time: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="working_end_time">Working End Time *</Label>
+                                <Input
+                                    id="working_end_time"
+                                    type="time"
+                                    value={formData.working_end_time}
+                                    onChange={(e) => setFormData({ ...formData, working_end_time: e.target.value })}
                                     required
                                 />
                             </div>
