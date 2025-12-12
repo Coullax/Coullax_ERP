@@ -8,7 +8,8 @@ import { ProfilePicture } from '@/components/profile/profile-picture'
 import { BasicInfoForm } from '@/components/profile/basic-info-form'
 import { EducationSection } from '@/components/profile/education-section'
 import { SkillsSection } from '@/components/profile/skills-section'
-import { User, GraduationCap, Award, Package, Phone } from 'lucide-react'
+import { PasswordResetForm } from '@/components/profile/password-reset-form'
+import { User, GraduationCap, Award, Package, Phone, Settings } from 'lucide-react'
 
 interface ProfilePageClientProps {
   profile: any
@@ -78,6 +79,10 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
             <Phone className="w-4 h-4" />
             Emergency
           </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-2">
+            <Settings className="w-4 h-4" />
+            Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic">
@@ -112,6 +117,10 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
               <p>Emergency contact is managed in Basic Info tab</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <PasswordResetForm />
         </TabsContent>
       </Tabs>
     </div>
