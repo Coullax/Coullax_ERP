@@ -20,6 +20,7 @@ import {
   LogOut,
   Coffee,
   UserPlus,
+  Upload,
 } from 'lucide-react'
 import {
   format,
@@ -44,6 +45,8 @@ import { getAllEmployees } from '@/app/actions/employee-actions'
 import { adminMarkAttendance } from '@/app/actions/attendance-actions'
 import { formatTime } from '@/lib/utils'
 import { toast } from 'sonner'
+import { parseAttendanceExcel } from '@/lib/excel-parser'
+import { useRouter } from 'next/navigation'
 
 interface AttendanceRecord {
   id: string
@@ -102,6 +105,7 @@ export function AdminAttendanceClient({
   const [monthData, setMonthData] = useState(initialMonthData)
   const [loading, setLoading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false)
   const [employees, setEmployees] = useState<any[]>([])
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [formData, setFormData] = useState({
@@ -113,6 +117,8 @@ export function AdminAttendanceClient({
     notes: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const router = useRouter()
 
   // Fetch employees when dialog opens
   useEffect(() => {
@@ -283,6 +289,50 @@ export function AdminAttendanceClient({
     }
   }
 
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      toast.error('Please upload an Excel file (.xlsx or .xls)')
+      e.target.value = '' // Reset input
+      return
+    }
+
+    setUploadingFile(true)
+
+    try {
+      // Parse Excel file
+      const result = await parseAttendanceExcel(file)
+
+      if (result.errors.length > 0) {
+        console.warn('Parsing errors:', result.errors)
+        toast.warning(`File parsed with ${result.errors.length} warning(s)`)
+      }
+
+      if (result.records.length === 0) {
+        toast.error('No valid records found in the Excel file')
+        setBulkUploadOpen(false)
+        return
+      }
+
+      toast.success(`Parsed ${result.records.length} attendance record(s)`)
+
+      // Encode records for URL
+      const encoded = Buffer.from(JSON.stringify(result.records)).toString('base64')
+
+      // Navigate to review page
+      router.push(`/admin/attendance/bulk-review?data=${encoded}`)
+    } catch (error: any) {
+      console.error('Error parsing Excel file:', error)
+      toast.error(error.message || 'Failed to parse Excel file')
+    } finally {
+      setUploadingFile(false)
+      e.target.value = '' // Reset input
+    }
+  }
+
   const getLeaveTypeBadge = (type: string) => {
     const variants: Record<string, { variant: any; color: string }> = {
       sick: { variant: 'destructive', color: 'text-red-600' },
@@ -325,14 +375,53 @@ export function AdminAttendanceClient({
           </p>
         </div>
         
-        {/* Mark Attendance Button */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Mark Attendance
-            </Button>
-          </DialogTrigger>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {/* Bulk Upload Dialog */}
+          <Dialog open={bulkUploadOpen} onOpenChange={setBulkUploadOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Bulk Attendance Upload</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-file">Upload Excel File</Label>
+                  <Input
+                    id="bulk-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleBulkUpload}
+                    disabled={uploadingFile}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Upload an Excel file (.xlsx or .xls) with attendance records.
+                    Required columns: Person ID, Name, Date
+                  </p>
+                </div>
+                {uploadingFile && (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-500">Processing file...</p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Mark Attendance Dialog */}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Mark Attendance
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Mark Employee Attendance</DialogTitle>
@@ -458,6 +547,7 @@ export function AdminAttendanceClient({
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
