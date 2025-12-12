@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { CheckCircle2, XCircle, AlertCircle, ArrowLeft, Check } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertCircle, ArrowLeft, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { AttendanceRecord } from '@/lib/excel-parser'
 import { bulkMarkAttendance, validateEmployeeIds, BulkAttendanceRecord } from '@/app/actions/bulk-attendance-actions'
@@ -43,6 +43,7 @@ interface BulkReviewClientProps {
 interface EditableRecord extends AttendanceRecord {
   employeeDbId?: string
   validationStatus: 'valid' | 'invalid' | 'pending'
+  approved?: boolean
 }
 
 export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
@@ -51,8 +52,9 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [approvingRowIndex, setApprovingRowIndex] = useState<number | null>(null)
 
-  // Validate employee IDs on mount
+  // Validate employee IDs on mount ONLY - do not re-run when records change
   useEffect(() => {
     async function validateRecords() {
       try {
@@ -66,6 +68,7 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
             employeeDbId,
             validationStatus: employeeDbId ? 'valid' : 'invalid',
             error: employeeDbId ? record.error : (record.error || 'Employee not found in database'),
+            approved: false,
           }
         })
 
@@ -79,7 +82,8 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
     }
 
     validateRecords()
-  }, [initialRecords])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty dependency array - run only once on mount
 
   const updateRecord = (index: number, field: keyof EditableRecord, value: any) => {
     setRecords(prev => {
@@ -89,7 +93,110 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
     })
   }
 
+  const hasErrors = (record: EditableRecord): boolean => {
+    return !!(record.error || !record.checkIn || !record.checkOut)
+  }
+
+  const handleApproveRow = async (index: number) => {
+    const record = records[index]
+    
+    // Check for errors
+    if (hasErrors(record)) {
+      toast.error('Please fix all errors before approving this row')
+      return
+    }
+
+    if (record.validationStatus === 'invalid') {
+      toast.error('Cannot approve row with invalid employee')
+      return
+    }
+
+    setApprovingRowIndex(index)
+
+    try {
+      // Submit single record
+      const bulkRecord: BulkAttendanceRecord = {
+        employeeId: record.employeeDbId!,
+        date: record.date,
+        checkIn: record.checkIn,
+        checkOut: record.checkOut,
+        status: record.status,
+        notes: `Bulk upload - ${record.department || ''} ${record.position || ''}`.trim(),
+      }
+
+      console.log('Submitting record:', bulkRecord)
+      const result = await bulkMarkAttendance([bulkRecord])
+      console.log('Result:', result)
+
+      if (result.success > 0) {
+        const recordKey = `${record.personId}-${record.date}`
+        console.log('Removing record with key:', recordKey)
+        console.log('Current records count:', records.length)
+        
+        // Show success toast
+        toast.success(`Approved attendance for ${record.name}`)
+        
+        // Use setTimeout to ensure state updates happen after current render cycle
+        setTimeout(() => {
+          setApprovingRowIndex(null)
+          setRecords(prev => {
+            const filtered = prev.filter(r => `${r.personId}-${r.date}` !== recordKey)
+            console.log('New records count:', filtered.length)
+            return filtered
+          })
+        }, 0)
+      } else {
+        setApprovingRowIndex(null)
+        toast.error(`Failed to approve: ${result.errors[0]?.error || 'Unknown error'}`)
+      }
+    } catch (error: any) {
+      console.error('Error approving row:', error)
+      setApprovingRowIndex(null)
+      toast.error(error.message || 'Failed to approve row')
+    }
+  }
+
+  const handleIgnoreRow = (index: number) => {
+    const record = records[index]
+    const recordKey = `${record.personId}-${record.date}`
+    
+    // Remove the row without submitting
+    setRecords(prev => prev.filter(r => `${r.personId}-${r.date}` !== recordKey))
+    toast.info(`Skipped ${record.name}`)
+  }
+
   const handleApprove = async () => {
+    // Check if there are any errors in remaining records
+    const recordsWithErrors = records.filter(r => hasErrors(r))
+    
+    if (recordsWithErrors.length > 0) {
+      // Count specific error types
+      const nullCheckInCount = records.filter(r => !r.checkIn).length
+      const nullCheckOutCount = records.filter(r => !r.checkOut).length
+      const validationErrorCount = records.filter(r => r.error).length
+      
+      // Build specific error message
+      let errorMessage = `Cannot approve: ${recordsWithErrors.length} row(s) have errors. `
+      const issues = []
+      
+      if (nullCheckInCount > 0) {
+        issues.push(`${nullCheckInCount} missing check-in time`)
+      }
+      if (nullCheckOutCount > 0) {
+        issues.push(`${nullCheckOutCount} missing check-out time`)
+      }
+      if (validationErrorCount > 0) {
+        issues.push(`${validationErrorCount} validation errors`)
+      }
+      
+      if (issues.length > 0) {
+        errorMessage += `Please fill: ${issues.join(', ')}`
+      }
+      
+      toast.error(errorMessage)
+      return
+    }
+
     setSubmitting(true)
     setShowConfirmDialog(false)
 
@@ -136,6 +243,7 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
 
   const validCount = records.filter(r => r.validationStatus === 'valid').length
   const invalidCount = records.filter(r => r.validationStatus === 'invalid').length
+  const errorCount = records.filter(r => hasErrors(r)).length
 
   if (loading) {
     return (
@@ -168,11 +276,15 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
             Cancel
           </Button>
           <Button
-            onClick={() => setShowConfirmDialog(true)}
-            disabled={submitting || validCount === 0}
+            onClick={() => {if(submitting || validCount === 0 || errorCount > 0){
+              toast.error('invalid records found. please check the records')
+            }else{
+              setShowConfirmDialog(true)
+            }}}
+            // disabled={submitting || validCount === 0 || errorCount > 0}
           >
             <Check className="h-4 w-4 mr-2" />
-            Approve {validCount} Record(s)
+            Approve All ({validCount - errorCount})
           </Button>
         </div>
       </div>
@@ -240,21 +352,25 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
                   <TableHead>Day</TableHead>
                   <TableHead>Check-In</TableHead>
                   <TableHead>Check-Out</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Error</TableHead>
+                  <TableHead className="w-32">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {records.map((record, index) => {
                   const hasNullTimes = !record.checkIn || !record.checkOut
+                  const recordHasErrors = hasErrors(record)
                   const rowClassName = record.validationStatus === 'invalid' 
                     ? 'bg-red-50 dark:bg-red-950/20' 
                     : hasNullTimes 
                       ? 'bg-amber-50 dark:bg-amber-950/20' 
                       : ''
                   
+                  // Use a stable unique key for React
+                  const recordKey = `${record.personId}-${record.date}`
+                  
                   return (
-                    <TableRow key={index} className={rowClassName}>
+                    <TableRow key={recordKey} className={rowClassName}>
                       <TableCell>
                         {record.validationStatus === 'valid' ? (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -272,7 +388,7 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
                           type="time"
                           value={record.checkIn || ''}
                           onChange={(e) => updateRecord(index, 'checkIn', e.target.value || null)}
-                          className="w-32"
+                          className=""
                           step="1"
                         />
                       </TableCell>
@@ -281,25 +397,9 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
                           type="time"
                           value={record.checkOut || ''}
                           onChange={(e) => updateRecord(index, 'checkOut', e.target.value || null)}
-                          className="w-32"
+                          className=" "
                           step="1"
                         />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={record.status}
-                          onValueChange={(value) => updateRecord(index, 'status', value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="present">Present</SelectItem>
-                            <SelectItem value="absent">Absent</SelectItem>
-                            <SelectItem value="half_day">Half Day</SelectItem>
-                            <SelectItem value="leave">Leave</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </TableCell>
                       <TableCell>
                         {record.error && (
@@ -318,6 +418,34 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleApproveRow(index)}
+                            disabled={recordHasErrors || record.validationStatus === 'invalid' || approvingRowIndex === index}
+                            className="h-8 w-8 p-0"
+                            title="Approve this row"
+                          >
+                            {approvingRowIndex === index ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                            ) : (
+                              <Check className="h-4 w-4 text-green-600" />
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleIgnoreRow(index)}
+                            disabled={approvingRowIndex === index}
+                            className="h-8 w-8 p-0"
+                            title="Skip this row"
+                          >
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -331,9 +459,14 @@ export function BulkReviewClient({ initialRecords }: BulkReviewClientProps) {
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Approve Bulk Attendance?</AlertDialogTitle>
+            <AlertDialogTitle>Approve All Valid Records?</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to mark attendance for {validCount} employee(s).
+              You are about to mark attendance for {validCount - errorCount} employee(s).
+              {errorCount > 0 && (
+                <span className="block mt-2 text-amber-600">
+                  {errorCount} record(s) with errors will be skipped. Please fix them or approve individually.
+                </span>
+              )}
               {invalidCount > 0 && (
                 <span className="block mt-2 text-red-600">
                   {invalidCount} invalid record(s) will be skipped.
