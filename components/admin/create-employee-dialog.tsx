@@ -27,6 +27,7 @@ export function CreateEmployeeDialog({
     email: '',
     password: '',
     full_name: '',
+    employee_no: '',
     role: 'employee' as 'employee' | 'admin' | 'super_admin',
     phone: '',
     department_id: '',
@@ -74,6 +75,16 @@ export function CreateEmployeeDialog({
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                   required
                   placeholder="John Doe"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="employee_no">Employee No *</Label>
+                <Input
+                  id="employee_no"
+                  value={formData.employee_no}
+                  onChange={(e) => setFormData({ ...formData, employee_no: e.target.value })}
+                  required
+                  placeholder="EMP001"
                 />
               </div>
               <div className="space-y-2">
