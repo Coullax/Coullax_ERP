@@ -34,6 +34,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface ApprovalsPageClientProps {
   requests: any[]
@@ -59,6 +66,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   const [selectedRequest, setSelectedRequest] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notes, setNotes] = useState('')
+  const [coveringDecision, setCoveringDecision] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
@@ -126,11 +134,12 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   const handleApprove = async (requestId: string) => {
     setLoading(true)
     try {
-      await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined)
+      await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined, coveringDecision || undefined)
       toast.success('Request approved successfully!')
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
+      setCoveringDecision('')
       window.location.reload()
     } catch (error: any) {
       toast.error(error.message || 'Failed to approve request')
@@ -147,11 +156,12 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
     setLoading(true)
     try {
-      await updateRequestStatus(requestId, 'rejected', reviewerId, notes)
+      await updateRequestStatus(requestId, 'rejected', reviewerId, notes, coveringDecision || undefined)
       toast.success('Request rejected')
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
+      setCoveringDecision('')
       window.location.reload()
     } catch (error: any) {
       toast.error(error.message || 'Failed to reject request')
@@ -182,6 +192,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
     setSelectedRequest(request)
     setDialogOpen(true)
     setNotes('')
+    setCoveringDecision('')
   }
 
   const handleDateFilterChange = (filter: DateFilter) => {
@@ -211,7 +222,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const leaveData = Array.isArray(request.leave_requests)
           ? request.leave_requests[0]
           : request.leave_requests || request.request_data
-        
+
         if (leaveData) {
           if (leaveData.leave_type) details.push({ label: 'Leave Type', value: leaveData.leave_type })
           if (leaveData.start_date) details.push({ label: 'Start Date', value: format(new Date(leaveData.start_date), 'MMMM dd, yyyy'), highlight: true })
@@ -230,7 +241,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const overtimeData = Array.isArray(request.overtime_requests)
           ? request.overtime_requests[0]
           : request.overtime_requests || request.request_data
-        
+
         if (overtimeData) {
           if (overtimeData.date) details.push({ label: 'Date', value: format(new Date(overtimeData.date), 'MMMM dd, yyyy'), highlight: true })
           if (overtimeData.start_time) details.push({ label: 'Start Time', value: overtimeData.start_time })
@@ -245,7 +256,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const travelData = Array.isArray(request.travel_requests)
           ? request.travel_requests[0]
           : request.travel_requests || request.request_data
-        
+
         if (travelData) {
           if (travelData.destination) details.push({ label: 'Destination', value: travelData.destination, highlight: true })
           if (travelData.start_date) details.push({ label: 'Start Date', value: format(new Date(travelData.start_date), 'MMMM dd, yyyy') })
@@ -260,7 +271,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const expenseData = Array.isArray(request.expense_reimbursements)
           ? request.expense_reimbursements[0]
           : request.expense_reimbursements || request.request_data
-        
+
         if (expenseData) {
           if (expenseData.expense_type) details.push({ label: 'Expense Type', value: expenseData.expense_type })
           if (expenseData.amount) details.push({ label: 'Amount', value: `$${expenseData.amount}`, highlight: true })
@@ -276,7 +287,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const attendanceData = Array.isArray(request.attendance_regularization_requests)
           ? request.attendance_regularization_requests[0]
           : request.attendance_regularization_requests || request.request_data
-        
+
         if (attendanceData) {
           if (attendanceData.date) details.push({ label: 'Date', value: format(new Date(attendanceData.date), 'MMMM dd, yyyy'), highlight: true })
           if (attendanceData.actual_time) details.push({ label: 'Actual Time', value: attendanceData.actual_time })
@@ -289,7 +300,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const assetData = Array.isArray(request.asset_requests)
           ? request.asset_requests[0]
           : request.asset_requests || request.request_data
-        
+
         if (assetData) {
           if (assetData.asset_type) details.push({ label: 'Asset Type', value: assetData.asset_type, highlight: true })
           if (assetData.quantity) details.push({ label: 'Quantity', value: assetData.quantity })
@@ -301,7 +312,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const resignationData = Array.isArray(request.resignations)
           ? request.resignations[0]
           : request.resignations || request.request_data
-        
+
         if (resignationData) {
           if (resignationData.last_working_date) details.push({ label: 'Last Working Date', value: format(new Date(resignationData.last_working_date), 'MMMM dd, yyyy'), highlight: true })
           if (resignationData.reason) details.push({ label: 'Reason', value: resignationData.reason })
@@ -314,12 +325,18 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         const coveringData = Array.isArray(request.covering_requests)
           ? request.covering_requests[0]
           : request.covering_requests || request.request_data
-        
+
         if (coveringData) {
           if (coveringData.covering_date) details.push({ label: 'Covering Date', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
           if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
           if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
           if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
+          if (coveringData.covering_decision) {
+            const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
+              ? 'No Need to Cover'
+              : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
+            details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
+          }
         }
         break
 
@@ -652,59 +669,59 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                     ID: {selectedRequest.id.slice(0, 8)}
                   </span>
                 </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-gray-500 text-xs">Request Type</p>
+                    <p className="font-medium">
+                      {REQUEST_TYPE_LABELS[selectedRequest.request_type] || selectedRequest.request_type}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-gray-500 text-xs">Request Type</p>
+                      <p className="text-gray-500 text-xs">Employee</p>
                       <p className="font-medium">
-                        {REQUEST_TYPE_LABELS [selectedRequest.request_type] || selectedRequest.request_type}
+                        {selectedRequest.employee?.profile?.full_name}
                       </p>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <User className="w-4 h-4 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-gray-500 text-xs">Employee</p>
-                        <p className="font-medium">
-                          {selectedRequest.employee?.profile?.full_name}
-                        </p>
-                      </div>
-                    </div>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs">Employee ID</p>
+                    <p className="font-medium">{selectedRequest.employee?.employee_id}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs">Email</p>
+                    <p className="font-medium">{selectedRequest.employee?.profile?.email}</p>
+                  </div>
+                  {selectedRequest.employee?.department && (
                     <div>
-                      <p className="text-gray-500 text-xs">Employee ID</p>
-                      <p className="font-medium">{selectedRequest.employee?.employee_id}</p>
+                      <p className="text-gray-500 text-xs">Department</p>
+                      <p className="font-medium">{selectedRequest.employee.department.department_name}</p>
                     </div>
+                  )}
+                  {selectedRequest.employee?.designation && (
                     <div>
-                      <p className="text-gray-500 text-xs">Email</p>
-                      <p className="font-medium">{selectedRequest.employee?.profile?.email}</p>
+                      <p className="text-gray-500 text-xs">Designation</p>
+                      <p className="font-medium">{selectedRequest.employee.designation.designation_name}</p>
                     </div>
-                    {selectedRequest.employee?.department && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Department</p>
-                        <p className="font-medium">{selectedRequest.employee.department.department_name}</p>
-                      </div>
-                    )}
-                    {selectedRequest.employee?.designation && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Designation</p>
-                        <p className="font-medium">{selectedRequest.employee.designation.designation_name}</p>
-                      </div>
-                    )}
-                    <div className="flex items-start gap-2">
-                      <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-gray-500 text-xs">Submitted</p>
-                        <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
-                      </div>
-                    </div>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
-                      <p className="text-gray-500 text-xs">Status</p>
-                      <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                      <p className="text-gray-500 text-xs">Submitted</p>
+                      <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
                     </div>
-                    {selectedRequest.created_at && (
-                      <div>
-                        <p className="text-gray-500 text-xs">Created At</p>
-                        <p className="font-medium text-xs">{formatDateTime(selectedRequest.created_at)}</p>
-                      </div>
-                    )}
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs">Status</p>
+                    <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                  </div>
+                  {selectedRequest.created_at && (
+                    <div>
+                      <p className="text-gray-500 text-xs">Created At</p>
+                      <p className="font-medium text-xs">{formatDateTime(selectedRequest.created_at)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -775,6 +792,23 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                 <>
                   <Separator />
                   <div className="space-y-4">
+                    {/* Covering Decision Dropdown - only for covering requests */}
+                    {selectedRequest.request_type === 'covering' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="covering-decision">Covering Decision</Label>
+                        <Select value={coveringDecision} onValueChange={setCoveringDecision}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select covering decision" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="leave">Leave</SelectItem>
+                            <SelectItem value="cover">Cover</SelectItem>
+                            <SelectItem value="no_need_to_cover">No Need to Cover</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes (Optional for approval, Required for rejection)</Label>
                       <textarea
