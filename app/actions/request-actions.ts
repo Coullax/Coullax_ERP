@@ -489,6 +489,9 @@ export async function createCoveringRequest(employeeId: string, data: {
   start_time: string
   end_time: string
   work_description: string
+  attachment_type?: string
+  commit_link?: string
+  covering_files?: string[]
 }) {
   const supabase = await createClient()
 
@@ -513,6 +516,9 @@ export async function createCoveringRequest(employeeId: string, data: {
       start_time: data.start_time,
       end_time: data.end_time,
       work_description: data.work_description,
+      attachment_type: data.attachment_type || null,
+      commit_link: data.commit_link || null,
+      covering_files: data.covering_files || null,
     })
 
   if (detailError) throw detailError
