@@ -234,6 +234,12 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           if (leaveData.total_days) details.push({ label: 'Total Days', value: `${leaveData.total_days} day(s)`, highlight: true })
           if (leaveData.reason) details.push({ label: 'Reason', value: leaveData.reason })
           if (leaveData.description) details.push({ label: 'Description', value: leaveData.description })
+          if (leaveData.covering_decision) {
+            const decisionLabel = leaveData.covering_decision === 'no_need_to_cover'
+              ? 'No Need to Cover'
+              : leaveData.covering_decision.charAt(0).toUpperCase() + leaveData.covering_decision.slice(1)
+            details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
+          }
         }
         break
 
@@ -793,7 +799,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                   <Separator />
                   <div className="space-y-4">
                     {/* Covering Decision Dropdown - only for covering requests */}
-                    {selectedRequest.request_type === 'covering' && (
+                    {selectedRequest.request_type === 'leave' && (
                       <div className="space-y-2">
                         <Label htmlFor="covering-decision">Covering Decision</Label>
                         <Select value={coveringDecision} onValueChange={setCoveringDecision}>
