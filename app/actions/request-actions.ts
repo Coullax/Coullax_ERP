@@ -552,6 +552,39 @@ export async function updateRequestStatus(
 
   if (error) throw error
 
+  // If it's a leave request and covering decision is provided, update leave_requests table
+  if (request.request_type === 'leave' && coveringDecision) {
+    console.log('Updating covering decision for leave request:', {
+      requestId,
+      coveringDecision,
+      requestType: request.request_type
+    })
+
+    // Use admin client to bypass RLS policies
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
+
+    // Update the covering_decision field for leave requests
+    const { data: updateData, error: updateError } = await adminClient
+      .from('leave_requests')
+      .update({ covering_decision: coveringDecision })
+      .eq('request_id', requestId)
+      .select()
+
+    if (updateError) {
+      console.error('Failed to update covering decision for leave request:', updateError)
+      throw new Error(`Failed to update covering decision: ${updateError.message}`)
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.warn('No leave_requests record found for request_id:', requestId)
+      console.warn('The covering_decision was not saved. Please ensure leave_requests record exists.')
+      // Don't throw error - allow the approval to proceed
+    } else {
+      console.log('Covering decision for leave request updated successfully:', updateData)
+    }
+  }
+
   // If it's a covering request and covering decision is provided, update covering_requests table
   if (request.request_type === 'covering' && coveringDecision) {
     console.log('Updating covering decision:', {
@@ -616,8 +649,8 @@ export async function updateRequestStatus(
 
     let notificationMessage = `Your ${request.request_type.replace(/_/g, ' ')} request has been ${status}`
 
-    // Add covering decision to the message if it's a covering request
-    if (request.request_type === 'covering' && coveringDecision) {
+    // Add covering decision to the message if it's a leave or covering request
+    if ((request.request_type === 'leave' || request.request_type === 'covering') && coveringDecision) {
       const decisionText = coveringDecision === 'no_need_to_cover'
         ? 'no need to cover'
         : coveringDecision
