@@ -274,8 +274,8 @@ export function Sidebar() {
               </div>
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
+          <DropdownMenuContent
+            align="end"
             className="w-56"
             side="top"
             sideOffset={5}
@@ -287,7 +287,7 @@ export function Sidebar() {
               View Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => setShowLogoutDialog(true)}
               className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
             >
@@ -309,8 +309,8 @@ export function Sidebar() {
                 </Avatar>
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              align="end" 
+            <DropdownMenuContent
+              align="end"
               className="w-56"
               side="top"
               sideOffset={5}
@@ -322,7 +322,7 @@ export function Sidebar() {
                 View Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setShowLogoutDialog(true)}
                 className="text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950"
               >
@@ -345,7 +345,7 @@ export function Sidebar() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
