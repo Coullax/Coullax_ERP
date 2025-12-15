@@ -526,14 +526,15 @@ export async function updateRequestStatus(
   requestId: string,
   status: 'approved' | 'rejected',
   reviewerId: string,
-  notes?: string
+  notes?: string,
+  coveringDecision?: string
 ) {
   const supabase = await createClient()
 
-  // Get request details to check if it's a leave request
+  // Get request details to check if it's a leave request or covering request
   const { data: request, error: requestError } = await supabase
     .from('requests')
-    .select('*, leave_requests(*)')
+    .select('*, leave_requests(*), covering_requests(*)')
     .eq('id', requestId)
     .single()
 
@@ -550,6 +551,39 @@ export async function updateRequestStatus(
     .eq('id', requestId)
 
   if (error) throw error
+
+  // If it's a covering request and covering decision is provided, update covering_requests table
+  if (request.request_type === 'covering' && coveringDecision) {
+    console.log('Updating covering decision:', {
+      requestId,
+      coveringDecision,
+      requestType: request.request_type
+    })
+
+    // Use admin client to bypass RLS policies
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
+
+    // Update the covering_decision field using admin client
+    const { data: updateData, error: updateError } = await adminClient
+      .from('covering_requests')
+      .update({ covering_decision: coveringDecision })
+      .eq('request_id', requestId)
+      .select()
+
+    if (updateError) {
+      console.error('Failed to update covering decision:', updateError)
+      throw new Error(`Failed to update covering decision: ${updateError.message}`)
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.warn('No covering_requests record found for request_id:', requestId)
+      console.warn('The covering_decision was not saved. Please ensure covering_requests record exists.')
+      // Don't throw error - allow the approval to proceed
+    } else {
+      console.log('Covering decision updated successfully:', updateData)
+    }
+  }
 
   // If approved and it's a leave request, deduct from leave balance
   if (status === 'approved' && request.request_type === 'leave' && request.leave_requests) {
@@ -573,6 +607,41 @@ export async function updateRequestStatus(
         console.error('Failed to deduct leave balance:', balanceError)
       }
     }
+  }
+
+  // Create notification for the employee about the request decision
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
+
+    let notificationMessage = `Your ${request.request_type.replace(/_/g, ' ')} request has been ${status}`
+
+    // Add covering decision to the message if it's a covering request
+    if (request.request_type === 'covering' && coveringDecision) {
+      const decisionText = coveringDecision === 'no_need_to_cover'
+        ? 'no need to cover'
+        : coveringDecision
+      notificationMessage += ` with decision: ${decisionText}`
+    }
+
+    if (notes) {
+      notificationMessage += `. Notes: ${notes}`
+    }
+
+    const { error: notifError } = await adminClient.from('notifications').insert({
+      user_id: request.employee_id,
+      title: `Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      message: notificationMessage,
+      type: 'request_update'
+    })
+
+    if (notifError) {
+      console.error('Failed to create notification:', notifError)
+    } else {
+      console.log('Notification created for employee:', request.employee_id)
+    }
+  } catch (notifError) {
+    console.error('Error creating notification:', notifError)
   }
 
   revalidatePath('/requests')
