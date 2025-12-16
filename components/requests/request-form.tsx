@@ -139,7 +139,9 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           })
 
           const uploadedUrls = await Promise.all(uploadPromises)
-          setFormData({ ...formData, covering_files: uploadedUrls })
+          // Merge new files with existing files instead of replacing
+          const existingFiles = formData.covering_files || []
+          setFormData({ ...formData, covering_files: [...existingFiles, ...uploadedUrls] })
           toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
         } catch (error: any) {
           toast.error(error.message || 'Failed to upload files')
