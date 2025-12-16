@@ -201,6 +201,18 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
     setOffset(0)
   }
 
+  // Helper function to calculate hours between two time strings (HH:MM:SS format)
+  const calculateLeaveHours = (startTime: string, endTime: string): number => {
+    const [startHour, startMin] = startTime.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+
+    const startMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+
+    const diffMinutes = endMinutes - startMinutes
+    return diffMinutes / 60
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
       pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
@@ -731,6 +743,15 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       <div>
                         <p className="text-gray-500 text-xs">Leave Duration</p>
                         <p className="font-medium capitalize">{selectedRequest.leave_requests[0].leave_duration.replace(/_/g, ' ')}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Leave Hours</p>
+                        <p className="font-medium">
+                          {calculateLeaveHours(
+                            selectedRequest.leave_requests[0].start_time,
+                            selectedRequest.leave_requests[0].end_time
+                          ).toFixed(1)} hours
+                        </p>
                       </div>
                     </>
                   )}
