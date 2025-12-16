@@ -191,6 +191,74 @@ export async function getDepartmentHeadForEmployee(employeeId: string) {
   return { supervisor, message: null }
 }
 
+// Get Employee Policy Schedule (for auto-populating leave times)
+export async function getEmployeePolicySchedule(employeeId: string) {
+  const supabase = await createClient()
+
+  // Get employee's policy
+  const { data: employee, error: employeeError } = await supabase
+    .from('employees')
+    .select('policy_id')
+    .eq('id', employeeId)
+    .single()
+
+  if (employeeError) throw employeeError
+  if (!employee?.policy_id) {
+    return { schedule: null, message: 'No policy assigned to this employee' }
+  }
+
+  // Get policy work schedule details
+  const { data: policy, error: policyError } = await supabase
+    .from('employee_policies')
+    .select('working_start_time, working_end_time')
+    .eq('id', employee.policy_id)
+    .single()
+
+  if (policyError) throw policyError
+  if (!policy) {
+    return { schedule: null, message: 'Policy not found' }
+  }
+
+  // Calculate lunch break times if not present (midpoint of work day)
+  const calculateLunchBreak = (startTime: string, endTime: string) => {
+    const [startHour, startMin] = startTime.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+
+    const startMinutes = startHour * 60 + startMin
+    const endMinutes = endHour * 60 + endMin
+    const midpoint = Math.floor((startMinutes + endMinutes) / 2)
+
+    // Lunch break is 30 minutes before and after midpoint (1 hour total)
+    const lunchStart = midpoint - 30
+    const lunchEnd = midpoint + 30
+
+    const formatTime = (minutes: number) => {
+      const h = Math.floor(minutes / 60)
+      const m = minutes % 60
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+    }
+
+    return {
+      lunch_break_start: formatTime(lunchStart),
+      lunch_break_end: formatTime(lunchEnd)
+    }
+  }
+
+  const lunchBreak = calculateLunchBreak(policy.working_start_time, policy.working_end_time)
+
+  return {
+    schedule: {
+      work_start_time: policy.working_start_time,
+      work_end_time: policy.working_end_time,
+      lunch_break_start: lunchBreak.lunch_break_start,
+      lunch_break_end: lunchBreak.lunch_break_end
+    },
+    message: null
+  }
+}
+
+
+
 // Create Overtime Request
 export async function createOvertimeRequest(employeeId: string, data: {
   date: string

@@ -19,6 +19,7 @@ import {
   uploadExpenseAttachment,
   uploadResignationDocument,
   getDepartmentHeadForEmployee,
+  getEmployeePolicySchedule,
 } from '@/app/actions/request-actions'
 import { uploadToB2 } from '@/app/actions/upload-actions'
 
@@ -37,6 +38,13 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [supervisorId, setSupervisorId] = useState('')
   const [supervisorLoading, setSupervisorLoading] = useState(false)
   const [coveringAttachmentType, setCoveringAttachmentType] = useState<'commit_link' | 'file_upload'>('commit_link')
+  const [workSchedule, setWorkSchedule] = useState<{
+    work_start_time: string
+    work_end_time: string
+    lunch_break_start: string
+    lunch_break_end: string
+  } | null>(null)
+  const [scheduleLoading, setScheduleLoading] = useState(false)
 
   // Check if dates are the same (for half-day leave)
   const isSameDay = startDate && endDate && startDate === endDate
@@ -70,6 +78,62 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       setFormData((prev: any) => ({ ...prev, attachment_type: coveringAttachmentType }))
     }
   }, [requestType])
+
+  // Fetch employee work schedule for leave requests
+  useEffect(() => {
+    if (requestType === 'leave' && employeeId) {
+      setScheduleLoading(true)
+      getEmployeePolicySchedule(employeeId)
+        .then((result) => {
+          if (result.schedule) {
+            setWorkSchedule(result.schedule)
+          } else if (result.message) {
+            toast.info(result.message)
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to fetch work schedule:', error)
+          toast.error('Failed to fetch work schedule: ' + error.message)
+        })
+        .finally(() => {
+          setScheduleLoading(false)
+        })
+    }
+  }, [requestType, employeeId])
+
+  // Auto-populate start_time and end_time based on leave_duration
+  useEffect(() => {
+    if (requestType === 'leave' && workSchedule && formData.leave_duration && isSameDay) {
+      let calculatedStartTime = ''
+      let calculatedEndTime = ''
+
+      switch (formData.leave_duration) {
+        case 'full_day':
+          calculatedStartTime = workSchedule.work_start_time
+          calculatedEndTime = workSchedule.work_end_time
+          break
+        case 'half_day_morning':
+          calculatedStartTime = workSchedule.work_start_time
+          calculatedEndTime = workSchedule.lunch_break_start
+          break
+        case 'half_day_afternoon':
+          calculatedStartTime = workSchedule.lunch_break_end
+          calculatedEndTime = workSchedule.work_end_time
+          break
+        case 'custom_time':
+          // Don't auto-populate for custom time
+          calculatedStartTime = ''
+          calculatedEndTime = ''
+          break
+      }
+
+      setFormData((prev: any) => ({
+        ...prev,
+        start_time: calculatedStartTime,
+        end_time: calculatedEndTime
+      }))
+    }
+  }, [formData.leave_duration, workSchedule, requestType, isSameDay])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
@@ -308,8 +372,11 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                         id="start_time"
                         name="start_time"
                         type="time"
+                        value={formData.start_time || ''}
                         onChange={handleChange}
                         required={!!(isSameDay && formData.leave_duration === 'custom_time')}
+                        readOnly={!!(isSameDay && formData.leave_duration && formData.leave_duration !== 'custom_time')}
+                        className={isSameDay && formData.leave_duration && formData.leave_duration !== 'custom_time' ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : ''}
                       />
                       <p className="text-xs text-gray-500">
                         {isSameDay ? 'Leave start time' : 'Time on first day (if partial)'}
@@ -323,8 +390,11 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                         id="end_time"
                         name="end_time"
                         type="time"
+                        value={formData.end_time || ''}
                         onChange={handleChange}
                         required={!!(isSameDay && formData.leave_duration === 'custom_time')}
+                        readOnly={!!(isSameDay && formData.leave_duration && formData.leave_duration !== 'custom_time')}
+                        className={isSameDay && formData.leave_duration && formData.leave_duration !== 'custom_time' ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : ''}
                       />
                       <p className="text-xs text-gray-500">
                         {isSameDay ? 'Leave end time' : 'Time on last day (if partial)'}
