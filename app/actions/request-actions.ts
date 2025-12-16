@@ -756,6 +756,61 @@ export async function updateRequestStatus(
   return { success: true }
 }
 
+// Upsert Covering Hours (Add or Update)
+export async function upsertCoveringHours(employeeId: string, hoursToAdd: number) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Check if record exists for this employee
+  const { data: existingRecord, error: fetchError } = await adminClient
+    .from('covering_hours')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .single()
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    // PGRST116 is "no rows returned" error, which is fine
+    console.error('Error fetching covering hours:', fetchError)
+    throw fetchError
+  }
+
+  if (existingRecord) {
+    // Update existing record - add to current hours
+    const newTotal = existingRecord.hours_to_cover + hoursToAdd
+    const { error: updateError } = await adminClient
+      .from('covering_hours')
+      .update({
+        hours_to_cover: newTotal,
+        updated_at: new Date().toISOString()
+      })
+      .eq('employee_id', employeeId)
+
+    if (updateError) {
+      console.error('Error updating covering hours:', updateError)
+      throw updateError
+    }
+
+    console.log(`Updated covering hours for employee ${employeeId}: ${existingRecord.hours_to_cover} + ${hoursToAdd} = ${newTotal}`)
+  } else {
+    // Create new record
+    const { error: insertError } = await adminClient
+      .from('covering_hours')
+      .insert({
+        employee_id: employeeId,
+        hours_to_cover: hoursToAdd
+      })
+
+    if (insertError) {
+      console.error('Error inserting covering hours:', insertError)
+      throw insertError
+    }
+
+    console.log(`Created new covering hours record for employee ${employeeId}: ${hoursToAdd} hours`)
+  }
+
+  return { success: true }
+}
+
 // Cancel Request
 export async function cancelRequest(requestId: string, userId: string) {
   const supabase = await createClient()

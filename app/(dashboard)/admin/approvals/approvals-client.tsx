@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { updateRequestStatus } from '@/app/actions/request-actions'
+import { updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
 import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays, MoreHorizontal, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { generateRequestPDF, generateRequestsExcel } from '@/lib/export-utils'
@@ -135,6 +135,26 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
     setLoading(true)
     try {
       await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined, coveringDecision || undefined)
+
+      // Track covering hours if it's a leave request with "cover" decision
+      if (selectedRequest?.request_type === 'leave' && coveringDecision === 'cover') {
+        const leaveRequest = selectedRequest.leave_requests?.[0]
+        if (leaveRequest?.start_time && leaveRequest?.end_time) {
+          // Calculate leave hours
+          const leaveHours = calculateLeaveHours(leaveRequest.start_time, leaveRequest.end_time)
+
+          // Upsert covering hours for the employee
+          try {
+            await upsertCoveringHours(selectedRequest.employee_id, leaveHours)
+            console.log(`Covering hours added for employee ${selectedRequest.employee_id}: ${leaveHours} hours`)
+          } catch (coveringError: any) {
+            console.error('Failed to update covering hours:', coveringError)
+            // Don't fail the approval if covering hours update fails
+            toast.warning('Request approved, but failed to update covering hours')
+          }
+        }
+      }
+
       toast.success('Request approved successfully!')
       setDialogOpen(false)
       setSelectedRequest(null)
