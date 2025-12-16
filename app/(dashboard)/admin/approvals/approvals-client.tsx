@@ -189,6 +189,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   }
 
   const handleViewDetails = (request: any) => {
+    console.log('Request Details:', request)
     setSelectedRequest(request)
     setDialogOpen(true)
     setNotes('')
@@ -711,13 +712,28 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       <p className="font-medium">{selectedRequest.employee.designation.designation_name}</p>
                     </div>
                   )}
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-gray-500 text-xs">Submitted</p>
-                      <p className="font-medium">{formatDateTime(selectedRequest.submitted_at)}</p>
-                    </div>
-                  </div>
+                  {selectedRequest.request_type === 'leave' && selectedRequest.leave_requests?.[0] && (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-gray-500 text-xs">Leave Start Date</p>
+                          <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].start_date), 'MMMM dd, yyyy')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-gray-500 text-xs">Leave End Date</p>
+                          <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].end_date), 'MMMM dd, yyyy')}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Leave Duration</p>
+                        <p className="font-medium capitalize">{selectedRequest.leave_requests[0].leave_duration.replace(/_/g, ' ')}</p>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <p className="text-gray-500 text-xs">Status</p>
                     <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
