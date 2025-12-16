@@ -64,6 +64,13 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     }
   }, [requestType, employeeId])
 
+  // Initialize attachment_type for covering requests with default value
+  useEffect(() => {
+    if (requestType === 'covering') {
+      setFormData((prev: any) => ({ ...prev, attachment_type: coveringAttachmentType }))
+    }
+  }, [requestType])
+
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
     if (e.target instanceof HTMLInputElement && e.target.type === 'file' && e.target.name === 'attachments') {
@@ -837,18 +844,17 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   name="covering_files"
                   type="file"
                   multiple
-                  accept="image/*,.pdf,.doc,.docx,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.txt,.yml,.yaml,.xml,.csv,.log"
+                  accept="image/*,.pdf,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.txt,.yml,.yaml,.xml,.csv,.log"
                   onChange={handleChange}
-                  required
                   className="cursor-pointer"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Upload proof of work (code files, screenshots, documents, PDFs, max 10MB each)
+                  Upload proof of work files (images, PDFs, code files, etc., max 10MB each)
                 </p>
                 {formData.covering_files && formData.covering_files.length > 0 && (
                   <div className="mt-2 space-y-1">
                     <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                      ✓ Uploaded Files:
+                      Uploaded Files:
                     </p>
                     <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
                       {formData.covering_files.map((url: string, index: number) => (
