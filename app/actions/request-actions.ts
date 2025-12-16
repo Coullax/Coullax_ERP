@@ -76,7 +76,7 @@ export async function getAllRequests(status?: string) {
       attendance_regularization_requests(*),
       asset_requests(*),
       resignations(*),
-      covering_requests(*)
+      covering_requests!covering_requests_request_id_fkey(*)
     `)
 
   // Apply status filter if provided
@@ -91,6 +91,90 @@ export async function getAllRequests(status?: string) {
 }
 
 
+// Helper function to calculate hours between two times
+function calculateHoursDifference(startTime: string, endTime: string): number {
+  const [startHour, startMin] = startTime.split(':').map(Number)
+  const [endHour, endMin] = endTime.split(':').map(Number)
+
+  const startMinutes = startHour * 60 + startMin
+  const endMinutes = endHour * 60 + endMin
+
+  return (endMinutes - startMinutes) / 60
+}
+
+// Helper function to calculate leave days (supports fractional days based on hours)
+async function calculateLeaveDays(params: {
+  employeeId: string
+  startDate: string
+  endDate: string
+  startTime?: string
+  endTime?: string
+  leaveDuration?: string
+}): Promise<number> {
+  const { employeeId, startDate, endDate, startTime, endTime, leaveDuration } = params
+
+  const isSameDay = startDate === endDate
+
+  // Get employee work schedule
+  const schedule = await getEmployeePolicySchedule(employeeId)
+  if (!schedule.schedule) {
+    throw new Error('No work schedule found for employee. Cannot calculate leave days.')
+  }
+
+  const workHoursPerDay = calculateHoursDifference(
+    schedule.schedule.work_start_time,
+    schedule.schedule.work_end_time
+  )
+
+  // Same day leave
+  if (isSameDay) {
+    // Full day
+    if (leaveDuration === 'full_day') {
+      return 1
+    }
+
+    // Half day (standard 0.5)
+    if (leaveDuration === 'half_day_morning' || leaveDuration === 'half_day_afternoon') {
+      return 0.5
+    }
+
+    // Custom time - calculate based on hours
+    if (startTime && endTime) {
+      const leaveHours = calculateHoursDifference(startTime, endTime)
+      const fractionalDays = leaveHours / workHoursPerDay
+      // Round to 2 decimal places
+      return Math.round(fractionalDays * 100) / 100
+    }
+
+    // Default to 1 day if no time specified
+    return 1
+  }
+
+  // Multi-day leave
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const daysDifference = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+
+  let totalDays = daysDifference + 1 // Full days including start and end
+
+  // Adjust for partial first day
+  if (startTime) {
+    const firstDayHours = calculateHoursDifference(startTime, schedule.schedule.work_end_time)
+    const firstDayFraction = firstDayHours / workHoursPerDay
+    totalDays = totalDays - 1 + firstDayFraction
+  }
+
+  // Adjust for partial last day
+  if (endTime) {
+    const lastDayHours = calculateHoursDifference(schedule.schedule.work_start_time, endTime)
+    const lastDayFraction = lastDayHours / workHoursPerDay
+    totalDays = totalDays - 1 + lastDayFraction
+  }
+
+  // Round to 2 decimal places
+  return Math.round(totalDays * 100) / 100
+}
+
 // Create Leave Request
 export async function createLeaveRequest(employeeId: string, data: {
   leave_type: string
@@ -103,13 +187,19 @@ export async function createLeaveRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
-  // Calculate total days
-  const start = new Date(data.start_date)
-  const end = new Date(data.end_date)
-  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  // Calculate total days using new fractional day calculation
+  const totalDays = await calculateLeaveDays({
+    employeeId,
+    startDate: data.start_date,
+    endDate: data.end_date,
+    startTime: data.start_time,
+    endTime: data.end_time,
+    leaveDuration: data.leave_duration
+  })
 
   // Check leave balance before creating request
   const { checkLeaveBalance } = await import('./policy-actions')
+  const start = new Date(data.start_date)
   const balanceCheck = await checkLeaveBalance(employeeId, totalDays, start)
 
   if (!balanceCheck.hasBalance) {

@@ -365,10 +365,18 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           ? request.covering_requests[0]
           : request.covering_requests || request.request_data
 
-        if (coveringData) {
-          if (coveringData.covering_date) details.push({ label: 'Covering Date', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
+        console.log('Covering Request Data:', coveringData)
+        console.log('Full Request Object:', request)
+
+        // if (coveringData) {
+          details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
           if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
           if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
+          // Calculate hours if both times are available
+          if (coveringData.start_time && coveringData.end_time) {
+            const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
+            details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
+          }
           if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
           if (coveringData.covering_decision) {
             const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
@@ -376,7 +384,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
             details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
           }
-        }
+        // }
         break
 
       default:
@@ -770,6 +778,41 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                           {calculateLeaveHours(
                             selectedRequest.leave_requests[0].start_time,
                             selectedRequest.leave_requests[0].end_time
+                          ).toFixed(1)} hours
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0] && (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-gray-500 text-xs">Covering Date</p>
+                          <p className="font-medium">{format(new Date(selectedRequest.covering_requests[0].covering_date), 'MMMM dd, yyyy')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-gray-500 text-xs">Covering Start Time</p>
+                          <p className="font-medium">{selectedRequest.covering_requests[0].start_time}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div>
+                          <p className="text-gray-500 text-xs">Covering End Time</p>
+                          <p className="font-medium">{selectedRequest.covering_requests[0].end_time}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Covering Hours</p>
+                        <p className="font-medium">
+                          {calculateLeaveHours(
+                            selectedRequest.covering_requests[0].start_time,
+                            selectedRequest.covering_requests[0].end_time
                           ).toFixed(1)} hours
                         </p>
                       </div>

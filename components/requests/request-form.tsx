@@ -21,6 +21,7 @@ import {
   getDepartmentHeadForEmployee,
   getEmployeePolicySchedule,
 } from '@/app/actions/request-actions'
+import { getEmployeeCurrentBalance } from '@/app/actions/policy-actions'
 import { uploadToB2 } from '@/app/actions/upload-actions'
 
 interface RequestFormProps {
@@ -45,6 +46,26 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     lunch_break_end: string
   } | null>(null)
   const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [leaveBalance, setLeaveBalance] = useState<any>(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+  const [calculatedDays, setCalculatedDays] = useState<number | null>(null)
+
+  // Helper function to format days to "Xd Yh" format
+  const formatDaysToHours = (days: number, workHoursPerDay: number = 9): string => {
+    const fullDays = Math.floor(days)
+    const remainingHours = (days - fullDays) * workHoursPerDay
+    const hours = Math.round(remainingHours * 10) / 10 // Round to 1 decimal
+    
+    if (fullDays === 0 && hours > 0) {
+      return `${hours}h`
+    } else if (fullDays > 0 && hours > 0) {
+      return `${fullDays}d ${hours}h`
+    } else if (fullDays > 0) {
+      return `${fullDays}d`
+    } else {
+      return '0h'
+    }
+  }
 
   // Check if dates are the same (for half-day leave)
   const isSameDay = startDate && endDate && startDate === endDate
@@ -134,6 +155,63 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       }))
     }
   }, [formData.leave_duration, workSchedule, requestType, isSameDay])
+
+  // Fetch employee leave balance for leave requests
+  useEffect(() => {
+    if (requestType === 'leave' && employeeId) {
+      setBalanceLoading(true)
+      getEmployeeCurrentBalance(employeeId)
+        .then((balance) => {
+          if (balance) {
+            setLeaveBalance(balance)
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to fetch leave balance:', error)
+        })
+        .finally(() => {
+          setBalanceLoading(false)
+        })
+    }
+  }, [requestType, employeeId])
+
+  // Calculate leave days in real-time
+  useEffect(() => {
+    if (requestType === 'leave' && workSchedule && startDate && endDate) {
+      const workHoursPerDay = (() => {
+        const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+        const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+        const startMinutes = startHour * 60 + startMin
+        const endMinutes = endHour * 60 + endMin
+        return (endMinutes - startMinutes) / 60
+      })()
+
+      if (isSameDay) {
+        if (formData.leave_duration === 'full_day') {
+          setCalculatedDays(1)
+        } else if (formData.leave_duration === 'half_day_morning' || formData.leave_duration === 'half_day_afternoon') {
+          setCalculatedDays(0.5)
+        } else if (formData.leave_duration === 'custom_time' && formData.start_time && formData.end_time) {
+          const [startHour, startMin] = formData.start_time.split(':').map(Number)
+          const [endHour, endMin] = formData.end_time.split(':').map(Number)
+          const leaveMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
+          const leaveHours = leaveMinutes / 60
+          const fractionalDays = Math.round((leaveHours / workHoursPerDay) * 100) / 100
+          setCalculatedDays(fractionalDays)
+        } else {
+          setCalculatedDays(null)
+        }
+      } else {
+        // Multi-day leave - simplified calculation
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        setCalculatedDays(daysDiff)
+      }
+    } else {
+      setCalculatedDays(null)
+    }
+  }, [requestType, workSchedule, startDate, endDate, formData.leave_duration, formData.start_time, formData.end_time, isSameDay])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
@@ -286,6 +364,95 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'leave':
         return (
           <>
+            {/* Leave Balance Summary */}
+            {leaveBalance && leaveBalance.policy && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Leave Balance Summary
+                    </h4>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      {leaveBalance.policy.name} • {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="flex gap-6">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                        {calculatedDays !== null 
+                          ? formatDaysToHours(Number(leaveBalance.available_leaves) - calculatedDays, workSchedule ? (() => {
+                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                            })() : 9)
+                          : formatDaysToHours(Number(leaveBalance.available_leaves), workSchedule ? (() => {
+                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                            })() : 9)
+                        }
+                      </div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                        {calculatedDays !== null ? 'Available After' : 'Available'}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                        {calculatedDays !== null 
+                          ? formatDaysToHours(Number(leaveBalance.used_leaves) + calculatedDays, workSchedule ? (() => {
+                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                            })() : 9)
+                          : formatDaysToHours(Number(leaveBalance.used_leaves), workSchedule ? (() => {
+                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                            })() : 9)
+                        }
+                      </div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                        {calculatedDays !== null ? 'Used After' : 'Used'}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        {formatDaysToHours(Number(leaveBalance.total_leaves), workSchedule ? (() => {
+                          const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                          const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                          return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                        })() : 9)}
+                      </div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">Total</div>
+                    </div>
+                  </div>
+                </div>
+                {calculatedDays !== null && (
+                  <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                      📊 Projected balance after requesting {formatDaysToHours(calculatedDays, workSchedule ? (() => {
+                        const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                        const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                        return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                      })() : 9)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {balanceLoading && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl text-center text-sm text-gray-600 dark:text-gray-400">
+                Loading leave balance...
+              </div>
+            )}
+            
+            {!balanceLoading && !leaveBalance && (
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-xl text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ No leave balance found. Please contact your administrator to assign a leave policy.
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="leave_type">Leave Type *</Label>
               <select
@@ -399,6 +566,39 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                       <p className="text-xs text-gray-500">
                         {isSameDay ? 'Leave end time' : 'Time on last day (if partial)'}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show calculated leave days */}
+                {calculatedDays !== null && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-xl border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 dark:text-green-400 text-lg">ℹ️</span>
+                      <div>
+                        <p className="text-sm font-semibold text-green-900 dark:text-green-100">
+                          This leave request is for {formatDaysToHours(calculatedDays, workSchedule ? (() => {
+                            const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                            const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                            return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                          })() : 9)}
+                        </p>
+                        {isSameDay && formData.leave_duration === 'custom_time' && workSchedule && formData.start_time && formData.end_time && (
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            {(() => {
+                              const [startHour, startMin] = formData.start_time.split(':').map(Number)
+                              const [endHour, endMin] = formData.end_time.split(':').map(Number)
+                              const leaveMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
+                              const leaveHours = leaveMinutes / 60
+                              const [wStartHour, wStartMin] = workSchedule.work_start_time.split(':').map(Number)
+                              const [wEndHour, wEndMin] = workSchedule.work_end_time.split(':').map(Number)
+                              const workMinutes = (wEndHour * 60 + wEndMin) - (wStartHour * 60 + wStartMin)
+                              const workHours = workMinutes / 60
+                              return `${leaveHours.toFixed(1)} hours out of ${workHours.toFixed(1)} hours per day`
+                            })()}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
