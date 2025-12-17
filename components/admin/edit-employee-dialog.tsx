@@ -116,7 +116,7 @@ export function EditEmployeeDialog({
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="department">Department</Label>
+                                <Label htmlFor="department">Team</Label>
                                 <select
                                     id="department"
                                     value={formData.department_id}
@@ -124,7 +124,7 @@ export function EditEmployeeDialog({
                                     className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                                 >
                                     <option value="">Select Department</option>
-                                    {departments.map((dept) => (
+                                    {departments.filter(dept => dept.parent_id).map((dept) => (
                                         <option key={dept.id} value={dept.id}>
                                             {dept.name}
                                         </option>
