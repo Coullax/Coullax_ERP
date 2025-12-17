@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import {
   deleteDepartment,
 } from '@/app/actions/department-actions'
 import { Building2, Users, Edit, Trash2, Plus, X } from 'lucide-react'
+import { clouddebugger } from 'googleapis/build/src/apis/clouddebugger'
 
 interface DepartmentsPageClientProps {
   departments: any[]
@@ -43,6 +44,11 @@ export function DepartmentsPageClient({ departments, users }: DepartmentsPageCli
   const rootDepartments = departments.filter(d => !d.parent_id)
   const getSubDepartments = (parentId: string) =>
     departments.filter(d => d.parent_id === parentId)
+
+
+  useEffect(() => {
+    console.log("users",users)
+  }, [])
 
   return (
     <div className="space-y-6">
