@@ -88,12 +88,16 @@ export async function createDepartment(data: {
 
   if (error) throw error
 
-  // Update the department head's role to 'supervisor' if a head is assigned
+  // Update the department head's role based on whether it's a root department or sub-department
   if (data.head_id) {
     const adminClient = createAdminClient()
+    // If parent_id is null/undefined, it's a root department -> DepartmentHead
+    // If parent_id exists, it's a sub-department -> TeamLead
+    const role = !data.parent_id ? 'DepartmentHead' : 'TeamLead'
+
     const { error: updateError } = await adminClient
       .from('profiles')
-      .update({ role: 'supervisor' })
+      .update({ role })
       .eq('id', data.head_id)
 
     if (updateError) throw updateError
@@ -115,10 +119,10 @@ export async function updateDepartment(
 ) {
   const supabase = await createClient()
 
-  // Get the current department head before updating
+  // Get the current department head and parent before updating
   const { data: currentDept } = await supabase
     .from('departments')
-    .select('head_id')
+    .select('head_id, parent_id')
     .eq('id', departmentId)
     .single()
 
@@ -136,12 +140,17 @@ export async function updateDepartment(
   if (data.head_id !== undefined) {
     // If the new head is different from the old head
     if (data.head_id !== oldHeadId) {
-      // Update new head's role to 'supervisor' if a new head is assigned
+      // Update new head's role based on parent_id if a new head is assigned
       if (data.head_id) {
         const adminClient = createAdminClient()
+        // Determine the role based on parent_id
+        // If parent_id is explicitly set in data, use it; otherwise keep checking the department's parent_id
+        const parentId = data.parent_id !== undefined ? data.parent_id : currentDept?.parent_id
+        const role = !parentId ? 'DepartmentHead' : 'TeamLead'
+
         const { error: updateError } = await adminClient
           .from('profiles')
-          .update({ role: 'supervisor' })
+          .update({ role })
           .eq('id', data.head_id)
 
         if (updateError) throw updateError
