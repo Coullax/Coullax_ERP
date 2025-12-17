@@ -34,14 +34,24 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.VIEW_OWN_REQUESTS,
     PERMISSIONS.VIEW_OWN_ATTENDANCE,
   ],
-  supervisor: [
+  TeamLead: [
     // All employee permissions
     PERMISSIONS.VIEW_OWN_PROFILE,
     PERMISSIONS.EDIT_OWN_PROFILE,
     PERMISSIONS.CREATE_REQUEST,
     PERMISSIONS.VIEW_OWN_REQUESTS,
     PERMISSIONS.VIEW_OWN_ATTENDANCE,
-    // Supervisor-specific permissions
+    // Team Lead-specific permissions
+    PERMISSIONS.APPROVE_REQUESTS,
+  ],
+  DepartmentHead: [
+    // All employee permissions
+    PERMISSIONS.VIEW_OWN_PROFILE,
+    PERMISSIONS.EDIT_OWN_PROFILE,
+    PERMISSIONS.CREATE_REQUEST,
+    PERMISSIONS.VIEW_OWN_REQUESTS,
+    PERMISSIONS.VIEW_OWN_ATTENDANCE,
+    // Department Head-specific permissions
     PERMISSIONS.APPROVE_REQUESTS,
   ],
   admin: [
