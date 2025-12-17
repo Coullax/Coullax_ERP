@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { User } from '@supabase/supabase-js'
 
-type UserRole = 'employee' | 'supervisor' | 'admin' | 'super_admin'
+type UserRole = 'employee' | 'TeamLead' | 'DepartmentHead' | 'admin' | 'super_admin'
 
 interface Profile {
   id: string
