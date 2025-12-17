@@ -175,7 +175,7 @@ function DepartmentCard({
                 </div>
                 {department.head && (
                   <div className="flex items-center gap-1">
-                    <span>Head:</span>
+                    <span>{level > 0 ? 'Team Lead' : 'Head'}:</span>
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {department.head.full_name}
                     </span>

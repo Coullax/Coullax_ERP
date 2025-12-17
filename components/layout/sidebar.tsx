@@ -109,7 +109,7 @@ const teamLeadSections = [
     items: [
       { icon: FileText, label: "Approvals", href: "/team-lead/approvals" },
       { icon: Users, label: "Team Members", href: "/team-lead/team-members" },
-
+      { icon: Users, label: "Team Members Attendance", href: "/team-lead/team-members-attendance" },
     ],
   },
 ];

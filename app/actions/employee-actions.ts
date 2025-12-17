@@ -46,6 +46,154 @@ export async function getAllEmployees() {
   return data
 }
 
+// Get the logged-in user's department/sub-department and team members
+export async function getTeamsAndMembers(userId: string) {
+  const supabase = await createClient()
+
+  // First, get the logged-in user's employee record to find their department
+  const { data: userEmployee, error: userError } = await supabase
+    .from('employees')
+    .select('id, department_id')
+    .eq('id', userId)
+    .single()
+
+  if (userError) throw userError
+  if (!userEmployee || !userEmployee.department_id) {
+    return [] // User not assigned to any department
+  }
+
+  // Get the user's department details
+  const { data: userDepartment, error: deptError } = await supabase
+    .from('departments')
+    .select('id, name, description, parent_id')
+    .eq('id', userEmployee.department_id)
+    .single()
+
+  if (deptError) throw deptError
+  if (!userDepartment) return []
+
+  // Check if user is in a sub-department or main department
+  const isInSubDepartment = userDepartment.parent_id !== null
+
+  if (isInSubDepartment) {
+    // User is in a sub-department - show only this sub-department and its members
+    const { data: subDeptEmployees, error: subEmpError } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        employee_id,
+        employee_no,
+        joining_date,
+        is_active,
+        date_of_birth,
+        gender,
+        department:departments(id, name),
+        designation:designations(id, title),
+        profile:profiles!employees_id_fkey(
+          id,
+          full_name,
+          email,
+          role,
+          avatar_url,
+          phone
+        )
+      `)
+      .eq('department_id', userDepartment.id)
+      .order('created_at', { ascending: false })
+
+    if (subEmpError) throw subEmpError
+
+    return [{
+      id: userDepartment.id,
+      name: userDepartment.name,
+      description: userDepartment.description,
+      members: subDeptEmployees || [],
+      subDepartments: []
+    }]
+  } else {
+    // User is in a main department - show main department + sub-departments
+    // Get employees in main department
+    const { data: mainDeptEmployees, error: mainEmpError } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        employee_id,
+        employee_no,
+        joining_date,
+        is_active,
+        date_of_birth,
+        gender,
+        department:departments(id, name),
+        designation:designations(id, title),
+        profile:profiles!employees_id_fkey(
+          id,
+          full_name,
+          email,
+          role,
+          avatar_url,
+          phone
+        )
+      `)
+      .eq('department_id', userDepartment.id)
+      .order('created_at', { ascending: false })
+
+    if (mainEmpError) throw mainEmpError
+
+    // Get sub-departments
+    const { data: subDepartments, error: subDeptError } = await supabase
+      .from('departments')
+      .select('id, name, description')
+      .eq('parent_id', userDepartment.id)
+      .order('name', { ascending: true })
+
+    if (subDeptError) throw subDeptError
+
+    // For each sub-department, get its employees
+    const subDepartmentsWithMembers = await Promise.all(
+      (subDepartments || []).map(async (subDept) => {
+        const { data: subDeptEmployees, error: subEmpError } = await supabase
+          .from('employees')
+          .select(`
+            id,
+            employee_id,
+            employee_no,
+            joining_date,
+            is_active,
+            date_of_birth,
+            gender,
+            department:departments(id, name),
+            designation:designations(id, title),
+            profile:profiles!employees_id_fkey(
+              id,
+              full_name,
+              email,
+              role,
+              avatar_url,
+              phone
+            )
+          `)
+          .eq('department_id', subDept.id)
+          .order('created_at', { ascending: false })
+
+        if (subEmpError) throw subEmpError
+
+        return {
+          ...subDept,
+          members: subDeptEmployees || []
+        }
+      })
+    )
+
+    return [{
+      id: userDepartment.id,
+      name: userDepartment.name,
+      description: userDepartment.description,
+      members: mainDeptEmployees || [],
+      subDepartments: subDepartmentsWithMembers
+    }]
+  }
+}
+
 // Update employee role
 export async function updateEmployeeRole(
   employeeId: string,
