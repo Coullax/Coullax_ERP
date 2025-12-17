@@ -185,6 +185,13 @@ export async function updateDepartment(
 export async function deleteDepartment(departmentId: string) {
   const supabase = await createClient()
 
+  // Get the department to find its head
+  const { data: department } = await supabase
+    .from('departments')
+    .select('head_id')
+    .eq('id', departmentId)
+    .single()
+
   // Check if department has employees
   const { count } = await supabase
     .from('employees')
@@ -205,12 +212,32 @@ export async function deleteDepartment(departmentId: string) {
     throw new Error('Cannot delete department with sub-departments. Please delete or reassign sub-departments first.')
   }
 
+  // Delete the department
   const { error } = await supabase
     .from('departments')
     .delete()
     .eq('id', departmentId)
 
   if (error) throw error
+
+  // Revert the head's role to 'employee' if they're no longer head of any department
+  if (department?.head_id) {
+    const { count: remainingDepts } = await supabase
+      .from('departments')
+      .select('*', { count: 'exact', head: true })
+      .eq('head_id', department.head_id)
+
+    // If they're not heading any other department, revert to employee
+    if (remainingDepts === 0) {
+      const adminClient = createAdminClient()
+      const { error: revertError } = await adminClient
+        .from('profiles')
+        .update({ role: 'employee' })
+        .eq('id', department.head_id)
+
+      if (revertError) throw revertError
+    }
+  }
 
   revalidatePath('/super-admin/departments')
   return { success: true }
