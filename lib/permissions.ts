@@ -7,7 +7,7 @@ export const PERMISSIONS = {
   CREATE_REQUEST: 'create_request',
   VIEW_OWN_REQUESTS: 'view_own_requests',
   VIEW_OWN_ATTENDANCE: 'view_own_attendance',
-  
+
   // Admin permissions
   VIEW_ALL_EMPLOYEES: 'view_all_employees',
   CREATE_EMPLOYEE: 'create_employee',
@@ -17,7 +17,7 @@ export const PERMISSIONS = {
   VIEW_ALL_ATTENDANCE: 'view_all_attendance',
   MANAGE_ATTENDANCE: 'manage_attendance',
   VIEW_ANALYTICS: 'view_analytics',
-  
+
   // Super Admin permissions
   CREATE_ADMIN: 'create_admin',
   MANAGE_DEPARTMENTS: 'manage_departments',
@@ -33,6 +33,16 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.CREATE_REQUEST,
     PERMISSIONS.VIEW_OWN_REQUESTS,
     PERMISSIONS.VIEW_OWN_ATTENDANCE,
+  ],
+  supervisor: [
+    // All employee permissions
+    PERMISSIONS.VIEW_OWN_PROFILE,
+    PERMISSIONS.EDIT_OWN_PROFILE,
+    PERMISSIONS.CREATE_REQUEST,
+    PERMISSIONS.VIEW_OWN_REQUESTS,
+    PERMISSIONS.VIEW_OWN_ATTENDANCE,
+    // Supervisor-specific permissions
+    PERMISSIONS.APPROVE_REQUESTS,
   ],
   admin: [
     // All employee permissions
