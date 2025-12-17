@@ -16,6 +16,7 @@ import {
   createAssetRequest,
   createResignation,
   createCoveringRequest,
+  createRequestForCovering,
   uploadExpenseAttachment,
   uploadResignationDocument,
   getDepartmentHeadForEmployee,
@@ -55,7 +56,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     const fullDays = Math.floor(days)
     const remainingHours = (days - fullDays) * workHoursPerDay
     const hours = Math.round(remainingHours * 10) / 10 // Round to 1 decimal
-    
+
     if (fullDays === 0 && hours > 0) {
       return `${hours}h`
     } else if (fullDays > 0 && hours > 0) {
@@ -346,6 +347,9 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         case 'covering':
           result = await createCoveringRequest(employeeId, formData)
           break
+        case 'request_for_covering':
+          result = await createRequestForCovering(employeeId, formData)
+          break
         default:
           throw new Error('Invalid request type')
       }
@@ -379,17 +383,17 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   <div className="flex gap-6">
                     <div className="text-center">
                       <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                        {calculatedDays !== null 
+                        {calculatedDays !== null
                           ? formatDaysToHours(Number(leaveBalance.available_leaves) - calculatedDays, workSchedule ? (() => {
-                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
-                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
-                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
-                            })() : 9)
+                            const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                            const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                            return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                          })() : 9)
                           : formatDaysToHours(Number(leaveBalance.available_leaves), workSchedule ? (() => {
-                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
-                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
-                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
-                            })() : 9)
+                            const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                            const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                            return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                          })() : 9)
                         }
                       </div>
                       <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
@@ -398,17 +402,17 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                     </div>
                     <div className="text-center">
                       <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                        {calculatedDays !== null 
+                        {calculatedDays !== null
                           ? formatDaysToHours(Number(leaveBalance.used_leaves) + calculatedDays, workSchedule ? (() => {
-                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
-                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
-                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
-                            })() : 9)
+                            const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                            const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                            return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                          })() : 9)
                           : formatDaysToHours(Number(leaveBalance.used_leaves), workSchedule ? (() => {
-                              const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
-                              const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
-                              return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
-                            })() : 9)
+                            const [startHour, startMin] = workSchedule.work_start_time.split(':').map(Number)
+                            const [endHour, endMin] = workSchedule.work_end_time.split(':').map(Number)
+                            return ((endHour * 60 + endMin) - (startHour * 60 + startMin)) / 60
+                          })() : 9)
                         }
                       </div>
                       <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
@@ -440,13 +444,13 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 )}
               </div>
             )}
-            
+
             {balanceLoading && (
               <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl text-center text-sm text-gray-600 dark:text-gray-400">
                 Loading leave balance...
               </div>
             )}
-            
+
             {!balanceLoading && !leaveBalance && (
               <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-xl text-sm text-yellow-800 dark:text-yellow-200">
                 ⚠️ No leave balance found. Please contact your administrator to assign a leave policy.
@@ -1140,6 +1144,56 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           </>
         )
 
+      case 'request_for_covering':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="date">Date *</Label>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_time">Start Time *</Label>
+                <Input
+                  id="start_time"
+                  name="start_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end_time">End Time *</Label>
+                <Input
+                  id="end_time"
+                  name="end_time"
+                  type="time"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <textarea
+                id="reason"
+                name="reason"
+                onChange={handleChange}
+                required
+                rows={4}
+                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                placeholder="Explain why you want to do covering for this time period..."
+              />
+            </div>
+          </>
+        )
+
       default:
         return <p>Invalid request type</p>
     }
@@ -1155,6 +1209,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       asset: 'Asset Request',
       resignation: 'Resignation',
       covering: 'Covering Request',
+      request_for_covering: 'Request for Covering',
     }
     return titles[requestType] || 'Request'
   }
