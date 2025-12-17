@@ -65,6 +65,7 @@ const REQUEST_TYPES: Record<string, { label: string; icon: any; color: string }>
   payroll_query: { label: 'Payroll', icon: FileText, color: 'yellow' },
   document_request: { label: 'Document', icon: FileText, color: 'indigo' },
   covering: { label: 'Covering', icon: FileText, color: 'teal' },
+  request_for_covering: { label: 'Request for Covering', icon: CalendarDays, color: 'emerald' },
 }
 
 const REQUEST_LINKS = [
@@ -76,6 +77,7 @@ const REQUEST_LINKS = [
   { type: 'asset', label: 'Asset Request', description: 'Request company assets or equipment' },
   { type: 'resignation', label: 'Resignation', description: 'Submit your resignation' },
   { type: 'covering', label: 'Covering Request', description: 'Apply for covering request' },
+  { type: 'request_for_covering', label: 'Request for Covering', description: 'Request to do covering for a specific time period' },
 ]
 
 type DateFilter = '1d' | '7d' | '1m' | 'custom' | 'all'
@@ -384,6 +386,12 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
           if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
           if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
         }
+        break
+
+      case 'request_for_covering':
+        if (data.covering_date) details.push({ label: 'Covering Date', value: format(new Date(data.covering_date), 'MMMM dd, yyyy'), highlight: true })
+        if (data.start_time) details.push({ label: 'Start Time', value: data.start_time })
+        if (data.end_time) details.push({ label: 'End Time', value: data.end_time })
         break
 
       default:
