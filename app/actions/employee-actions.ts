@@ -160,7 +160,7 @@ export async function getDepartments() {
 
   const { data, error } = await supabase
     .from('departments')
-    .select('id, name, description')
+    .select('id, name, description, parent_id')
     .order('name', { ascending: true })
 
   if (error) throw error
