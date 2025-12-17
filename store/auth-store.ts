@@ -21,6 +21,8 @@ interface AuthState {
   setLoading: (loading: boolean) => void
   isAdmin: () => boolean
   isSuperAdmin: () => boolean
+  isTeamLead: () => boolean
+  isDepartmentHead: () => boolean
   hasRole: (role: UserRole) => boolean
 }
 
@@ -38,6 +40,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isSuperAdmin: () => {
     const { profile } = get()
     return profile?.role === 'super_admin'
+  },
+  isTeamLead: () => {
+    const { profile } = get()
+    return profile?.role === 'TeamLead'
+  },
+  isDepartmentHead: () => {
+    const { profile } = get()
+    return profile?.role === 'DepartmentHead'
   },
   hasRole: (role) => {
     const { profile } = get()

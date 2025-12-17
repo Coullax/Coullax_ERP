@@ -99,17 +99,38 @@ const superAdminSections = [
   },
 ];
 
+const teamLeadSections = [
+  {
+    title: "Team Lead",
+    items: [
+      { icon: FileText, label: "Approvals", href: "/team-lead/approvals" },
+      { icon: Users, label: "Team Members", href: "/team-lead/team-members" },
+
+    ],
+  },
+];
+
+const departmentHeadSections = [
+  {
+    title: "Department Head",
+    items: [
+      { icon: FileText, label: "Approvals", href: "/department-head/approvals" },
+      { icon: Users, label: "Teams", href: "/department-head/teams" },
+    ],
+  },
+];
+
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, isAdmin, isSuperAdmin, setUser, setProfile } =
+  const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
     useAuthStore();
 
   const mainItems = isSuperAdmin() ? adminNavItems : isAdmin() ? adminNavItems : employeeNavItems;
-  const sections = isSuperAdmin() ? superAdminSections : [];
+  const sections = isSuperAdmin() ? superAdminSections : isTeamLead() ? teamLeadSections : isDepartmentHead() ? departmentHeadSections : [];
 
   const handleLogout = async () => {
     try {
