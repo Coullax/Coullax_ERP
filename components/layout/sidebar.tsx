@@ -29,7 +29,8 @@ import {
   Search,
   Plus,
   Paperclip,
-  Briefcase
+  Briefcase,
+  DollarSign
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -66,8 +67,10 @@ const employeeNavItems = [
   { icon: Clock, label: "Attendance", href: "/attendance" },
   { icon: Calendar, label: "Calendar", href: "/calendar" },
   { icon: FolderOpen, label: "Documents", href: "/documents" },
+  { icon: DollarSign, label: "Salary", href: "/employee/salary" },
   { icon: Bell, label: "Notifications", href: "/notifications", badge: 0 },
   { icon: HelpCircle, label: "Help Center", href: "/help" },
+
 ];
 
 const adminNavItems = [
@@ -78,6 +81,7 @@ const adminNavItems = [
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
   { icon: Briefcase, label: "Designations", href: "/admin/designations" },
   { icon: Clock, label: "Attendance", href: "/admin/attendance" },
+  { icon: DollarSign, label: "Salary", href: "/admin/salary" },
   {
     icon: FolderOpen,
     label: "Document Requests",

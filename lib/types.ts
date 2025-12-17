@@ -87,3 +87,43 @@ export interface Notification {
   link?: string
   created_at: string
 }
+
+
+export interface SalaryComponent {
+  id?: string
+  name: string
+  amount: number
+  type: 'allowance' | 'deduction' | 'bonus' | 'tax'
+  is_recurring?: boolean
+}
+
+export interface SalaryConfig {
+  id: string
+  employee_id: string
+  base_amount: number
+  currency: string
+  effective_date: string
+  recurring_allowances: SalaryComponent[]
+  recurring_deductions: SalaryComponent[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SalaryPayment {
+  id: string
+  employee_id: string
+  month: string // YYYY-MM
+  base_amount: number
+  gross_amount: number
+  net_amount: number
+  additions: SalaryComponent[]
+  deductions: SalaryComponent[]
+  status: 'draft' | 'paid'
+  payment_date?: string
+  notes?: string
+  employee_status?: 'pending' | 'approved' | 'disputed'
+  dispute_reason?: string
+  created_by?: string
+  created_at?: string
+  updated_at?: string
+}
