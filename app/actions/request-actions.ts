@@ -25,7 +25,8 @@ export async function getMyRequests(userId: string) {
       attendance_regularization_requests(*),
       asset_requests(*),
       resignations(*),
-      covering_requests(*)
+      covering_requests(*),
+      request_for_covering_requests(*)
     `)
     .eq('employee_id', userId)
     .order('submitted_at', { ascending: false })
@@ -76,7 +77,8 @@ export async function getAllRequests(status?: string) {
       attendance_regularization_requests(*),
       asset_requests(*),
       resignations(*),
-      covering_requests!covering_requests_request_id_fkey(*)
+      covering_requests!covering_requests_request_id_fkey(*),
+      request_for_covering_requests(*)
     `)
 
   // Apply status filter if provided
@@ -677,6 +679,44 @@ export async function createCoveringRequest(employeeId: string, data: {
       attachment_type: data.attachment_type || null,
       commit_link: data.commit_link || null,
       covering_files: data.covering_files || null,
+    })
+
+  if (detailError) throw detailError
+
+  revalidatePath('/requests')
+  return { success: true, requestId: request.id }
+}
+
+// Create Request for Covering
+export async function createRequestForCovering(employeeId: string, data: {
+  date: string
+  start_time: string
+  end_time: string
+  reason: string
+}) {
+  const supabase = await createClient()
+
+  const { data: request, error: requestError } = await supabase
+    .from('requests')
+    .insert({
+      employee_id: employeeId,
+      request_type: 'request_for_covering',
+      status: 'pending',
+    })
+    .select()
+    .single()
+
+  if (requestError) throw requestError
+
+  const { error: detailError } = await supabase
+    .from('request_for_covering_requests')
+    .insert({
+      request_id: request.id,
+      employee_id: employeeId,
+      date: data.date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      reason: data.reason,
     })
 
   if (detailError) throw detailError
