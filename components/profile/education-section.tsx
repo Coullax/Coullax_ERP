@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { getEmployeeEducation, addEducation, deleteEducation } from '@/app/actions/profile-actions'
-import { Plus, Trash2, GraduationCap } from 'lucide-react'
+import { Plus, Trash2, GraduationCap, CheckCircle, Shield } from 'lucide-react'
 
 interface EducationSectionProps {
   employeeId: string
@@ -23,12 +23,19 @@ interface Education {
   start_year?: number
   end_year?: number
   grade?: string
+  isverified?: boolean
+  verified_at?: string
+  verified_by?: string
 }
 
 export function EducationSection({ employeeId }: EducationSectionProps) {
   const [education, setEducation] = useState<Education[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+
+  // Check if education is verified
+  const isEducationVerified = education.length > 0 && education.every(edu => edu.isverified === true)
+
   const [formData, setFormData] = useState({
     degree: '',
     institution: '',
@@ -102,17 +109,37 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
             <GraduationCap className="w-5 h-5" />
             Education
           </CardTitle>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            variant="outline"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Education
-          </Button>
+          {!isEducationVerified && (
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              variant="outline"
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Education
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Verification Status Badge */}
+        {isEducationVerified && (
+          <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl">
+            <div className="flex items-center gap-3">
+              <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div>
+                <p className="font-semibold text-green-900 dark:text-green-100">Education Verified</p>
+                {education[0]?.verified_at && (
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Verified on {new Date(education[0].verified_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            </div>
+            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+          </div>
+        )}
+
         <AnimatePresence>
           {showForm && (
             <motion.form
@@ -209,7 +236,15 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="font-semibold">{edu.degree}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold">{edu.degree}</h4>
+                      {edu.isverified && (
+                        <Badge variant="default" className="bg-green-600">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{edu.institution}</p>
                     {edu.field_of_study && (
                       <p className="text-sm text-gray-500 mt-1">{edu.field_of_study}</p>
@@ -225,14 +260,16 @@ export function EducationSection({ employeeId }: EducationSectionProps) {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(edu.id)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {!isEducationVerified && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(edu.id)}
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             ))}
