@@ -202,7 +202,7 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
 
                         {/* Unit Price */}
                         <div>
-                            <Label htmlFor="unit_price">Unit Price (₹)</Label>
+                            <Label htmlFor="unit_price">Unit Price ($)</Label>
                             <Input
                                 id="unit_price"
                                 type="number"
@@ -216,7 +216,7 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
 
                         {/* Location */}
                         <div className="col-span-2">
-                            <Label htmlFor="location">Location</Label>
+                            <Label htmlFor="location">Location / Department</Label>
                             <Input
                                 id="location"
                                 value={formData.location}
