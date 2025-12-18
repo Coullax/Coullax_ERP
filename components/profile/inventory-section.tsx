@@ -168,7 +168,7 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                         <Package className="w-5 h-5" />
                         Inventory
                     </CardTitle>
-                    {!isInventoryVerified && (
+                    {/* {!isInventoryVerified && (
                         <Button
                             onClick={() => setShowForm(!showForm)}
                             variant="outline"
@@ -177,7 +177,7 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                             <Plus className="w-4 h-4 mr-2" />
                             Add Item
                         </Button>
-                    )}
+                    )} */}
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -321,11 +321,11 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                             const Icon = getCategoryIcon(items[0]?.category?.icon)
                             return (
                                 <div key={categoryName} className="space-y-3">
-                                    <h3 className="font-semibold text-lg flex items-center gap-2">
+                                    {/* <h3 className="font-semibold text-lg flex items-center gap-2">
                                         <Icon className="w-5 h-5" />
                                         {categoryName}
                                         <Badge variant="secondary" className="ml-2">{items.length}</Badge>
-                                    </h3>
+                                    </h3> */}
                                     <div className="space-y-2">
                                         {items.map((item) => (
                                             <motion.div
@@ -365,7 +365,7 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                                                             <p className="text-sm text-gray-500 mt-2">{item.notes}</p>
                                                         )}
                                                     </div>
-                                                    {!isInventoryVerified && (
+                                                    {/* {!isInventoryVerified && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
@@ -374,7 +374,7 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </Button>
-                                                    )}
+                                                    )} */}
                                                 </div>
                                             </motion.div>
                                         ))}
