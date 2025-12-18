@@ -31,7 +31,9 @@ import {
   Paperclip,
   Briefcase,
   DollarSign,
-  UserSquare2
+  UserSquare2,
+  Package,
+  Wrench,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -64,6 +66,7 @@ import { getPendingVerificationsCount } from "@/app/actions/verification-actions
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
+  { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: FileCheck, label: "Verification", href: "/verification" },
   { icon: FileText, label: "Requests", href: "/requests" },
   { icon: Clock, label: "Attendance", href: "/attendance" },
@@ -104,6 +107,9 @@ const superAdminSections = [
       { icon: UserCog, label: "Roles", href: "/super-admin/roles" },
       { icon: History, label: "Audit Logs", href: "/super-admin/audit-logs" },
       { icon: Settings, label: "Settings", href: "/super-admin/settings" },
+      { icon: Package, label: "General Inventory", href: "/super-admin/inventory" },
+      { icon: Package, label: "Bin Inventory", href: "/super-admin/bin-inventory" },
+      { icon: Wrench, label: "Maintenance Inventory", href: "/super-admin/maintenance-inventory" },
     ],
   },
 ];
@@ -143,7 +149,7 @@ export function Sidebar() {
   useEffect(() => {
     const fetchPendingCount = async () => {
       const isUserAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
-      
+
       if (isUserAdmin) {
         try {
           const count = await getPendingVerificationsCount();
@@ -155,20 +161,20 @@ export function Sidebar() {
     };
 
     fetchPendingCount();
-    
+
     // Refresh count every 30 seconds
     const interval = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(interval);
   }, [profile?.role]);
 
   // Update admin nav items with pending count
-  const mainItems = isSuperAdmin() || isAdmin() 
+  const mainItems = isSuperAdmin() || isAdmin()
     ? adminNavItems.map(item => {
-        const updatedItem = item.href === '/admin/verifications' 
-          ? { ...item, badge: pendingVerificationsCount }
-          : item;
-        return updatedItem;
-      })
+      const updatedItem = item.href === '/admin/verifications'
+        ? { ...item, badge: pendingVerificationsCount }
+        : item;
+      return updatedItem;
+    })
     : employeeNavItems;
   const sections = isSuperAdmin() ? superAdminSections : isTeamLead() ? teamLeadSections : isDepartmentHead() ? departmentHeadSections : [];
 
@@ -208,7 +214,12 @@ export function Sidebar() {
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <Badge className="h-5 min-w-5 flex items-center justify-center px-1.5 bg-red-500 text-white">
+              <Badge className={cn(
+                "h-5 min-w-5 flex items-center justify-center px-1.5",
+                isActive
+                  ? "bg-primary-foreground text-primary"
+                  : "bg-primary text-primary-foreground"
+              )}>
                 {item.badge}
               </Badge>
             )}
