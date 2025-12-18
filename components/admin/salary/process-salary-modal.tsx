@@ -81,6 +81,10 @@ export function ProcessSalaryModal({
 
     // Fetch config when employeeId changes or modal opens
     // Fetch config or existing payment when employeeId/month changes
+    // Fetch config when employeeId changes or modal opens
+    // Fetch config or existing payment when employeeId/month changes
+    const currentMonth = form.watch("month")
+
     useEffect(() => {
         if (!employeeId || !isOpen) return
 
@@ -89,7 +93,6 @@ export function ProcessSalaryModal({
         const fetchContext = async () => {
             try {
                 // 1. Check for existing payment for this month
-                const currentMonth = form.getValues("month")
                 const paymentRes = await fetch(`/api/admin/salaries/process?month=${currentMonth}&employee_id=${employeeId}`)
                 const paymentData = await paymentRes.json()
                 const existingPayment = paymentData.payments?.[0]
@@ -138,7 +141,7 @@ export function ProcessSalaryModal({
         }
 
         fetchContext()
-    }, [employeeId, isOpen, form.watch("month")])
+    }, [employeeId, isOpen, form, currentMonth])
 
 
     const { fields: additionFields, append: appendAddition, remove: removeAddition } = useFieldArray({
