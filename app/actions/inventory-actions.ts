@@ -127,6 +127,32 @@ export async function deleteInventoryItem(id: string) {
 }
 
 /**
+ * Update an inventory item
+ */
+export async function updateInventoryItem(id: string, item: {
+    category_id?: string
+    item_name?: string
+    item_type?: string
+    serial_number?: string
+    assigned_date?: string
+    condition?: string
+    notes?: string
+}) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('employee_inventory')
+        .update(item)
+        .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/profile')
+    revalidatePath('/admin/employees')
+    return { success: true }
+}
+
+/**
  * Verify all inventory items for an employee (Admin only)
  */
 export async function verifyEmployeeInventory(employeeId: string, verifiedByAdminId: string) {
