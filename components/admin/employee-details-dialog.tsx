@@ -78,10 +78,10 @@ export function EmployeeDetailsDialog({
                                 <GraduationCap className="w-4 h-4" />
                                 Education
                             </TabsTrigger>
-                            <TabsTrigger value="skills" className="gap-2">
+                            {/* <TabsTrigger value="skills" className="gap-2">
                                 <Award className="w-4 h-4" />
                                 Skills
-                            </TabsTrigger>
+                            </TabsTrigger> */}
                             <TabsTrigger value="inventory" className="gap-2">
                                 <Package className="w-4 h-4" />
                                 Inventory
