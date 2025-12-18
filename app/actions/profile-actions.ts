@@ -64,6 +64,38 @@ export async function updateEmployeeInfo(userId: string, data: any) {
   return { success: true }
 }
 
+export async function verifyEmployeeProfile(userId: string, verifiedByAdminId: string) {
+  const supabase = await createClient()
+
+  console.log('Attempting to verify employee:', { userId, verifiedByAdminId })
+
+  const { data, error } = await supabase
+    .from('employees')
+    .update({
+      isverified: true,
+      verified_at: new Date().toISOString(),
+      verified_by: verifiedByAdminId,
+    })
+    .eq('id', userId)
+    .select()
+
+  if (error) {
+    console.error('Verification error:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    })
+    throw new Error(`Failed to verify profile: ${error.message}`)
+  }
+
+  console.log('Verification successful:', data)
+
+  revalidatePath('/profile')
+  revalidatePath('/admin/employees')
+  return { success: true }
+}
+
 export async function getEmployeeEducation(employeeId: string) {
   const supabase = await createClient()
 
