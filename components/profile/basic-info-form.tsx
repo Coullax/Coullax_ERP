@@ -290,7 +290,7 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      {/* <div className="flex justify-end">
         <Button type="submit" disabled={loading} size="lg">
           {loading ? (
             'Saving...'
@@ -301,7 +301,7 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
             </>
           )}
         </Button>
-      </div>
+      </div> */}
     </form>
   )
 }
