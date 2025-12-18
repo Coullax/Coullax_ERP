@@ -18,12 +18,16 @@ interface BasicInfoFormProps {
 
 export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps) {
   const [loading, setLoading] = useState(false)
+
+  // Disable form if employee is verified
+  const isFormDisabled = employee?.isverified === true
+
   const [formData, setFormData] = useState({
     // Profile data
     full_name: profile?.full_name || '',
     phone: profile?.phone || '',
     email: profile?.email || '',
-    
+
     // Employee data
     employee_id: employee?.employee_id || '',
     date_of_birth: employee?.date_of_birth || '',
@@ -31,14 +35,14 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
     blood_group: employee?.blood_group || '',
     marital_status: employee?.marital_status || '',
     joining_date: employee?.joining_date || '',
-    
+
     // Address
     address: employee?.address || '',
     city: employee?.city || '',
     state: employee?.state || '',
     postal_code: employee?.postal_code || '',
     country: employee?.country || 'USA',
-    
+
     // Emergency contact
     emergency_contact_name: employee?.emergency_contact_name || '',
     emergency_contact_phone: employee?.emergency_contact_phone || '',
@@ -99,6 +103,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="full_name"
               value={formData.full_name}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
               required
             />
           </div>
@@ -121,6 +127,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               type="tel"
               value={formData.phone}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -141,6 +149,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               type="date"
               value={formData.date_of_birth}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -150,7 +160,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="gender"
               value={formData.gender}
               onChange={handleChange}
-              className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              disabled={isFormDisabled}
+              className={`flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${isFormDisabled ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed' : ''}`}
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
@@ -166,7 +177,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="blood_group"
               value={formData.blood_group}
               onChange={handleChange}
-              className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              disabled={isFormDisabled}
+              className={`flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${isFormDisabled ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed' : ''}`}
             >
               <option value="">Select blood group</option>
               <option value="A+">A+</option>
@@ -186,7 +198,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="marital_status"
               value={formData.marital_status}
               onChange={handleChange}
-              className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              disabled={isFormDisabled}
+              className={`flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${isFormDisabled ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed' : ''}`}
             >
               <option value="">Select status</option>
               <option value="single">Single</option>
@@ -211,6 +224,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="address"
               value={formData.address}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -220,6 +235,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="city"
               value={formData.city}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -229,6 +246,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="state"
               value={formData.state}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -238,6 +257,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="postal_code"
               value={formData.postal_code}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -247,6 +268,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="country"
               value={formData.country}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
         </CardContent>
@@ -265,6 +288,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="emergency_contact_name"
               value={formData.emergency_contact_name}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2">
@@ -275,6 +300,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               type="tel"
               value={formData.emergency_contact_phone}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
             />
           </div>
           <div className="space-y-2 md:col-span-2">
@@ -284,6 +311,8 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               name="emergency_contact_relationship"
               value={formData.emergency_contact_relationship}
               onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
               placeholder="e.g., Spouse, Parent, Sibling"
             />
           </div>
