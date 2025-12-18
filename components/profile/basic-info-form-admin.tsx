@@ -94,10 +94,10 @@ export function BasicInfoFormAdmin({ userId, profile, employee }: BasicInfoFormA
                 throw new Error('Admin user ID not found')
             }
 
-            toast.success('Profile verified and updated successfully!')
+            toast.success('Basic info verified and updated successfully!')
         } catch (error: any) {
             console.error('Verification failed:', error)
-            toast.error(error.message || 'Failed to verify profile')
+            toast.error(error.message || 'Failed to verify basic info')
         } finally {
             setLoading(false)
         }
@@ -342,7 +342,7 @@ export function BasicInfoFormAdmin({ userId, profile, employee }: BasicInfoFormA
                     ) : (
                         <>
                             <CheckCircle className="w-4 h-4 mr-2" />
-                            {isVerified ? 'Update & Re-verify Profile' : 'Verify Profile'}
+                            {isVerified ? 'Update & Re-verify Basic Info' : 'Verify Basic Info'}
                         </>
                     )}
                 </Button>
