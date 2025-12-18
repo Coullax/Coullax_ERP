@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -30,7 +31,7 @@ import {
 } from '@/components/ui/pagination'
 import { toast } from 'sonner'
 import { updateEmployeeRole, updateEmployeeTeam, toggleEmployeeActiveStatus } from '@/app/actions/employee-actions'
-import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus, Edit, MoreHorizontal, Eye, UserCheck, UserX } from 'lucide-react'
+import { Users, Mail, Phone, Calendar, Building2, Briefcase, Plus, Edit, MoreHorizontal, Eye, UserCheck, UserX, Search } from 'lucide-react'
 import { getInitials, formatDate } from '@/lib/utils'
 import { CreateEmployeeDialog } from '@/components/admin/create-employee-dialog'
 import { EditEmployeeDialog } from '@/components/admin/edit-employee-dialog'
@@ -53,15 +54,23 @@ export function EmployeesPageClient({
 }: EmployeesPageClientProps) {
   const [loading, setLoading] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null)
   const [viewingEmployee, setViewingEmployee] = useState<any | null>(null)
   const [offset, setOffset] = useState(0)
   const limit = 10
 
-  const filteredEmployees = filter === 'all'
-    ? employees
-    : employees.filter(emp => emp.profile?.role === filter)
+  // Filter by role and search query
+  const filteredEmployees = employees
+    .filter(emp => filter === 'all' || emp.profile?.role === filter)
+    .filter(emp => {
+      if (!searchQuery) return true
+      const query = searchQuery.toLowerCase()
+      const name = (emp.profile?.full_name || '').toLowerCase()
+      const email = (emp.profile?.email || '').toLowerCase()
+      return name.includes(query) || email.includes(query)
+    })
 
   // Pagination calculations
   const paginatedEmployees = filteredEmployees.slice(offset, offset + limit)
@@ -237,13 +246,27 @@ export function EmployeesPageClient({
 
       {/* Employees Table */}
       <Card>
-        <CardHeader className="border-b">
+        <CardHeader className="border-b space-y-4">
           <CardTitle className="flex items-center justify-between text-lg">
             <span>Employees</span>
             <span className="text-sm font-normal text-gray-500">
               Showing {Math.min(offset + limit, filteredEmployees.length)} of {filteredEmployees.length}
             </span>
           </CardTitle>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setOffset(0) // Reset to first page when searching
+              }}
+              className="pl-10"
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {filteredEmployees.length === 0 ? (
