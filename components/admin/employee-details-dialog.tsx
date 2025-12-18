@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,8 @@ import { SkillsSection } from '@/components/profile/skills-section'
 import { PasswordResetForm } from '@/components/profile/password-reset-form'
 import { BasicInfoFormAdmin } from '../profile/basic-info-form-admin'
 import { EducationSectionAdmin } from '../profile/education-section-admin'
+import { InventorySectionAdmin } from '../profile/inventory-section-admin'
+import { getEmployeeInventory } from '@/app/actions/inventory-actions'
 
 interface EmployeeDetailsDialogProps {
     employee: any
@@ -24,6 +27,32 @@ export function EmployeeDetailsDialog({
 }: EmployeeDetailsDialogProps) {
     // Combine profile and employee data for the profile components
     const profile = employee.profile || {}
+    const [inventory, setInventory] = useState<any[]>([])
+    const [loadingInventory, setLoadingInventory] = useState(true)
+
+    // Load inventory data
+    useEffect(() => {
+        const loadInventory = async () => {
+            try {
+                const data = await getEmployeeInventory(employee.id)
+                setInventory(data)
+            } catch (error) {
+                console.error('Failed to load inventory:', error)
+            } finally {
+                setLoadingInventory(false)
+            }
+        }
+        loadInventory()
+    }, [employee.id])
+
+    const handleInventoryVerified = async () => {
+        try {
+            const data = await getEmployeeInventory(employee.id)
+            setInventory(data)
+        } catch (error) {
+            console.error('Failed to reload inventory:', error)
+        }
+    }
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -88,10 +117,10 @@ export function EmployeeDetailsDialog({
                                 <Package className="w-4 h-4" />
                                 Inventory
                             </TabsTrigger>
-                            <TabsTrigger value="emergency" className="gap-2">
+                            {/* <TabsTrigger value="emergency" className="gap-2">
                                 <Phone className="w-4 h-4" />
                                 Emergency
-                            </TabsTrigger>
+                            </TabsTrigger> */}
                             <TabsTrigger value="settings" className="gap-2">
                                 <Settings className="w-4 h-4" />
                                 Settings
@@ -115,12 +144,19 @@ export function EmployeeDetailsDialog({
                         </TabsContent>
 
                         <TabsContent value="inventory">
-                            <Card>
-                                <CardContent className="p-12 text-center text-gray-500">
-                                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                    <p>Inventory management coming soon</p>
-                                </CardContent>
-                            </Card>
+                            {loadingInventory ? (
+                                <Card>
+                                    <CardContent className="p-12 text-center text-gray-500">
+                                        <p>Loading inventory...</p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <InventorySectionAdmin
+                                    employeeId={employee.id}
+                                    inventory={inventory}
+                                    onVerified={handleInventoryVerified}
+                                />
+                            )}
                         </TabsContent>
 
                         <TabsContent value="emergency">
