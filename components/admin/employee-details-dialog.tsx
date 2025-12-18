@@ -11,6 +11,7 @@ import { EducationSection } from '@/components/profile/education-section'
 import { SkillsSection } from '@/components/profile/skills-section'
 import { PasswordResetForm } from '@/components/profile/password-reset-form'
 import { BasicInfoFormAdmin } from '../profile/basic-info-form-admin'
+import { EducationSectionAdmin } from '../profile/education-section-admin'
 
 interface EmployeeDetailsDialogProps {
     employee: any
@@ -98,7 +99,7 @@ export function EmployeeDetailsDialog({
                         </TabsList>
 
                         <TabsContent value="basic">
-                            <BasicInfoFormAdmin 
+                            <BasicInfoFormAdmin
                                 userId={profile?.id}
                                 profile={profile}
                                 employee={employee}
@@ -106,7 +107,7 @@ export function EmployeeDetailsDialog({
                         </TabsContent>
 
                         <TabsContent value="education">
-                            <EducationSection employeeId={profile?.id} />
+                            <EducationSectionAdmin employeeId={employee.id} employee={employee} />
                         </TabsContent>
 
                         <TabsContent value="skills">
