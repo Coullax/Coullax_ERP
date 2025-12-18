@@ -31,6 +31,7 @@ import {
     deleteInventoryItem,
     getInventoryCategories,
 } from '@/app/actions/inventory-actions'
+import { getGeneralInventory, type GeneralInventoryItem } from '@/app/actions/general-inventory-actions'
 import { Package, CheckCircle, Shield, ShieldCheck, Laptop, Phone, Key, Home, Briefcase, Pencil, Plus, Edit, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 
@@ -54,11 +55,17 @@ interface InventoryItem {
     isverified?: boolean
     verified_at?: string
     verified_by?: string
+    general_inventory_id?: string
+    quantity_assigned?: number
     category?: {
         id: string
         name: string
         description?: string
         icon?: string
+    }
+    general_item?: {
+        item_name: string
+        category: string
     }
 }
 
@@ -87,6 +94,8 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState<string | null>(null)
     const [categories, setCategories] = useState<Category[]>([])
+    const [generalInventory, setGeneralInventory] = useState<GeneralInventoryItem[]>([])
+    const [selectedGeneralItem, setSelectedGeneralItem] = useState<GeneralInventoryItem | null>(null)
     const [formData, setFormData] = useState({
         category_id: '',
         item_name: '',
@@ -95,6 +104,8 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
         assigned_date: '',
         condition: '',
         notes: '',
+        general_inventory_id: '',
+        quantity_assigned: '1',
     })
     const user = useAuthStore((state) => state.user)
 
@@ -108,6 +119,17 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
         } catch (error) {
             console.error('Failed to load categories:', error)
             toast.error('Failed to load categories')
+        }
+    }, [])
+
+    const loadGeneralInventory = useCallback(async () => {
+        try {
+            const items = await getGeneralInventory({ status: 'available' })
+            // Only show items with quantity > 0
+            setGeneralInventory(items.filter(item => item.quantity > 0))
+        } catch (error) {
+            console.error('Failed to load general inventory:', error)
+            toast.error('Failed to load general inventory')
         }
     }, [])
 
@@ -141,6 +163,7 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
 
     const handleOpenDialog = async (item?: InventoryItem) => {
         await loadCategories()
+        await loadGeneralInventory()
         if (item) {
             setEditingItem(item)
             setFormData({
@@ -151,9 +174,12 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                 assigned_date: item.assigned_date || '',
                 condition: item.condition || '',
                 notes: item.notes || '',
+                general_inventory_id: item.general_inventory_id || '',
+                quantity_assigned: item.quantity_assigned?.toString() || '1',
             })
         } else {
             setEditingItem(null)
+            setSelectedGeneralItem(null)
             setFormData({
                 category_id: '',
                 item_name: '',
@@ -162,6 +188,8 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                 assigned_date: '',
                 condition: '',
                 notes: '',
+                general_inventory_id: '',
+                quantity_assigned: '1',
             })
         }
         setIsDialogOpen(true)
@@ -173,19 +201,33 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
     }
 
     const handleSave = async () => {
-        if (!formData.category_id || !formData.item_name) {
-            toast.error('Please fill in category and item name')
+        // Only allow assignment from general inventory
+        if (!editingItem && !formData.general_inventory_id) {
+            toast.error('Please select an item from general inventory')
+            return
+        }
+
+        if (!editingItem && !formData.quantity_assigned) {
+            toast.error('Please specify quantity to assign')
             return
         }
 
         setSaving(true)
         try {
+            // Clean up data - convert empty strings to undefined for UUID fields
+            const dataToSave = {
+                ...formData,
+                general_inventory_id: formData.general_inventory_id || undefined,
+                category_id: formData.category_id || undefined,
+                quantity_assigned: formData.quantity_assigned ? parseInt(formData.quantity_assigned) : undefined,
+            }
+
             if (editingItem) {
-                await updateInventoryItem(editingItem.id, formData)
+                await updateInventoryItem(editingItem.id, dataToSave)
                 toast.success('Item updated successfully!')
             } else {
-                await addInventoryItem(employeeId, formData)
-                toast.success('Item added successfully!')
+                await addInventoryItem(employeeId, dataToSave)
+                toast.success('Item assigned successfully!')
             }
             handleCloseDialog()
             onVerified?.()
@@ -228,6 +270,21 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
     const getCategoryIcon = (iconName?: string) => {
         if (!iconName) return Package
         return categoryIcons[iconName] || Package
+    }
+
+    const handleGeneralItemSelect = (itemId: string) => {
+        const item = generalInventory.find(i => i.id === itemId)
+        if (item) {
+            setSelectedGeneralItem(item)
+            setFormData({
+                ...formData,
+                general_inventory_id: item.id,
+                item_name: item.item_name,
+                item_type: item.category || '',
+                serial_number: item.serial_number || '',
+                condition: item.condition || '',
+            })
+        }
     }
 
     return (
@@ -375,51 +432,86 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="category">Category *</Label>
-                            <Select
-                                value={formData.category_id}
-                                onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-                            >
-                                <SelectTrigger id="category">
-                                    <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((cat) => (
-                                        <SelectItem key={cat.id} value={cat.id}>
-                                            {cat.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="item_name">Item Name *</Label>
-                            <Input
-                                id="item_name"
-                                value={formData.item_name}
-                                onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
-                                placeholder="e.g. MacBook Pro"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="item_type">Item Type</Label>
-                            <Input
-                                id="item_type"
-                                value={formData.item_type}
-                                onChange={(e) => setFormData({ ...formData, item_type: e.target.value })}
-                                placeholder="e.g. 16-inch M1 Pro"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="serial_number">Serial Number</Label>
-                            <Input
-                                id="serial_number"
-                                value={formData.serial_number}
-                                onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-                                placeholder="e.g. SN123456789"
-                            />
-                        </div>
+                        {/* General Inventory Selection - Required */}
+                        {!editingItem && (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="general_item">Select Item from General Inventory *</Label>
+                                    <Select
+                                        value={formData.general_inventory_id}
+                                        onValueChange={handleGeneralItemSelect}
+                                        required
+                                    >
+                                        <SelectTrigger id="general_item">
+                                            <SelectValue placeholder="Select an item from inventory" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {generalInventory.length === 0 ? (
+                                                <SelectItem value="no-items" disabled>
+                                                    No items available in general inventory
+                                                </SelectItem>
+                                            ) : (
+                                                generalInventory.map((item) => (
+                                                    <SelectItem key={item.id} value={item.id}>
+                                                        {item.item_name} - {item.category} (Available: {item.quantity})
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    {selectedGeneralItem && (
+                                        <div className="text-sm space-y-1">
+                                            <p className="text-muted-foreground">
+                                                Available quantity: <span className="font-semibold text-foreground">{selectedGeneralItem.quantity}</span>
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                Category: <span className="font-semibold text-foreground">{selectedGeneralItem.category}</span>
+                                            </p>
+                                            {selectedGeneralItem.serial_number && (
+                                                <p className="text-muted-foreground">
+                                                    Serial: <span className="font-semibold text-foreground">{selectedGeneralItem.serial_number}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Quantity Assignment */}
+                                {formData.general_inventory_id && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="quantity_assigned">Quantity to Assign *</Label>
+                                        <Input
+                                            id="quantity_assigned"
+                                            type="number"
+                                            min="1"
+                                            max={selectedGeneralItem?.quantity || 999}
+                                            value={formData.quantity_assigned}
+                                            onChange={(e) => setFormData({ ...formData, quantity_assigned: e.target.value })}
+                                            required
+                                        />
+                                        {selectedGeneralItem && (
+                                            <p className="text-xs text-muted-foreground">
+                                                Max: {selectedGeneralItem.quantity}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Show item details for editing */}
+                        {editingItem && (
+                            <div className="bg-muted p-3 rounded-lg space-y-1">
+                                <p className="text-sm font-medium">{formData.item_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {formData.item_type && `${formData.item_type} • `}
+                                    {formData.serial_number && `SN: ${formData.serial_number} • `}
+                                    Quantity: {formData.quantity_assigned}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Assigned Date */}
                         <div className="grid gap-2">
                             <Label htmlFor="assigned_date">Assigned Date</Label>
                             <Input
@@ -429,31 +521,15 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                                 onChange={(e) => setFormData({ ...formData, assigned_date: e.target.value })}
                             />
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="condition">Condition</Label>
-                            <Select
-                                value={formData.condition}
-                                onValueChange={(value) => setFormData({ ...formData, condition: value })}
-                            >
-                                <SelectTrigger id="condition">
-                                    <SelectValue placeholder="Select condition" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="New">New</SelectItem>
-                                    <SelectItem value="Excellent">Excellent</SelectItem>
-                                    <SelectItem value="Good">Good</SelectItem>
-                                    <SelectItem value="Fair">Fair</SelectItem>
-                                    <SelectItem value="Poor">Poor</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+
+                        {/* Notes */}
                         <div className="grid gap-2">
                             <Label htmlFor="notes">Notes</Label>
                             <Textarea
                                 id="notes"
                                 value={formData.notes}
                                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                placeholder="Additional notes about this item..."
+                                placeholder="Additional notes about this assignment..."
                                 rows={3}
                             />
                         </div>
