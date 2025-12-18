@@ -45,11 +45,6 @@ export function DepartmentsPageClient({ departments, users }: DepartmentsPageCli
   const getSubDepartments = (parentId: string) =>
     departments.filter(d => d.parent_id === parentId)
 
-
-  useEffect(() => {
-    console.log("users",users)
-  }, [])
-
   return (
     <div className="space-y-6">
       {/* Header */}

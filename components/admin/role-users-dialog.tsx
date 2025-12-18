@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -32,18 +32,18 @@ export function RoleUsersDialog({ role, users, onClose }: RoleUsersDialogProps) 
     const [roleUsers, setRoleUsers] = useState<any[]>([])
     const [selectedUserId, setSelectedUserId] = useState<string>('')
 
-    useEffect(() => {
-        loadUsers()
-    }, [role.id])
-
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         try {
             const data = await getUsersByRole(role.id)
             setRoleUsers(data)
         } catch (error) {
             console.error('Failed to load users:', error)
         }
-    }
+    }, [role.id])
+
+    useEffect(() => {
+        loadUsers()
+    }, [loadUsers])
 
     const handleAddUser = async () => {
         if (!selectedUserId) return

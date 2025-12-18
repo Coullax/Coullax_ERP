@@ -57,7 +57,6 @@ export default async function VisitorsPage() {
         .order('created_at', { ascending: false })
 
     // Transform employees data for the select
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const employeeOptions = employees?.map((emp: any) => ({
         id: emp.id,
         name: emp.profile?.full_name || 'Unknown',

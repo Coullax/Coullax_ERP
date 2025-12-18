@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
     Table,
     TableBody,
@@ -27,7 +27,7 @@ export function PayrollProcessor() {
     const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true)
         try {
             // Fetch all employees (using config endpoint which returns all)
@@ -46,11 +46,11 @@ export function PayrollProcessor() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [month])
 
     useEffect(() => {
         fetchData()
-    }, [month])
+    }, [fetchData])
 
     const handleProcess = (employee: any) => {
         setSelectedEmployee(employee)

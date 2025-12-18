@@ -99,7 +99,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     if (requestType === 'covering') {
       setFormData((prev: any) => ({ ...prev, attachment_type: coveringAttachmentType }))
     }
-  }, [requestType])
+  }, [requestType, coveringAttachmentType])
 
   // Fetch employee work schedule for leave requests
   useEffect(() => {

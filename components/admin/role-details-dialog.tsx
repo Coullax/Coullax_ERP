@@ -19,19 +19,18 @@ export function RoleDetailsDialog({ role, onClose }: RoleDetailsDialogProps) {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        const loadRoleDetails = async () => {
+            try {
+                const data = await getRoleById(role.id)
+                setRoleDetails(data)
+            } catch (error) {
+                console.error('Failed to load role details:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
         loadRoleDetails()
     }, [role.id])
-
-    const loadRoleDetails = async () => {
-        try {
-            const data = await getRoleById(role.id)
-            setRoleDetails(data)
-        } catch (error) {
-            console.error('Failed to load role details:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
 
     if (loading) {
         return (

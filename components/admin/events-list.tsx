@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import Image from 'next/image';
 import {
   Select,
   SelectContent,
@@ -174,10 +175,12 @@ export function EventsList({
                     {event.creator ? (
                       <div className="flex items-center gap-2">
                         {event.creator.avatar_url ? (
-                          <img
+                          <Image
                             src={event.creator.avatar_url}
                             alt={event.creator.full_name}
-                            className="w-6 h-6 rounded-full"
+                            width={24}
+                            height={24}
+                            className="rounded-full"
                           />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">
@@ -208,9 +211,9 @@ export function EventsList({
                         {event.is_all_day
                           ? 'All day'
                           : `${format(new Date(event.start_time), 'HH:mm')} - ${format(
-                              new Date(event.end_time),
-                              'HH:mm'
-                            )}`}
+                            new Date(event.end_time),
+                            'HH:mm'
+                          )}`}
                       </div>
                     </div>
                   </TableCell>
