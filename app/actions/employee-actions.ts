@@ -48,10 +48,10 @@ export async function getAllEmployees() {
 
 // Get the logged-in user's department/sub-department and team members
 export async function getTeamsAndMembers(userId: string) {
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // First, get the logged-in user's employee record to find their department
-  const { data: userEmployee, error: userError } = await supabase
+  const { data: userEmployee, error: userError } = await adminClient
     .from('employees')
     .select('id, department_id')
     .eq('id', userId)
@@ -63,9 +63,9 @@ export async function getTeamsAndMembers(userId: string) {
   }
 
   // Get the user's department details
-  const { data: userDepartment, error: deptError } = await supabase
+  const { data: userDepartment, error: deptError } = await adminClient
     .from('departments')
-    .select('id, name, description, parent_id')
+    .select('id, name, description, parent_id, head_id')
     .eq('id', userEmployee.department_id)
     .single()
 
@@ -77,7 +77,7 @@ export async function getTeamsAndMembers(userId: string) {
 
   if (isInSubDepartment) {
     // User is in a sub-department - show only this sub-department and its members
-    const { data: subDeptEmployees, error: subEmpError } = await supabase
+    const { data: subDeptEmployees, error: subEmpError } = await adminClient
       .from('employees')
       .select(`
         id,
@@ -107,13 +107,14 @@ export async function getTeamsAndMembers(userId: string) {
       id: userDepartment.id,
       name: userDepartment.name,
       description: userDepartment.description,
+      head_id: userDepartment.head_id,
       members: subDeptEmployees || [],
       subDepartments: []
     }]
   } else {
     // User is in a main department - show main department + sub-departments
     // Get employees in main department
-    const { data: mainDeptEmployees, error: mainEmpError } = await supabase
+    const { data: mainDeptEmployees, error: mainEmpError } = await adminClient
       .from('employees')
       .select(`
         id,
@@ -140,9 +141,9 @@ export async function getTeamsAndMembers(userId: string) {
     if (mainEmpError) throw mainEmpError
 
     // Get sub-departments
-    const { data: subDepartments, error: subDeptError } = await supabase
+    const { data: subDepartments, error: subDeptError } = await adminClient
       .from('departments')
-      .select('id, name, description')
+      .select('id, name, description, head_id')
       .eq('parent_id', userDepartment.id)
       .order('name', { ascending: true })
 
@@ -151,7 +152,7 @@ export async function getTeamsAndMembers(userId: string) {
     // For each sub-department, get its employees
     const subDepartmentsWithMembers = await Promise.all(
       (subDepartments || []).map(async (subDept) => {
-        const { data: subDeptEmployees, error: subEmpError } = await supabase
+        const { data: subDeptEmployees, error: subEmpError } = await adminClient
           .from('employees')
           .select(`
             id,

@@ -30,7 +30,8 @@ import {
   Plus,
   Paperclip,
   Briefcase,
-  DollarSign
+  DollarSign,
+  UserSquare2
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ const employeeNavItems = [
   { icon: Bell, label: "Notifications", href: "/notifications", badge: 0 },
   { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: HelpCircle, label: "Help Center", href: "/help" },
+  { icon: Users, label: "My Team", href: "/my-team" },
 
 ];
 
@@ -88,6 +90,7 @@ const adminNavItems = [
     href: "/admin/document-requests",
   },
   { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
+  { icon: UserSquare2, label: "Visitors", href: "/admin/visitors" },
 ];
 
 const superAdminSections = [

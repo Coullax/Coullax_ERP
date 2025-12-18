@@ -9,6 +9,8 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 
 interface CalendarViewProps {
   events: CalendarEventWithDetails[];
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEventWithDetails) => void;
   onCreateEvent: () => void;
@@ -16,28 +18,29 @@ interface CalendarViewProps {
 
 export function CalendarView({
   events,
+  currentDate,
+  onDateChange,
   onDateClick,
   onEventClick,
   onCreateEvent,
 }: CalendarViewProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Generate calendar days
   const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
 
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  }, [currentMonth]);
+  }, [currentDate]);
 
   // Group events by date
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEventWithDetails[]>();
-    
+
     events.forEach(event => {
       const dateKey = format(new Date(event.start_time), 'yyyy-MM-dd');
       if (!map.has(dateKey)) {
@@ -61,9 +64,9 @@ export function CalendarView({
     onDateClick(date);
   };
 
-  const previousMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
-  const nextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
-  const goToToday = () => setCurrentMonth(new Date());
+  const previousMonth = () => onDateChange(subMonths(currentDate, 1));
+  const nextMonth = () => onDateChange(addMonths(currentDate, 1));
+  const goToToday = () => onDateChange(new Date());
 
   return (
     <div className="flex h-full gap-4">
@@ -73,7 +76,7 @@ export function CalendarView({
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold">
-              {format(currentMonth, 'MMMM yyyy')}
+              {format(currentDate, 'MMMM yyyy')}
             </h2>
             <div className="flex gap-1">
               <Button variant="outline" size="icon" onClick={previousMonth}>
@@ -134,7 +137,7 @@ export function CalendarView({
               const dateKey = format(day, 'yyyy-MM-dd');
               const dayEvents = eventsByDate.get(dateKey) || [];
               const isToday = isSameDay(day, new Date());
-              const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isCurrentMonth = isSameMonth(day, currentDate);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
 
               return (
@@ -151,7 +154,7 @@ export function CalendarView({
                     className={cn(
                       'text-sm font-medium mb-1',
                       isToday &&
-                        'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center'
+                      'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center'
                     )}
                   >
                     {format(day, 'd')}

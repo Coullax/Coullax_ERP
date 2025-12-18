@@ -46,12 +46,13 @@ export function CalendarClient() {
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventWithDetails | undefined>();
   const [viewingEvent, setViewingEvent] = useState<CalendarEventWithDetails | undefined>();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(currentMonth);
+  }, [currentMonth]);
 
-  const loadData = async () => {
+  const loadData = async (date: Date = new Date()) => {
     try {
       setLoading(true);
       const [calendarsData, integrationsData, subscriptionsData, adminStatus] =
@@ -66,14 +67,16 @@ export function CalendarClient() {
       setIntegrations(integrationsData);
       setSubscriptions(subscriptionsData);
       setIsUserAdmin(adminStatus);
-      
+
       // Debug logging
       console.log('Admin status check:', adminStatus);
       console.log('Is user admin:', adminStatus);
 
-      // Load events for current month
-      const startDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
-      const endDate = format(endOfMonth(new Date()), "yyyy-MM-dd");
+      // Load events for current month provided
+      const startDate = format(startOfMonth(date), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(date), "yyyy-MM-dd");
+
+      console.log(`Fetching events for range: ${startDate} to ${endDate}`);
 
       try {
         const eventsData = await getCalendarEvents(startDate, endDate);
@@ -200,6 +203,8 @@ export function CalendarClient() {
         <TabsContent value="calendar" className="h-[calc(100%-60px)]">
           <CalendarView
             events={events}
+            currentDate={currentMonth}
+            onDateChange={setCurrentMonth}
             onDateClick={(date) => {
               setSelectedDate(date);
             }}
@@ -333,8 +338,8 @@ export function CalendarClient() {
                     <div className="flex-1">
                       <p className="font-medium text-sm text-gray-500">Calendar</p>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
+                        <div
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: viewingEvent.calendar.color }}
                         />
                         <p className="text-sm">{viewingEvent.calendar.name}</p>
@@ -370,10 +375,10 @@ export function CalendarClient() {
                         {viewingEvent.attendees.map((attendee) => (
                           <div key={attendee.id} className="flex items-center justify-between text-sm">
                             <span>{attendee.email}</span>
-                            <Badge 
-                              variant={attendee.response_status === 'accepted' ? 'default' : 
-                                      attendee.response_status === 'declined' ? 'destructive' : 
-                                      'secondary'}
+                            <Badge
+                              variant={attendee.response_status === 'accepted' ? 'default' :
+                                attendee.response_status === 'declined' ? 'destructive' :
+                                  'secondary'}
                               className="text-xs"
                             >
                               {attendee.response_status}
