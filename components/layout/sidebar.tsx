@@ -61,7 +61,6 @@ import { toast } from "sonner";
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
-  { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: FileCheck, label: "Verification", href: "/verification" },
   { icon: FileText, label: "Requests", href: "/requests" },
   { icon: Clock, label: "Attendance", href: "/attendance" },
@@ -69,6 +68,7 @@ const employeeNavItems = [
   { icon: FolderOpen, label: "Documents", href: "/documents" },
   { icon: DollarSign, label: "Salary", href: "/employee/salary" },
   { icon: Bell, label: "Notifications", href: "/notifications", badge: 0 },
+  { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: HelpCircle, label: "Help Center", href: "/help" },
 
 ];
