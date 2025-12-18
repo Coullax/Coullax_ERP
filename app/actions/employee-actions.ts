@@ -76,6 +76,9 @@ export async function getTeamsAndMembers(userId: string) {
   const isInSubDepartment = userDepartment.parent_id !== null
 
   if (isInSubDepartment) {
+    // Use admin client to bypass RLS - team leads should see all their team members
+    const adminClient = createAdminClient()
+
     // User is in a sub-department - show only this sub-department and its members
     const { data: subDeptEmployees, error: subEmpError } = await adminClient
       .from('employees')
@@ -138,8 +141,7 @@ export async function getTeamsAndMembers(userId: string) {
       .eq('department_id', userDepartment.id)
       .order('created_at', { ascending: false })
 
-    if (mainEmpError) throw mainEmpError
-
+    // User is in a main department - show only sub-departments (not main department members)
     // Get sub-departments
     const { data: subDepartments, error: subDeptError } = await adminClient
       .from('departments')
@@ -184,16 +186,16 @@ export async function getTeamsAndMembers(userId: string) {
         }
       })
     )
-
     return [{
       id: userDepartment.id,
       name: userDepartment.name,
       description: userDepartment.description,
-      members: mainDeptEmployees || [],
+      members: [], // Don't show root department members, only sub-departments
       subDepartments: subDepartmentsWithMembers
     }]
   }
 }
+
 
 // Update employee role
 export async function updateEmployeeRole(

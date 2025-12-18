@@ -59,6 +59,8 @@ import {
 import { getInitials } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useEffect } from "react";
+import { getPendingVerificationsCount } from "@/app/actions/verification-actions";
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
@@ -79,7 +81,7 @@ const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: Users, label: "Employees", href: "/admin/employees" },
   { icon: Paperclip, label: "Policies", href: "/admin/policies" },
-  { icon: FileCheck, label: "Verifications", href: "/admin/verifications" },
+  { icon: FileCheck, label: "Verifications", href: "/admin/verifications", badge: 0 },
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
   { icon: Briefcase, label: "Designations", href: "/admin/designations" },
   { icon: Clock, label: "Attendance", href: "/admin/attendance" },
@@ -131,12 +133,43 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
     useAuthStore();
 
-  const mainItems = isSuperAdmin() ? adminNavItems : isAdmin() ? adminNavItems : employeeNavItems;
+  // Fetch pending verifications count for admins
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      const isUserAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+      
+      if (isUserAdmin) {
+        try {
+          const count = await getPendingVerificationsCount();
+          setPendingVerificationsCount(count);
+        } catch (error) {
+          console.error('Sidebar: Failed to fetch pending verifications count:', error);
+        }
+      }
+    };
+
+    fetchPendingCount();
+    
+    // Refresh count every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, [profile?.role]);
+
+  // Update admin nav items with pending count
+  const mainItems = isSuperAdmin() || isAdmin() 
+    ? adminNavItems.map(item => {
+        const updatedItem = item.href === '/admin/verifications' 
+          ? { ...item, badge: pendingVerificationsCount }
+          : item;
+        return updatedItem;
+      })
+    : employeeNavItems;
   const sections = isSuperAdmin() ? superAdminSections : isTeamLead() ? teamLeadSections : isDepartmentHead() ? departmentHeadSections : [];
 
   const handleLogout = async () => {
@@ -175,20 +208,25 @@ export function Sidebar() {
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <Badge className={cn(
-                "h-5 min-w-5 flex items-center justify-center px-1.5",
-                isActive
-                  ? "bg-primary-foreground text-primary"
-                  : "bg-primary text-primary-foreground"
-              )}>
+              <Badge className="h-5 min-w-5 flex items-center justify-center px-1.5 bg-red-500 text-white">
                 {item.badge}
               </Badge>
             )}
           </>
         )}
+        {isCollapsed && item.badge !== undefined && item.badge > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
+            {item.badge > 9 ? '9+' : item.badge}
+          </span>
+        )}
         {isCollapsed && (
           <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
             {item.label}
+            {item.badge !== undefined && item.badge > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 bg-red-500  rounded-full text-xs">
+                {item.badge}
+              </span>
+            )}
           </div>
         )}
       </Link>

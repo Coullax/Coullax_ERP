@@ -67,7 +67,7 @@ export function TeamMembersClient({
   }
 
   // Calculate overall stats across all teams and sub-departments
-  const totalDepartments = teams.reduce((sum, team) => sum + 1 + (team.subDepartments?.length || 0), 0)
+  const totalDepartments = teams.reduce((sum, team) => sum + (team.subDepartments?.length || 0), 0)
   const totalMembers = teams.reduce((sum, team) => {
     const mainDeptMembers = team.members.length
     const subDeptMembers = team.subDepartments?.reduce((subSum, sub) => subSum + sub.members.length, 0) || 0
@@ -174,7 +174,7 @@ export function TeamMembersClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">My Department & Team</h1>
-          <p className="text-gray-500 mt-1">View your department, sub-departments and team members</p>
+          <p className="text-gray-500 mt-1">View your sub-departments and team members</p>
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export function TeamMembersClient({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total Departments</p>
+                <p className="text-sm text-gray-500">Sub-Departments</p>
                 <p className="text-2xl font-bold">{totalDepartments}</p>
               </div>
               <FolderTree className="w-8 h-8 text-purple-500" />

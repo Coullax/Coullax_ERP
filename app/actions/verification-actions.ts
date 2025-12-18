@@ -24,12 +24,15 @@ export async function uploadKYCDocument(formData: FormData) {
   const file = formData.get('file') as File
   const employeeId = formData.get('employeeId') as string
   const documentType = formData.get('documentType') as string
+  const subType = formData.get('subType') as string | null
+  const documentTitle = formData.get('documentTitle') as string | null
 
   if (!file) throw new Error('No file provided')
 
   try {
     const fileExt = file.name.split('.').pop()
-    const fileName = `verification/${employeeId}/${documentType}-${Date.now()}.${fileExt}`
+    const subTypeSuffix = subType ? `-${subType}` : ''
+    const fileName = `verification/${employeeId}/${documentType}${subTypeSuffix}-${Date.now()}.${fileExt}`
 
     // Add filename to formData for uploadToB2
     formData.append('filename', fileName)
@@ -44,6 +47,8 @@ export async function uploadKYCDocument(formData: FormData) {
     await supabase.from('kyc_documents').insert({
       employee_id: employeeId,
       document_type: documentType,
+      sub_type: subType,
+      document_title: documentTitle,
       document_url: result.publicUrl,
       status: 'pending',
     })
@@ -177,4 +182,53 @@ export async function getVerificationStats() {
   }
 
   return stats
+}
+
+// Get pending verifications count for sidebar
+export async function getPendingVerificationsCount() {
+  const supabase = await createClient()
+
+  try {
+    const { data: allDocs, error } = await supabase
+      .from('kyc_documents')
+      .select('id, employee_id, document_type, sub_type, status')
+      .eq('status', 'pending')
+
+    if (error) throw error
+
+    if (!allDocs || allDocs.length === 0) return 0
+
+    // Group front/back documents just like in the admin page
+    const grouped = allDocs.reduce((acc: any[], doc) => {
+      // If it's a front-back document type (NIC or driving license)
+      if ((doc.document_type === 'NIC' || doc.document_type === 'driving license') && doc.sub_type) {
+        // Check if we already have this pair in our accumulated array
+        const existingPair = acc.find(item =>
+          item.isGroup &&
+          item.document_type === doc.document_type &&
+          item.employee_id === doc.employee_id
+        )
+
+        if (!existingPair) {
+          // Create a new pair group - only count once per employee+document_type combo
+          acc.push({
+            isGroup: true,
+            document_type: doc.document_type,
+            employee_id: doc.employee_id
+          })
+        }
+        // If pair already exists, don't count it again
+      } else {
+        // Regular single document - count it
+        acc.push(doc)
+      }
+
+      return acc
+    }, [])
+
+    return grouped.length
+  } catch (error: any) {
+    console.error('Failed to get pending verifications count:', error)
+    return 0
+  }
 }
