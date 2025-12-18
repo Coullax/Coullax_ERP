@@ -58,29 +58,77 @@ export async function getInventoryByCategory(employeeId: string, categoryId: str
 }
 
 /**
+ * Helper: Get available quantity for a general inventory item
+ */
+export async function getAvailableInventoryQuantity(generalInventoryId: string) {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('general_inventory')
+        .select('quantity')
+        .eq('id', generalInventoryId)
+        .single()
+
+    if (error) throw error
+    return data?.quantity || 0
+}
+
+/**
+ * Helper: Decrease general inventory quantity
+ */
+export async function decreaseGeneralInventoryQuantity(generalInventoryId: string, quantity: number) {
+    const supabase = await createClient()
+
+    // Get current quantity
+    const current = await getAvailableInventoryQuantity(generalInventoryId)
+
+    if (current < quantity) {
+        throw new Error(`Insufficient inventory. Available: ${current}, Requested: ${quantity}`)
+    }
+
+    const { error } = await supabase
+        .from('general_inventory')
+        .update({ quantity: current - quantity })
+        .eq('id', generalInventoryId)
+
+    if (error) throw error
+}
+
+/**
+ * Helper: Increase general inventory quantity
+ */
+export async function increaseGeneralInventoryQuantity(generalInventoryId: string, quantity: number) {
+    const supabase = await createClient()
+
+    const current = await getAvailableInventoryQuantity(generalInventoryId)
+
+    const { error } = await supabase
+        .from('general_inventory')
+        .update({ quantity: current + quantity })
+        .eq('id', generalInventoryId)
+
+    if (error) throw error
+}
+
+/**
  * Add a new inventory item
  */
 export async function addInventoryItem(employeeId: string, item: {
-    category_id: string
+    category_id?: string
     item_name: string
     item_type?: string
     serial_number?: string
     assigned_date?: string
     condition?: string
     notes?: string
+    general_inventory_id?: string
+    quantity_assigned?: number
 }) {
     const supabase = await createClient()
 
-    // Check if inventory is already verified
-    const { data: existingItems } = await supabase
-        .from('employee_inventory')
-        .select('isverified')
-        .eq('employee_id', employeeId)
-        .eq('isverified', true)
-        .limit(1)
-
-    if (existingItems && existingItems.length > 0) {
-        throw new Error('Cannot add items to verified inventory')
+    // If assigning from general inventory, validate and decrease quantity
+    if (item.general_inventory_id) {
+        const quantity = item.quantity_assigned || 1
+        await decreaseGeneralInventoryQuantity(item.general_inventory_id, quantity)
     }
 
     const { error } = await supabase
@@ -90,7 +138,18 @@ export async function addInventoryItem(employeeId: string, item: {
             ...item,
         })
 
-    if (error) throw error
+    if (error) {
+        // If insert fails and we decreased quantity, we should rollback
+        // Note: In production, use database transactions
+        if (item.general_inventory_id && item.quantity_assigned) {
+            try {
+                await increaseGeneralInventoryQuantity(item.general_inventory_id, item.quantity_assigned)
+            } catch (rollbackError) {
+                console.error('Failed to rollback quantity:', rollbackError)
+            }
+        }
+        throw error
+    }
 
     revalidatePath('/profile')
     revalidatePath('/admin/employees')
@@ -103,10 +162,10 @@ export async function addInventoryItem(employeeId: string, item: {
 export async function deleteInventoryItem(id: string) {
     const supabase = await createClient()
 
-    // First check if the item is verified
+    // First get the item details including general_inventory_id
     const { data: item } = await supabase
         .from('employee_inventory')
-        .select('isverified')
+        .select('isverified, general_inventory_id, quantity_assigned')
         .eq('id', id)
         .single()
 
@@ -114,12 +173,23 @@ export async function deleteInventoryItem(id: string) {
         throw new Error('Cannot delete verified inventory item')
     }
 
+    // Delete the item
     const { error } = await supabase
         .from('employee_inventory')
         .delete()
         .eq('id', id)
 
     if (error) throw error
+
+    // If item was from general inventory, return the quantity
+    if (item?.general_inventory_id && item?.quantity_assigned) {
+        try {
+            await increaseGeneralInventoryQuantity(item.general_inventory_id, item.quantity_assigned)
+        } catch (returnError) {
+            console.error('Failed to return quantity to general inventory:', returnError)
+            // Don't throw here as the item is already deleted
+        }
+    }
 
     revalidatePath('/profile')
     revalidatePath('/admin/employees')
@@ -137,8 +207,32 @@ export async function updateInventoryItem(id: string, item: {
     assigned_date?: string
     condition?: string
     notes?: string
+    quantity_assigned?: number
 }) {
     const supabase = await createClient()
+
+    // If updating quantity, handle the difference in general inventory
+    if (item.quantity_assigned !== undefined) {
+        const { data: currentItem } = await supabase
+            .from('employee_inventory')
+            .select('general_inventory_id, quantity_assigned')
+            .eq('id', id)
+            .single()
+
+        if (currentItem?.general_inventory_id) {
+            const oldQuantity = currentItem.quantity_assigned || 0
+            const newQuantity = item.quantity_assigned
+            const difference = newQuantity - oldQuantity
+
+            if (difference > 0) {
+                // Assigning more - decrease general inventory
+                await decreaseGeneralInventoryQuantity(currentItem.general_inventory_id, difference)
+            } else if (difference < 0) {
+                // Returning some - increase general inventory
+                await increaseGeneralInventoryQuantity(currentItem.general_inventory_id, Math.abs(difference))
+            }
+        }
+    }
 
     const { error } = await supabase
         .from('employee_inventory')
