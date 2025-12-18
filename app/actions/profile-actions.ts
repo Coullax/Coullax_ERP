@@ -99,11 +99,15 @@ export async function verifyEmployeeProfile(userId: string, verifiedByAdminId: s
 export async function getEmployeeEducation(employeeId: string) {
   const supabase = await createClient()
 
+  console.log('getEmployeeEducation called with employeeId:', employeeId)
+
   const { data, error } = await supabase
     .from('employee_education')
     .select('*')
     .eq('employee_id', employeeId)
     .order('end_year', { ascending: false })
+
+  console.log('getEmployeeEducation query result:', { data, error })
 
   if (error) throw error
   return data
@@ -145,6 +149,40 @@ export async function deleteEducation(id: string) {
   revalidatePath('/profile')
   return { success: true }
 }
+
+export async function verifyEmployeeEducation(employeeId: string, verifiedByAdminId: string) {
+  const supabase = await createClient()
+
+  console.log('Attempting to verify employee education:', { employeeId, verifiedByAdminId })
+
+  // Verify all education records for this employee
+  const { data, error } = await supabase
+    .from('employee_education')
+    .update({
+      isverified: true,
+      verified_at: new Date().toISOString(),
+      verified_by: verifiedByAdminId,
+    })
+    .eq('employee_id', employeeId)
+    .select()
+
+  if (error) {
+    console.error('Education verification error:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint
+    })
+    throw new Error(`Failed to verify education: ${error.message}`)
+  }
+
+  console.log('Education verification successful:', data)
+
+  revalidatePath('/profile')
+  revalidatePath('/admin/employees')
+  return { success: true }
+}
+
 
 export async function getEmployeeSkills(employeeId: string) {
   const supabase = await createClient()
