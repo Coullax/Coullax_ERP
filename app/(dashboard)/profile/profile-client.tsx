@@ -9,6 +9,7 @@ import { BasicInfoForm } from '@/components/profile/basic-info-form'
 import { EducationSection } from '@/components/profile/education-section'
 import { SkillsSection } from '@/components/profile/skills-section'
 import { PasswordResetForm } from '@/components/profile/password-reset-form'
+import { InventorySection } from '@/components/profile/inventory-section'
 import { User, GraduationCap, Award, Package, Phone, Settings } from 'lucide-react'
 
 interface ProfilePageClientProps {
@@ -75,10 +76,10 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
             <Package className="w-4 h-4" />
             Inventory
           </TabsTrigger>
-          <TabsTrigger value="emergency" className="gap-2">
+          {/* <TabsTrigger value="emergency" className="gap-2">
             <Phone className="w-4 h-4" />
             Emergency
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="w-4 h-4" />
             Settings
@@ -102,12 +103,7 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
         </TabsContent>
 
         <TabsContent value="inventory">
-          <Card>
-            <CardContent className="p-12 text-center text-gray-500">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Inventory management coming soon</p>
-            </CardContent>
-          </Card>
+          <InventorySection employeeId={profile?.id} />
         </TabsContent>
 
         <TabsContent value="emergency">
