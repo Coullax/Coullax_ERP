@@ -36,6 +36,7 @@ interface InventoryItem {
     isverified?: boolean
     verified_at?: string
     verified_by?: string
+    quantity_assigned?: number
     category?: {
         id: string
         name: string
@@ -349,6 +350,11 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                                                             <p className="text-sm text-gray-600 dark:text-gray-400">{item.item_type}</p>
                                                         )}
                                                         <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                            {item.quantity_assigned && (
+                                                                <Badge variant="default" className="bg-blue-600">
+                                                                    Qty: {item.quantity_assigned}
+                                                                </Badge>
+                                                            )}
                                                             {item.serial_number && (
                                                                 <Badge variant="outline">SN: {item.serial_number}</Badge>
                                                             )}
