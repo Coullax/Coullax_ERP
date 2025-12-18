@@ -19,6 +19,7 @@ import {
   User,
 } from 'lucide-react'
 import { getInitials, formatDateTime } from '@/lib/utils'
+import Image from 'next/image'
 
 interface VerificationsPageClientProps {
   documents: any[]
@@ -41,8 +42,8 @@ export function VerificationsPageClient({
     // If it's a front-back document type
     if ((doc.document_type === 'NIC' || doc.document_type === 'driving license') && doc.sub_type) {
       // Check if we already have the pair in our accumulated array
-      const existingPair = acc.find(item => 
-        item.isGroup && 
+      const existingPair = acc.find(item =>
+        item.isGroup &&
         item.document_type === doc.document_type &&
         item.employee_id === doc.employee_id &&
         item.groupStatus === doc.status
@@ -67,20 +68,20 @@ export function VerificationsPageClient({
           created_at: doc.created_at,
           status: doc.status,
         }
-        
+
         if (doc.sub_type === 'front') {
           newGroup.frontDoc = doc
         } else {
           newGroup.backDoc = doc
         }
-        
+
         acc.push(newGroup)
       }
     } else {
       // Regular single document
       acc.push(doc)
     }
-    
+
     return acc
   }, [])
 
@@ -232,10 +233,10 @@ export function VerificationsPageClient({
       {/* Filter Tabs */}
       <div className="flex gap-2">
         {['pending', 'verified', 'rejected', 'all'].map((status) => {
-          const count = status === 'all' 
-            ? groupedDocuments.length 
+          const count = status === 'all'
+            ? groupedDocuments.length
             : groupedDocuments.filter(doc => doc.status === status).length
-          
+
           return (
             <Button
               key={status}
@@ -421,71 +422,77 @@ export function VerificationsPageClient({
               </div>
 
               {/* Document Preview & Details */}
-            <div className="space-y-4">
-              {selectedDoc.isGroup ? (
-                // Show both front and back images
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Front Image */}
-                    {selectedDoc.frontDoc && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Front Side</p>
-                        <a
-                          href={selectedDoc.frontDoc.document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block"
-                        >
-                          <img
-                            src={selectedDoc.frontDoc.document_url}
-                            alt={`${selectedDoc.document_type} - Front`}
-                            className="w-full h-64 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700"
-                          />
-                        </a>
-                        {selectedDoc.frontDoc.document_title && (
-                          <p className="text-xs text-gray-600">Title: {selectedDoc.frontDoc.document_title}</p>
-                        )}
-                      </div>
-                    )}
-                    {/* Back Image */}
-                    {selectedDoc.backDoc && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Back Side</p>
-                        <a
-                          href={selectedDoc.backDoc.document_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block"
-                        >
-                          <img
-                            src={selectedDoc.backDoc.document_url}
-                            alt={`${selectedDoc.document_type} - Back`}
-                            className="w-full h-64 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700"
-                          />
-                        </a>
-                        {selectedDoc.backDoc.document_title && (
-                          <p className="text-xs text-gray-600">Title: {selectedDoc.backDoc.document_title}</p>
-                        )}
-                      </div>
-                    )}
+              <div className="space-y-4">
+                {selectedDoc.isGroup ? (
+                  // Show both front and back images
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Front Image */}
+                      {selectedDoc.frontDoc && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Front Side</p>
+                          <a
+                            href={selectedDoc.frontDoc.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <Image
+                              src={selectedDoc.frontDoc.document_url}
+                              alt={`${selectedDoc.document_type} - Front`}
+                              width={800}
+                              height={600}
+                              className="w-full h-64 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                            />
+                          </a>
+                          {selectedDoc.frontDoc.document_title && (
+                            <p className="text-xs text-gray-600">Title: {selectedDoc.frontDoc.document_title}</p>
+                          )}
+                        </div>
+                      )}
+                      {/* Back Image */}
+                      {selectedDoc.backDoc && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Back Side</p>
+                          <a
+                            href={selectedDoc.backDoc.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <Image
+                              src={selectedDoc.backDoc.document_url}
+                              alt={`${selectedDoc.document_type} - Back`}
+                              width={800}
+                              height={600}
+                              className="w-full h-64 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                            />
+                          </a>
+                          {selectedDoc.backDoc.document_title && (
+                            <p className="text-xs text-gray-600">Title: {selectedDoc.backDoc.document_title}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                // Single document view
-                <a
-                  href={selectedDoc.document_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <img
-                    src={selectedDoc.document_url}
-                    alt={selectedDoc.document_type}
-                    className="w-full max-h-96 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg"
-                  />
-                </a>
-              )}
-            </div>
+                ) : (
+                  // Single document view
+                  <a
+                    href={selectedDoc.document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Image
+                      src={selectedDoc.document_url}
+                      alt={selectedDoc.document_type}
+                      width={800}
+                      height={600}
+                      className="w-full max-h-96 object-contain bg-gray-100 dark:bg-gray-800 rounded-lg"
+                    />
+                  </a>
+                )}
+              </div>
 
               {/* Notes Input */}
               <div className="space-y-2">
@@ -501,26 +508,26 @@ export function VerificationsPageClient({
               </div>
 
               {/* Action Buttons */}
-            {selectedDoc.status === 'pending' && (
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="default"
-                  className="flex-1"
-                  onClick={() => handleApprove(selectedDoc)}
-                  disabled={loading}
-                >
-                  {loading ? 'Processing...' : selectedDoc.isGroup ? 'Approve Both Sides' : 'Approve'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => handleReject(selectedDoc)}
-                  disabled={loading || !notes.trim()}
-                >
-                  {loading ? 'Processing...' : selectedDoc.isGroup ? 'Reject' : 'Reject'}
-                </Button>
-              </div>
-            )}
+              {selectedDoc.status === 'pending' && (
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="default"
+                    className="flex-1"
+                    onClick={() => handleApprove(selectedDoc)}
+                    disabled={loading}
+                  >
+                    {loading ? 'Processing...' : selectedDoc.isGroup ? 'Approve Both Sides' : 'Approve'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => handleReject(selectedDoc)}
+                    disabled={loading || !notes.trim()}
+                  >
+                    {loading ? 'Processing...' : selectedDoc.isGroup ? 'Reject' : 'Reject'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
