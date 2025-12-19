@@ -14,6 +14,8 @@ import {
   createExpenseRequest,
   createAttendanceRegularization,
   createAssetRequest,
+  createAssetIssueRequest,
+  uploadAssetIssueImage,
   createResignation,
   createCoveringRequest,
   createRequestForCovering,
@@ -23,6 +25,7 @@ import {
   getEmployeePolicySchedule,
 } from '@/app/actions/request-actions'
 import { getEmployeeCurrentBalance } from '@/app/actions/policy-actions'
+import { getEmployeeInventory } from '@/app/actions/inventory-actions'
 import { uploadToB2 } from '@/app/actions/upload-actions'
 
 interface RequestFormProps {
@@ -50,6 +53,16 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [leaveBalance, setLeaveBalance] = useState<any>(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [calculatedDays, setCalculatedDays] = useState<number | null>(null)
+
+  // Asset issue request states
+  const [assetRequestMode, setAssetRequestMode] = useState<'new' | 'issue'>('new')
+  const [ownedItems, setOwnedItems] = useState<any[]>([])
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState('')
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('')
+  const [issueQuantity, setIssueQuantity] = useState(1)
+  const [issueImage, setIssueImage] = useState<File | null>(null)
+  const [issueImagePreview, setIssueImagePreview] = useState<string | null>(null)
+  const [uploadingIssueImage, setUploadingIssueImage] = useState(false)
 
   // Helper function to format days to "Xd Yh" format
   const formatDaysToHours = (days: number, workHoursPerDay: number = 9): string => {
@@ -214,6 +227,50 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     }
   }, [requestType, workSchedule, startDate, endDate, formData.leave_duration, formData.start_time, formData.end_time, isSameDay])
 
+  // Load employee inventory for asset issue requests
+  useEffect(() => {
+    if (requestType === 'asset' && assetRequestMode === 'issue' && employeeId) {
+      getEmployeeInventory(employeeId)
+        .then((items) => {
+          setOwnedItems(items)
+        })
+        .catch((error) => {
+          console.error('Failed to load inventory:', error)
+          toast.error('Failed to load your inventory items')
+        })
+    }
+  }, [requestType, assetRequestMode, employeeId])
+
+  const handleIssueImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size should be less than 10MB')
+      return
+    }
+
+    setIssueImage(file)
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setIssueImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveIssueImage = () => {
+    setIssueImage(null)
+    setIssueImagePreview(null)
+  }
+
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     // Handle file inputs for expense attachments
     if (e.target instanceof HTMLInputElement && e.target.type === 'file' && e.target.name === 'attachments') {
@@ -336,10 +393,54 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           result = await createAttendanceRegularization(employeeId, formData)
           break
         case 'asset':
-          result = await createAssetRequest(employeeId, {
-            ...formData,
-            quantity: parseInt(formData.quantity) || 1,
-          })
+          if (assetRequestMode === 'new') {
+            // New asset request
+            result = await createAssetRequest(employeeId, {
+              asset_type: formData.asset_type,
+              quantity: parseInt(formData.quantity) || 1,
+              reason: formData.reason,
+              asset_specification: formData.asset_specification || undefined,
+            })
+          } else {
+            // Asset issue request
+            if (!selectedInventoryItem) {
+              toast.error('Please select an item from your inventory')
+              setLoading(false)
+              return
+            }
+
+            if (!issueImage) {
+              toast.error('Please upload an image showing the issue')
+              setLoading(false)
+              return
+            }
+
+            // Upload image first
+            setUploadingIssueImage(true)
+            try {
+              const uploadFormData = new FormData()
+              uploadFormData.append('file', issueImage)
+              uploadFormData.append('employeeId', employeeId)
+
+              const { url } = await uploadAssetIssueImage(uploadFormData)
+
+              // Create issue request with image URL
+              result = await createAssetIssueRequest(employeeId, {
+                employee_inventory_id: selectedInventoryItem,
+                issue_description: formData.issue_description,
+                issue_image_url: url,
+                issue_quantity: issueQuantity,
+                requested_action: formData.requested_action || 'evaluate',
+              })
+            } catch (uploadError: any) {
+              toast.error(uploadError.message || 'Failed to upload image')
+              setLoading(false)
+              setUploadingIssueImage(false)
+              return
+            } finally {
+              setUploadingIssueImage(false)
+            }
+          }
           break
         case 'resignation':
           result = await createResignation(employeeId, formData)
@@ -911,52 +1012,203 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'asset':
         return (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="asset_type">Asset Type *</Label>
-                <Input
-                  id="asset_type"
-                  name="asset_type"
-                  onChange={handleChange}
-                  required
-                  placeholder="Laptop, Monitor, Phone, etc."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  name="quantity"
-                  type="number"
-                  onChange={handleChange}
-                  required
-                  defaultValue="1"
-                />
-              </div>
+            {/* Mode Toggle */}
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setAssetRequestMode('new')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${assetRequestMode === 'new'
+                  ? 'bg-white dark:bg-gray-900 shadow-sm'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+              >
+                Request New Asset
+              </button>
+              <button
+                type="button"
+                onClick={() => setAssetRequestMode('issue')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${assetRequestMode === 'issue'
+                  ? 'bg-white dark:bg-gray-900 shadow-sm'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+              >
+                Report Asset Issue
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="asset_specification">Asset Specification</Label>
-              <textarea
-                id="asset_specification"
-                name="asset_specification"
-                onChange={handleChange}
-                rows={3}
-                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                placeholder="Specify details like model, RAM, storage, etc..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason *</Label>
-              <textarea
-                id="reason"
-                name="reason"
-                onChange={handleChange}
-                required
-                rows={4}
-                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                placeholder="Explain why you need this asset..."
-              />
-            </div>
+
+            {assetRequestMode === 'new' ? (
+              /* New Asset Request Section */
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="asset_type">Asset Type *</Label>
+                    <Input
+                      id="asset_type"
+                      name="asset_type"
+                      onChange={handleChange}
+                      required
+                      placeholder="Laptop, Monitor, Phone, etc."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      name="quantity"
+                      type="number"
+                      onChange={handleChange}
+                      required
+                      defaultValue="1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="asset_specification">Asset Specification</Label>
+                  <textarea
+                    id="asset_specification"
+                    name="asset_specification"
+                    onChange={handleChange}
+                    rows={3}
+                    className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                    placeholder="Specify details like model, RAM, storage, etc..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Reason *</Label>
+                  <textarea
+                    id="reason"
+                    name="reason"
+                    onChange={handleChange}
+                    required
+                    rows={4}
+                    className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                    placeholder="Explain why you need this asset..."
+                  />
+                </div>
+              </>
+            ) : (
+              /* Asset Issue Report Section */
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="selected_inventory_item">Select Your Item *</Label>
+
+                  {/* Search Filter */}
+                  {/* <Input
+                    type="text"
+                    placeholder="Search inventory items..."
+                    value={inventorySearchTerm}
+                    onChange={(e) => setInventorySearchTerm(e.target.value)}
+                    className="mb-2"
+                  /> */}
+
+                  <select
+                    id="selected_inventory_item"
+                    value={selectedInventoryItem}
+                    onChange={(e) => {
+                      setSelectedInventoryItem(e.target.value)
+                      // Reset quantity when item changes
+                      const selected = ownedItems.find(item => item.id === e.target.value)
+                      setIssueQuantity(selected?.quantity_assigned > 1 ? 1 : 1)
+                    }}
+                    required
+                    className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <option value="">Select an item from your inventory</option>
+                    {ownedItems
+                      .filter(item =>
+                        inventorySearchTerm === '' ||
+                        item.item_name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+                        (item.serial_number && item.serial_number.toLowerCase().includes(inventorySearchTerm.toLowerCase()))
+                      )
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.item_name} {item.serial_number ? `(SN: ${item.serial_number})` : ''} - Qty: {item.quantity_assigned || 1}
+                        </option>
+                      ))}
+                  </select>
+                  {ownedItems.length === 0 && (
+                    <p className="text-xs text-gray-500">No inventory items found. You must have assigned items to report issues.</p>
+                  )}
+                  {inventorySearchTerm && ownedItems.filter(item =>
+                    item.item_name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+                    (item.serial_number && item.serial_number.toLowerCase().includes(inventorySearchTerm.toLowerCase()))
+                  ).length === 0 && (
+                      <p className="text-xs text-orange-500">No items match your search.</p>
+                    )}
+                </div>
+
+                {/* Conditional Quantity Input */}
+                {selectedInventoryItem && ownedItems.find(item => item.id === selectedInventoryItem)?.quantity_assigned > 1 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="issue_quantity">How many units have this issue? *</Label>
+                    <Input
+                      id="issue_quantity"
+                      type="number"
+                      min="1"
+                      max={ownedItems.find(item => item.id === selectedInventoryItem)?.quantity_assigned || 1}
+                      value={issueQuantity}
+                      onChange={(e) => setIssueQuantity(parseInt(e.target.value) || 1)}
+                      required
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Total assigned: {ownedItems.find(item => item.id === selectedInventoryItem)?.quantity_assigned || 1} units
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="issue_description">Issue Description *</Label>
+                  <textarea
+                    id="issue_description"
+                    name="issue_description"
+                    onChange={handleChange}
+                    required
+                    rows={4}
+                    className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                    placeholder="Describe the issue with the item..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Upload Issue Photo *</Label>
+                  {issueImagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={issueImagePreview}
+                        alt="Issue preview"
+                        className="w-full h-48 object-cover rounded-xl border-2 border-gray-200 dark:border-gray-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveIssueImage}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center
+                      hover:border-gray-400 dark:hover:border-gray-500 transition-colors cursor-pointer"
+                      onClick={() => document.getElementById('issue_image_input')?.click()}
+                    >
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Click to upload photo showing the issue
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">JPG, PNG or GIF (max 10MB)</p>
+                    </div>
+                  )}
+                  <input
+                    id="issue_image_input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleIssueImageChange}
+                    className="hidden"
+                    required={!issueImage}
+                  />
+                </div>
+              </>
+            )}
           </>
         )
 
