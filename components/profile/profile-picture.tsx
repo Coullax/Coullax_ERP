@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 import { uploadAvatar } from '@/app/actions/profile-actions'
 import { getInitials } from '@/lib/utils'
+import { useAuthStore } from '@/store/auth-store'
 
 interface ProfilePictureProps {
   userId: string
@@ -26,6 +27,11 @@ export function ProfilePicture({
   const [uploading, setUploading] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(currentAvatarUrl)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const profile = useAuthStore((state) => state.profile)
+  const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin)
+
+  // console.log('Profile role:', profile?.role)
+  // console.log('Is Super Admin:', isSuperAdmin())
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -74,18 +80,20 @@ export function ProfilePicture({
             {getInitials(fullName)}
           </AvatarFallback>
         </Avatar>
-        
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="absolute bottom-0 right-0 p-2 rounded-full bg-black dark:bg-white text-white dark:text-black shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
-        >
-          {uploading ? (
-            <Upload className="w-5 h-5 animate-pulse" />
-          ) : (
-            <Camera className="w-5 h-5" />
-          )}
-        </button>
+
+        {isSuperAdmin() && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="absolute bottom-0 right-0 p-2 rounded-full bg-black dark:bg-white text-white dark:text-black shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
+          >
+            {uploading ? (
+              <Upload className="w-5 h-5 animate-pulse" />
+            ) : (
+              <Camera className="w-5 h-5" />
+            )}
+          </button>
+        )}
       </motion.div>
 
       <input
@@ -96,14 +104,16 @@ export function ProfilePicture({
         className="hidden"
       />
 
-      <div className="text-center">
-        <p className="text-sm text-gray-500">
-          Click camera icon to upload new photo
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          JPG, PNG or GIF (max 5MB)
-        </p>
-      </div>
+      {isSuperAdmin() && (
+        <div className="text-center">
+          <p className="text-sm text-gray-500">
+            Click camera icon to upload new photo
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            JPG, PNG or GIF (max 5MB)
+          </p>
+        </div>
+      )}
     </div>
   )
 }

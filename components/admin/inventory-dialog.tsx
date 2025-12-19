@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { addGeneralInventoryItem, updateGeneralInventoryItem, type GeneralInventoryItem } from "@/app/actions/general-inventory-actions"
+import { addGeneralInventoryItem, updateGeneralInventoryItem, uploadInventoryImage, type GeneralInventoryItem } from "@/app/actions/general-inventory-actions"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, ImagePlus, X } from "lucide-react"
 
 type InventoryDialogProps = {
     open: boolean
@@ -20,6 +21,10 @@ type InventoryDialogProps = {
 
 export function InventoryDialog({ open, onOpenChange, item, onSuccess }: InventoryDialogProps) {
     const [loading, setLoading] = useState(false)
+    const [uploading, setUploading] = useState(false)
+    const [imageFile, setImageFile] = useState<File | null>(null)
+    const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url || null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [formData, setFormData] = useState({
         item_name: item?.item_name || "",
         category: item?.category || "equipment",
@@ -54,6 +59,8 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                 supplier: item.supplier || "",
                 notes: item.notes || "",
             })
+            setImagePreview(item.image_url || null)
+            setImageFile(null)
         } else {
             // Reset form for adding new item
             setFormData({
@@ -71,14 +78,71 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                 supplier: "",
                 notes: "",
             })
+            setImagePreview(null)
+            setImageFile(null)
         }
     }, [item])
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please upload an image file')
+            return
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image size should be less than 5MB')
+            return
+        }
+
+        setImageFile(file)
+        // Create preview
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handleRemoveImage = () => {
+        setImageFile(null)
+        setImagePreview(null)
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
         try {
+            let imageUrl = imagePreview
+
+            // Upload image if a new file is selected
+            if (imageFile) {
+                setUploading(true)
+                try {
+                    const uploadFormData = new FormData()
+                    uploadFormData.append('file', imageFile)
+                    uploadFormData.append('itemId', item?.id || 'temp-' + Date.now())
+
+                    const { url } = await uploadInventoryImage(uploadFormData)
+                    imageUrl = url
+                } catch (error: any) {
+                    toast.error(error.message || 'Failed to upload image')
+                    setLoading(false)
+                    setUploading(false)
+                    return
+                } finally {
+                    setUploading(false)
+                }
+            }
+
             const data = {
                 item_name: formData.item_name,
                 category: formData.category,
@@ -93,6 +157,7 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                 warranty_expiry: formData.warranty_expiry || undefined,
                 supplier: formData.supplier || undefined,
                 notes: formData.notes || undefined,
+                image_url: imageUrl || undefined,
             }
 
             if (item?.id) {
@@ -122,6 +187,8 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                 supplier: "",
                 notes: "",
             })
+            setImageFile(null)
+            setImagePreview(null)
         } catch (error: any) {
             toast.error(error.message || "Failed to save inventory item")
         } finally {
@@ -243,6 +310,47 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                                     <SelectItem value="damaged">Damaged</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* Image Upload */}
+                        <div className="col-span-2">
+                            <Label>Product Image</Label>
+                            <div className="flex flex-col gap-4">
+                                {imagePreview ? (
+                                    <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                                        <Image
+                                            src={imagePreview}
+                                            alt="Inventory item"
+                                            fill
+                                            className="object-contain"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveImage}
+                                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors bg-gray-50 dark:bg-gray-900"
+                                    >
+                                        <ImagePlus className="w-8 h-8 text-gray-400" />
+                                        <span className="text-sm text-gray-500">Click to upload image</span>
+                                        <span className="text-xs text-gray-400">JPG, PNG or GIF (max 5MB)</span>
+                                    </button>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
+                            </div>
                         </div>
 
                         {/* Status */}
