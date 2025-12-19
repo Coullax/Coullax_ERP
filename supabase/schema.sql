@@ -1,658 +1,868 @@
--- COULLAX DeskFlow Database Schema
--- This schema includes all tables, relationships, and Row Level Security (RLS) policies
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- =============================================
--- ENUM TYPES
--- =============================================
-
-CREATE TYPE user_role AS ENUM ('employee', 'admin', 'super_admin');
-CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
-CREATE TYPE request_type AS ENUM (
-  'attendance_regularization',
-  'document_request',
-  'asset_request',
-  'travel_request',
-  'expense_reimbursement',
-  'payroll_query',
-  'resignation',
-  'overtime',
-  'leave',
-  'covering'
+CREATE TABLE public.announcements (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  title text NOT NULL,
+  content text NOT NULL,
+  priority text DEFAULT 'normal'::text,
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT announcements_pkey PRIMARY KEY (id),
+  CONSTRAINT announcements_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
 );
-CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected');
-CREATE TYPE gender AS ENUM ('male', 'female', 'other', 'prefer_not_to_say');
-CREATE TYPE marital_status AS ENUM ('single', 'married', 'divorced', 'widowed');
-CREATE TYPE blood_group AS ENUM ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-');
-CREATE TYPE leave_type AS ENUM ('sick', 'casual', 'vacation', 'maternity', 'paternity', 'unpaid');
-
--- =============================================
--- CORE TABLES
--- =============================================
-
--- Profiles (extends auth.users)
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT UNIQUE NOT NULL,
-  full_name TEXT NOT NULL,
-  role user_role DEFAULT 'employee' NOT NULL,
-  avatar_url TEXT,
-  phone TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.asset_issue_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  employee_inventory_id uuid,
+  issue_description text NOT NULL,
+  issue_image_url text,
+  requested_action USER-DEFINED NOT NULL DEFAULT 'evaluate'::asset_requested_action,
+  admin_decision USER-DEFINED,
+  admin_notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  issue_quantity integer NOT NULL DEFAULT 1 CHECK (issue_quantity > 0),
+  CONSTRAINT asset_issue_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT asset_issue_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT asset_issue_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT asset_issue_requests_employee_inventory_id_fkey FOREIGN KEY (employee_inventory_id) REFERENCES public.employee_inventory(id)
 );
-
--- Departments
-CREATE TABLE departments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  description TEXT,
-  head_id UUID REFERENCES profiles(id),
-  parent_id UUID REFERENCES departments(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.asset_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  asset_type text NOT NULL,
+  quantity integer DEFAULT 1,
+  reason text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  asset_specification text,
+  CONSTRAINT asset_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT asset_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT asset_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- Designations
-CREATE TABLE designations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  description TEXT,
-  department_id UUID REFERENCES departments(id),
-  level INTEGER DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.attendance_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  date date NOT NULL,
+  shift_id uuid,
+  check_in time without time zone,
+  check_out time without time zone,
+  status text DEFAULT 'present'::text,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT attendance_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT attendance_logs_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT attendance_logs_shift_id_fkey FOREIGN KEY (shift_id) REFERENCES public.shifts(id)
 );
-
--- =============================================
--- EMPLOYEE DATA
--- =============================================
-
--- Extended Employee Information
-CREATE TABLE employees (
-  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  employee_id TEXT UNIQUE NOT NULL,
-  department_id UUID REFERENCES departments(id),
-  designation_id UUID REFERENCES designations(id),
-  supervisor_id UUID REFERENCES profiles(id),
-  date_of_birth DATE,
-  gender gender,
-  blood_group blood_group,
-  marital_status marital_status,
-  joining_date DATE NOT NULL,
-  address TEXT,
-  city TEXT,
-  state TEXT,
-  postal_code TEXT,
-  country TEXT DEFAULT 'USA',
-  emergency_contact_name TEXT,
-  emergency_contact_phone TEXT,
-  emergency_contact_relationship TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.attendance_regularization_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  date date NOT NULL,
+  actual_time time without time zone,
+  requested_time time without time zone NOT NULL,
+  reason text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT attendance_regularization_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT attendance_regularization_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT attendance_regularization_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- Employee Education
-CREATE TABLE employee_education (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  degree TEXT NOT NULL,
-  institution TEXT NOT NULL,
-  field_of_study TEXT,
-  start_year INTEGER,
-  end_year INTEGER,
-  grade TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  action text NOT NULL,
+  resource_type text NOT NULL,
+  resource_id uuid,
+  old_values jsonb,
+  new_values jsonb,
+  ip_address inet,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
--- Employee Skills
-CREATE TABLE employee_skills (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  skill_name TEXT NOT NULL,
-  proficiency_level INTEGER CHECK (proficiency_level BETWEEN 1 AND 5),
-  years_of_experience INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.bank_details (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  bank_name text NOT NULL,
+  account_number text NOT NULL,
+  routing_number text,
+  account_holder_name text NOT NULL,
+  status USER-DEFINED DEFAULT 'pending'::verification_status,
+  verified_by uuid,
+  verified_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT bank_details_pkey PRIMARY KEY (id),
+  CONSTRAINT bank_details_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT bank_details_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id)
 );
-
--- Employee Inventory
-CREATE TABLE employee_inventory (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  item_name TEXT NOT NULL,
-  item_type TEXT,
-  serial_number TEXT,
-  assigned_date DATE DEFAULT CURRENT_DATE,
-  return_date DATE,
-  condition TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.bin_inventory (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  general_inventory_id uuid NOT NULL,
+  item_name text NOT NULL,
+  category text NOT NULL,
+  serial_number text,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  unit_price numeric,
+  total_value numeric DEFAULT ((quantity)::numeric * COALESCE(unit_price, (0)::numeric)),
+  reason text NOT NULL,
+  disposal_date date DEFAULT CURRENT_DATE,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  notes text,
+  CONSTRAINT bin_inventory_pkey PRIMARY KEY (id),
+  CONSTRAINT bin_inventory_general_inventory_id_fkey FOREIGN KEY (general_inventory_id) REFERENCES public.general_inventory(id),
+  CONSTRAINT bin_inventory_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
 );
-
--- =============================================
--- VERIFICATION
--- =============================================
-
--- KYC Documents
-CREATE TABLE kyc_documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  document_type TEXT NOT NULL,
-  document_number TEXT,
-  document_url TEXT NOT NULL,
-  status verification_status DEFAULT 'pending',
-  verified_by UUID REFERENCES profiles(id),
-  verified_at TIMESTAMPTZ,
-  expiry_date DATE,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendar_events (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  calendar_id uuid NOT NULL,
+  created_by uuid,
+  title text NOT NULL,
+  description text,
+  location text,
+  start_time timestamp with time zone NOT NULL,
+  end_time timestamp with time zone NOT NULL,
+  is_all_day boolean DEFAULT false,
+  timezone text DEFAULT 'UTC'::text,
+  is_recurring boolean DEFAULT false,
+  recurrence_rule text,
+  recurrence_end_date timestamp with time zone,
+  parent_event_id uuid,
+  status USER-DEFINED DEFAULT 'confirmed'::event_status,
+  visibility USER-DEFINED DEFAULT 'internal'::event_visibility,
+  google_event_id text,
+  external_event_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_events_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_events_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id),
+  CONSTRAINT calendar_events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id),
+  CONSTRAINT calendar_events_parent_event_id_fkey FOREIGN KEY (parent_event_id) REFERENCES public.calendar_events(id)
 );
-
--- Bank Details
-CREATE TABLE bank_details (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  bank_name TEXT NOT NULL,
-  account_number TEXT NOT NULL,
-  routing_number TEXT,
-  account_holder_name TEXT NOT NULL,
-  status verification_status DEFAULT 'pending',
-  verified_by UUID REFERENCES profiles(id),
-  verified_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendar_integrations (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  calendar_id uuid,
+  provider USER-DEFINED NOT NULL,
+  access_token text,
+  refresh_token text,
+  token_expires_at timestamp with time zone,
+  external_calendar_id text,
+  external_account_email text,
+  sync_enabled boolean DEFAULT true,
+  sync_direction text DEFAULT 'two_way'::text,
+  last_sync_at timestamp with time zone,
+  next_sync_at timestamp with time zone,
+  sync_token text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_integrations_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_integrations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT calendar_integrations_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id)
 );
-
--- =============================================
--- REQUESTS SYSTEM
--- =============================================
-
--- Master Requests Table
-CREATE TABLE requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  request_type request_type NOT NULL,
-  status request_status DEFAULT 'pending',
-  submitted_at TIMESTAMPTZ DEFAULT NOW(),
-  reviewed_by UUID REFERENCES profiles(id),
-  reviewed_at TIMESTAMPTZ,
-  review_notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendar_shares (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  calendar_id uuid,
+  shared_with_user_id uuid,
+  shared_by_user_id uuid,
+  can_view boolean DEFAULT true,
+  can_edit boolean DEFAULT false,
+  can_delete boolean DEFAULT false,
+  can_share boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_shares_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_shares_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id),
+  CONSTRAINT calendar_shares_shared_with_user_id_fkey FOREIGN KEY (shared_with_user_id) REFERENCES public.profiles(id),
+  CONSTRAINT calendar_shares_shared_by_user_id_fkey FOREIGN KEY (shared_by_user_id) REFERENCES public.profiles(id)
 );
-
--- Leave Requests
-CREATE TABLE leave_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  leave_type leave_type NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  total_days INTEGER NOT NULL,
-  reason TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendar_subscriptions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  calendar_id uuid,
+  user_id uuid,
+  subscription_token text NOT NULL UNIQUE,
+  feed_url text NOT NULL,
+  is_active boolean DEFAULT true,
+  include_private_events boolean DEFAULT false,
+  refresh_interval_minutes integer DEFAULT 15,
+  last_accessed_at timestamp with time zone,
+  access_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_subscriptions_calendar_id_fkey FOREIGN KEY (calendar_id) REFERENCES public.calendars(id),
+  CONSTRAINT calendar_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
--- Overtime Requests
-CREATE TABLE overtime_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  hours DECIMAL(4,2) NOT NULL,
-  reason TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendar_sync_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  integration_id uuid,
+  sync_status USER-DEFINED NOT NULL,
+  direction text,
+  events_synced integer DEFAULT 0,
+  events_created integer DEFAULT 0,
+  events_updated integer DEFAULT 0,
+  events_deleted integer DEFAULT 0,
+  error_message text,
+  error_details jsonb,
+  started_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  duration_seconds integer,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_sync_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_sync_logs_integration_id_fkey FOREIGN KEY (integration_id) REFERENCES public.calendar_integrations(id)
 );
-
--- Travel Requests
-CREATE TABLE travel_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  destination TEXT NOT NULL,
-  purpose TEXT NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  estimated_cost DECIMAL(10,2),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.calendars (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  description text,
+  type USER-DEFINED NOT NULL DEFAULT 'personal'::calendar_type,
+  owner_id uuid,
+  department_id uuid,
+  color text DEFAULT '#3B82F6'::text,
+  is_default boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  timezone text DEFAULT 'UTC'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendars_pkey PRIMARY KEY (id),
+  CONSTRAINT calendars_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id),
+  CONSTRAINT calendars_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id)
 );
-
--- Expense Reimbursements
-CREATE TABLE expense_reimbursements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  expense_type TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  expense_date DATE NOT NULL,
-  description TEXT NOT NULL,
-  receipt_url TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.covering_hours (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  employee_id uuid NOT NULL,
+  hours_to_cover numeric NOT NULL CHECK (hours_to_cover >= 0::numeric),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT covering_hours_pkey PRIMARY KEY (id),
+  CONSTRAINT covering_hours_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- Attendance Regularization
-CREATE TABLE attendance_regularization_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  actual_time TIME,
-  requested_time TIME NOT NULL,
-  reason TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.covering_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  request_id uuid NOT NULL,
+  employee_id uuid NOT NULL,
+  covering_date date NOT NULL,
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  work_description text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  attachment_type text CHECK (attachment_type = ANY (ARRAY['commit_link'::text, 'file_upload'::text])),
+  commit_link text,
+  covering_files jsonb,
+  CONSTRAINT covering_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT covering_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT covering_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- Asset Requests
-CREATE TABLE asset_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  asset_type TEXT NOT NULL,
-  quantity INTEGER DEFAULT 1,
-  reason TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.departments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  description text,
+  head_id uuid,
+  parent_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT departments_pkey PRIMARY KEY (id),
+  CONSTRAINT departments_head_id_fkey FOREIGN KEY (head_id) REFERENCES public.profiles(id),
+  CONSTRAINT departments_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.departments(id)
 );
-
--- Resignation Requests
-CREATE TABLE resignations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  last_working_date DATE NOT NULL,
-  reason TEXT NOT NULL,
-  feedback TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.designations (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  title text NOT NULL,
+  description text,
+  department_id uuid,
+  level integer DEFAULT 1,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT designations_pkey PRIMARY KEY (id),
+  CONSTRAINT designations_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id)
 );
-
--- =============================================
--- ATTENDANCE
--- =============================================
-
--- Shifts
-CREATE TABLE shifts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.document_access (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  document_id uuid,
+  user_id uuid,
+  can_view boolean DEFAULT true,
+  can_edit boolean DEFAULT false,
+  can_delete boolean DEFAULT false,
+  granted_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT document_access_pkey PRIMARY KEY (id),
+  CONSTRAINT document_access_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id),
+  CONSTRAINT document_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT document_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.profiles(id)
 );
-
--- Holidays
-CREATE TABLE holidays (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  date DATE NOT NULL,
-  is_optional BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.document_categories (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  description text,
+  icon text,
+  color text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT document_categories_pkey PRIMARY KEY (id)
 );
-
--- Attendance Logs
-CREATE TABLE attendance_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  shift_id UUID REFERENCES shifts(id),
-  check_in TIME,
-  check_out TIME,
-  status TEXT DEFAULT 'present',
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(employee_id, date)
+CREATE TABLE public.document_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid NOT NULL,
+  request_type USER-DEFINED NOT NULL,
+  title text NOT NULL,
+  description text,
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::document_request_status,
+  fulfilled_by uuid,
+  fulfilled_at timestamp with time zone,
+  rejection_reason text,
+  document_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT document_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT document_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT document_requests_fulfilled_by_fkey FOREIGN KEY (fulfilled_by) REFERENCES public.profiles(id),
+  CONSTRAINT document_requests_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id)
 );
-
--- =============================================
--- CALENDAR & EVENTS
--- =============================================
-
--- Events
-CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  start_time TIMESTAMPTZ NOT NULL,
-  end_time TIMESTAMPTZ NOT NULL,
-  location TEXT,
-  is_all_day BOOLEAN DEFAULT false,
-  is_company_wide BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.document_tags (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  document_id uuid,
+  tag text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT document_tags_pkey PRIMARY KEY (id),
+  CONSTRAINT document_tags_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id)
 );
-
--- =============================================
--- NOTIFICATIONS
--- =============================================
-
--- Notifications
-CREATE TABLE notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  type TEXT NOT NULL,
-  read BOOLEAN DEFAULT false,
-  link TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.document_versions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  document_id uuid NOT NULL,
+  version_number integer NOT NULL,
+  file_url text NOT NULL,
+  file_size integer,
+  uploaded_by uuid NOT NULL,
+  change_notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT document_versions_pkey PRIMARY KEY (id),
+  CONSTRAINT document_versions_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id),
+  CONSTRAINT document_versions_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.profiles(id)
 );
-
--- Notification Preferences
-CREATE TABLE notification_preferences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
-  email_enabled BOOLEAN DEFAULT true,
-  push_enabled BOOLEAN DEFAULT true,
-  leave_updates BOOLEAN DEFAULT true,
-  attendance_alerts BOOLEAN DEFAULT true,
-  meeting_reminders BOOLEAN DEFAULT true,
-  announcements BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.documents (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  uploaded_by uuid,
+  title text NOT NULL,
+  description text,
+  file_url text NOT NULL,
+  file_type text,
+  file_size integer,
+  category text,
+  is_public boolean DEFAULT false,
+  expiry_date date,
+  version integer DEFAULT 1,
+  parent_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  category_id uuid,
+  request_id uuid,
+  tags ARRAY,
+  CONSTRAINT documents_pkey PRIMARY KEY (id),
+  CONSTRAINT documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.profiles(id),
+  CONSTRAINT documents_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.documents(id),
+  CONSTRAINT documents_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.document_categories(id),
+  CONSTRAINT documents_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.document_requests(id)
 );
-
--- =============================================
--- DOCUMENTS
--- =============================================
-
--- Documents
-CREATE TABLE documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  uploaded_by UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  file_url TEXT NOT NULL,
-  file_type TEXT,
-  file_size INTEGER,
-  category TEXT,
-  is_public BOOLEAN DEFAULT false,
-  expiry_date DATE,
-  version INTEGER DEFAULT 1,
-  parent_id UUID REFERENCES documents(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.employee_education (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  degree text NOT NULL,
+  institution text NOT NULL,
+  field_of_study text,
+  start_year integer,
+  end_year integer,
+  grade text,
+  created_at timestamp with time zone DEFAULT now(),
+  isverified boolean DEFAULT false,
+  verified_at timestamp with time zone,
+  verified_by uuid,
+  CONSTRAINT employee_education_pkey PRIMARY KEY (id),
+  CONSTRAINT employee_education_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT employee_education_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id)
 );
-
--- Document Tags
-CREATE TABLE document_tags (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-  tag TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(document_id, tag)
+CREATE TABLE public.employee_inventory (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  item_name text NOT NULL,
+  item_type text,
+  serial_number text,
+  assigned_date date DEFAULT CURRENT_DATE,
+  return_date date,
+  condition text,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  category_id uuid,
+  isverified boolean DEFAULT false,
+  verified_at timestamp with time zone,
+  verified_by uuid,
+  general_inventory_id uuid,
+  quantity_assigned integer DEFAULT 1 CHECK (quantity_assigned > 0),
+  condition_image_url text,
+  CONSTRAINT employee_inventory_pkey PRIMARY KEY (id),
+  CONSTRAINT employee_inventory_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT employee_inventory_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.inventory_categories(id),
+  CONSTRAINT employee_inventory_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id),
+  CONSTRAINT employee_inventory_general_inventory_id_fkey FOREIGN KEY (general_inventory_id) REFERENCES public.general_inventory(id)
 );
-
--- Document Access
-CREATE TABLE document_access (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  can_view BOOLEAN DEFAULT true,
-  can_edit BOOLEAN DEFAULT false,
-  can_delete BOOLEAN DEFAULT false,
-  granted_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(document_id, user_id)
+CREATE TABLE public.employee_leave_balance (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid NOT NULL,
+  policy_id uuid NOT NULL,
+  month integer NOT NULL CHECK (month >= 1 AND month <= 12),
+  year integer NOT NULL CHECK (year >= 2020),
+  total_leaves numeric NOT NULL DEFAULT 0,
+  used_leaves numeric NOT NULL DEFAULT 0,
+  available_leaves numeric NOT NULL DEFAULT 0,
+  carried_forward_leaves numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT employee_leave_balance_pkey PRIMARY KEY (id),
+  CONSTRAINT employee_leave_balance_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT employee_leave_balance_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.employee_policies(id)
 );
-
--- =============================================
--- ROLES & PERMISSIONS
--- =============================================
-
--- Custom Roles
-CREATE TABLE roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT UNIQUE NOT NULL,
-  description TEXT,
-  is_system_role BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.employee_policies (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  policy_type USER-DEFINED NOT NULL,
+  working_days_per_week integer NOT NULL CHECK (working_days_per_week >= 1 AND working_days_per_week <= 7),
+  leave_days_per_month numeric NOT NULL DEFAULT 0 CHECK (leave_days_per_month >= 0::numeric),
+  carry_forward_enabled boolean DEFAULT true,
+  renewal_period USER-DEFINED DEFAULT 'yearly'::renewal_period,
+  description text,
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  working_start_time time without time zone NOT NULL DEFAULT '09:00:00'::time without time zone,
+  working_end_time time without time zone NOT NULL DEFAULT '18:00:00'::time without time zone,
+  CONSTRAINT employee_policies_pkey PRIMARY KEY (id),
+  CONSTRAINT employee_policies_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
 );
-
--- Permissions
-CREATE TABLE permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT UNIQUE NOT NULL,
-  description TEXT,
-  resource TEXT NOT NULL,
-  action TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.employee_skills (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  skill_name text NOT NULL,
+  proficiency_level integer CHECK (proficiency_level >= 1 AND proficiency_level <= 5),
+  years_of_experience integer,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT employee_skills_pkey PRIMARY KEY (id),
+  CONSTRAINT employee_skills_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- Role Permissions
-CREATE TABLE role_permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
-  permission_id UUID REFERENCES permissions(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(role_id, permission_id)
+CREATE TABLE public.employees (
+  id uuid NOT NULL,
+  employee_id text NOT NULL UNIQUE,
+  department_id uuid,
+  designation_id uuid,
+  supervisor_id uuid,
+  date_of_birth date,
+  gender USER-DEFINED,
+  blood_group USER-DEFINED,
+  marital_status USER-DEFINED,
+  joining_date date NOT NULL,
+  address text,
+  city text,
+  state text,
+  postal_code text,
+  country text DEFAULT 'USA'::text,
+  emergency_contact_name text,
+  emergency_contact_phone text,
+  emergency_contact_relationship text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  policy_id uuid,
+  policy_assigned_date date,
+  is_active boolean DEFAULT true,
+  employee_no character varying UNIQUE,
+  isverified boolean DEFAULT false,
+  verified_at timestamp with time zone,
+  verified_by uuid,
+  CONSTRAINT employees_pkey PRIMARY KEY (id),
+  CONSTRAINT employees_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id),
+  CONSTRAINT employees_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id),
+  CONSTRAINT employees_designation_id_fkey FOREIGN KEY (designation_id) REFERENCES public.designations(id),
+  CONSTRAINT employees_supervisor_id_fkey FOREIGN KEY (supervisor_id) REFERENCES public.profiles(id),
+  CONSTRAINT employees_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.employee_policies(id),
+  CONSTRAINT employees_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id)
 );
-
--- User Roles (additional to profile.role)
-CREATE TABLE user_roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
-  granted_by UUID REFERENCES profiles(id),
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, role_id)
+CREATE TABLE public.event_attendees (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  event_id uuid,
+  user_id uuid,
+  email text,
+  response_status text DEFAULT 'pending'::text,
+  is_organizer boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT event_attendees_pkey PRIMARY KEY (id),
+  CONSTRAINT event_attendees_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.calendar_events(id),
+  CONSTRAINT event_attendees_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
--- =============================================
--- AUDIT LOGS
--- =============================================
-
--- Audit Logs
-CREATE TABLE audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id),
-  action TEXT NOT NULL,
-  resource_type TEXT NOT NULL,
-  resource_id UUID,
-  old_values JSONB,
-  new_values JSONB,
-  ip_address INET,
-  user_agent TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE public.event_reminders (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  event_id uuid,
+  user_id uuid,
+  minutes_before integer NOT NULL,
+  method text DEFAULT 'notification'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT event_reminders_pkey PRIMARY KEY (id),
+  CONSTRAINT event_reminders_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.calendar_events(id),
+  CONSTRAINT event_reminders_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
--- Login History
-CREATE TABLE login_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  login_time TIMESTAMPTZ DEFAULT NOW(),
-  ip_address INET,
-  user_agent TEXT,
-  success BOOLEAN DEFAULT true
+CREATE TABLE public.expense_reimbursements (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  expense_type text NOT NULL,
+  amount numeric NOT NULL,
+  expense_date date NOT NULL,
+  description text NOT NULL,
+  receipt_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  attachments jsonb DEFAULT '[]'::jsonb,
+  CONSTRAINT expense_reimbursements_pkey PRIMARY KEY (id),
+  CONSTRAINT expense_reimbursements_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT expense_reimbursements_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
 );
-
--- =============================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- =============================================
-
--- Enable RLS on all tables
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE designations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employee_education ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employee_skills ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employee_inventory ENABLE ROW LEVEL SECURITY;
-ALTER TABLE kyc_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bank_details ENABLE ROW LEVEL SECURITY;
-ALTER TABLE requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE overtime_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE travel_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE expense_reimbursements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_regularization_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE asset_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE resignations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE shifts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE document_tags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE document_access ENABLE ROW LEVEL SECURITY;
-ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE login_history ENABLE ROW LEVEL SECURITY;
-
--- Profiles: Users can view all, update own
-CREATE POLICY "Profiles are viewable by authenticated users" ON profiles
-  FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Users can update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
-
--- Employees: Self + Admin access
-CREATE POLICY "Employees can view own data" ON employees
-  FOR SELECT USING (
-    auth.uid() = id OR
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
-CREATE POLICY "Employees can update own data" ON employees
-  FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Admins can insert employees" ON employees
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
--- Requests: Self + Admin + Supervisor
-CREATE POLICY "Users can view own requests" ON requests
-  FOR SELECT USING (
-    employee_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin')) OR
-    EXISTS (SELECT 1 FROM employees WHERE id = requests.employee_id AND supervisor_id = auth.uid())
-  );
-
-CREATE POLICY "Employees can create requests" ON requests
-  FOR INSERT WITH CHECK (employee_id = auth.uid());
-
-CREATE POLICY "Admins can update requests" ON requests
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
--- Attendance Logs: Self + Admin
-CREATE POLICY "Users can view own attendance" ON attendance_logs
-  FOR SELECT USING (
-    employee_id = auth.uid() OR
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
-CREATE POLICY "Admins can manage attendance" ON attendance_logs
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
--- Notifications: Own only
-CREATE POLICY "Users can view own notifications" ON notifications
-  FOR SELECT USING (user_id = auth.uid());
-
-CREATE POLICY "Users can update own notifications" ON notifications
-  FOR UPDATE USING (user_id = auth.uid());
-
--- Documents: Based on access table or public
-CREATE POLICY "Users can view accessible documents" ON documents
-  FOR SELECT USING (
-    is_public = true OR
-    uploaded_by = auth.uid() OR
-    EXISTS (SELECT 1 FROM document_access WHERE document_id = documents.id AND user_id = auth.uid() AND can_view = true) OR
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-  );
-
--- Audit Logs: Super Admin only
-CREATE POLICY "Super admins can view audit logs" ON audit_logs
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'super_admin')
-  );
-
--- =============================================
--- FUNCTIONS & TRIGGERS
--- =============================================
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply updated_at trigger to relevant tables
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_employees_updated_at BEFORE UPDATE ON employees
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_requests_updated_at BEFORE UPDATE ON requests
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Function to create audit log
-CREATE OR REPLACE FUNCTION create_audit_log()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO audit_logs (user_id, action, resource_type, resource_id, old_values, new_values)
-  VALUES (
-    auth.uid(),
-    TG_OP,
-    TG_TABLE_NAME,
-    COALESCE(NEW.id, OLD.id),
-    CASE WHEN TG_OP = 'DELETE' THEN row_to_json(OLD) ELSE NULL END,
-    CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN row_to_json(NEW) ELSE NULL END
-  );
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Apply audit triggers to sensitive tables
-CREATE TRIGGER audit_employees AFTER INSERT OR UPDATE OR DELETE ON employees
-  FOR EACH ROW EXECUTE FUNCTION create_audit_log();
-
-CREATE TRIGGER audit_requests AFTER INSERT OR UPDATE OR DELETE ON requests
-  FOR EACH ROW EXECUTE FUNCTION create_audit_log();
-
--- =============================================
--- INDEXES for Performance
--- =============================================
-
-CREATE INDEX idx_employees_department ON employees(department_id);
-CREATE INDEX idx_employees_supervisor ON employees(supervisor_id);
-CREATE INDEX idx_requests_employee ON requests(employee_id);
-CREATE INDEX idx_requests_status ON requests(status);
-CREATE INDEX idx_attendance_logs_employee_date ON attendance_logs(employee_id, date);
-CREATE INDEX idx_notifications_user_read ON notifications(user_id, read);
-CREATE INDEX idx_documents_uploaded_by ON documents(uploaded_by);
-CREATE INDEX idx_audit_logs_user_created ON audit_logs(user_id, created_at);
-
--- =============================================
--- INITIAL DATA
--- =============================================
-
--- Insert default shifts
-INSERT INTO shifts (name, start_time, end_time) VALUES
-  ('Morning Shift', '09:00', '18:00'),
-  ('Evening Shift', '14:00', '23:00'),
-  ('Night Shift', '22:00', '07:00');
-
--- Insert system roles
-INSERT INTO roles (name, description, is_system_role) VALUES
-  ('Employee', 'Default employee role', true),
-  ('Admin', 'Administrator role', true),
-  ('Super Admin', 'Super administrator role', true);
+CREATE TABLE public.general_inventory (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  item_name text NOT NULL,
+  category text NOT NULL CHECK (category = ANY (ARRAY['furniture'::text, 'equipment'::text, 'supplies'::text, 'electronics'::text, 'appliances'::text, 'tools'::text, 'vehicles'::text, 'other'::text])),
+  description text,
+  serial_number text UNIQUE,
+  quantity integer NOT NULL DEFAULT 1 CHECK (quantity >= 0),
+  unit_price numeric CHECK (unit_price >= 0::numeric),
+  total_value numeric DEFAULT ((quantity)::numeric * unit_price),
+  location text,
+  condition text CHECK (condition = ANY (ARRAY['new'::text, 'good'::text, 'fair'::text, 'poor'::text, 'damaged'::text])),
+  status text NOT NULL DEFAULT 'available'::text CHECK (status = ANY (ARRAY['available'::text, 'in-use'::text, 'maintenance'::text, 'retired'::text, 'disposed'::text])),
+  purchase_date date,
+  warranty_expiry date,
+  supplier text,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  last_updated_by uuid,
+  image_url text,
+  CONSTRAINT general_inventory_pkey PRIMARY KEY (id),
+  CONSTRAINT general_inventory_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id),
+  CONSTRAINT general_inventory_last_updated_by_fkey FOREIGN KEY (last_updated_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.holidays (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  date date NOT NULL,
+  is_optional boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT holidays_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.inventory_categories (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  description text,
+  icon text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT inventory_categories_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.kyc_documents (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  document_type text NOT NULL,
+  document_number text,
+  document_url text NOT NULL,
+  status USER-DEFINED DEFAULT 'pending'::verification_status,
+  verified_by uuid,
+  verified_at timestamp with time zone,
+  expiry_date date,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  sub_type text,
+  document_title text,
+  CONSTRAINT kyc_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT kyc_documents_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT kyc_documents_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.leave_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  leave_type USER-DEFINED NOT NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  total_days numeric NOT NULL,
+  reason text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  start_time time without time zone,
+  end_time time without time zone,
+  leave_duration character varying,
+  covering_decision text,
+  CONSTRAINT leave_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT leave_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT leave_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+);
+CREATE TABLE public.login_history (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  login_time timestamp with time zone DEFAULT now(),
+  ip_address inet,
+  user_agent text,
+  success boolean DEFAULT true,
+  CONSTRAINT login_history_pkey PRIMARY KEY (id),
+  CONSTRAINT login_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.maintenance_inventory (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  general_inventory_id uuid NOT NULL,
+  item_name text NOT NULL,
+  category text NOT NULL,
+  serial_number text,
+  quantity integer NOT NULL CHECK (quantity > 0),
+  unit_price numeric,
+  total_value numeric DEFAULT ((quantity)::numeric * COALESCE(unit_price, (0)::numeric)),
+  issue_description text NOT NULL,
+  repair_notes text,
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::maintenance_status,
+  expected_completion_date date,
+  actual_completion_date date,
+  moved_to_maintenance_date date DEFAULT CURRENT_DATE,
+  returned_to_inventory_date date,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  last_updated_by uuid,
+  source_employee_id uuid,
+  source_employee_inventory_id uuid,
+  CONSTRAINT maintenance_inventory_pkey PRIMARY KEY (id),
+  CONSTRAINT maintenance_inventory_general_inventory_id_fkey FOREIGN KEY (general_inventory_id) REFERENCES public.general_inventory(id),
+  CONSTRAINT maintenance_inventory_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id),
+  CONSTRAINT maintenance_inventory_last_updated_by_fkey FOREIGN KEY (last_updated_by) REFERENCES public.profiles(id),
+  CONSTRAINT maintenance_inventory_source_employee_id_fkey FOREIGN KEY (source_employee_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.notification_preferences (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid UNIQUE,
+  email_enabled boolean DEFAULT true,
+  push_enabled boolean DEFAULT true,
+  leave_updates boolean DEFAULT true,
+  attendance_alerts boolean DEFAULT true,
+  meeting_reminders boolean DEFAULT true,
+  announcements boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notification_preferences_pkey PRIMARY KEY (id),
+  CONSTRAINT notification_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  title text NOT NULL,
+  message text NOT NULL,
+  type text NOT NULL,
+  read boolean DEFAULT false,
+  link text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.overtime_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  date date NOT NULL,
+  hours numeric NOT NULL,
+  reason text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  assigned_supervisor uuid,
+  CONSTRAINT overtime_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT overtime_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT overtime_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT overtime_requests_assigned_supervisor_fkey FOREIGN KEY (assigned_supervisor) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.permissions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  description text,
+  resource text NOT NULL,
+  action text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT permissions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  full_name text NOT NULL,
+  role USER-DEFINED NOT NULL DEFAULT 'employee'::user_role,
+  avatar_url text,
+  phone text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.request_for_covering_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  request_id uuid NOT NULL,
+  employee_id uuid NOT NULL,
+  date date NOT NULL,
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  reason text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT request_for_covering_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT request_for_covering_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT request_for_covering_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+);
+CREATE TABLE public.requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  request_type USER-DEFINED NOT NULL,
+  status USER-DEFINED DEFAULT 'pending'::request_status,
+  submitted_at timestamp with time zone DEFAULT now(),
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
+  review_notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT requests_pkey PRIMARY KEY (id),
+  CONSTRAINT requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.resignations (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  last_working_date date NOT NULL,
+  reason text NOT NULL,
+  feedback text,
+  created_at timestamp with time zone DEFAULT now(),
+  document_url text,
+  CONSTRAINT resignations_pkey PRIMARY KEY (id),
+  CONSTRAINT resignations_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT resignations_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+);
+CREATE TABLE public.role_permissions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  role_id uuid,
+  permission_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT role_permissions_pkey PRIMARY KEY (id),
+  CONSTRAINT role_permissions_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
+  CONSTRAINT role_permissions_permission_id_fkey FOREIGN KEY (permission_id) REFERENCES public.permissions(id)
+);
+CREATE TABLE public.roles (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  description text,
+  is_system_role boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.salaries (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid UNIQUE,
+  base_amount numeric NOT NULL,
+  currency text DEFAULT 'LKR'::text,
+  effective_date date NOT NULL DEFAULT CURRENT_DATE,
+  recurring_allowances jsonb DEFAULT '[]'::jsonb,
+  recurring_deductions jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT salaries_pkey PRIMARY KEY (id),
+  CONSTRAINT salaries_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+);
+CREATE TABLE public.salary_payments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  employee_id uuid,
+  month character varying NOT NULL,
+  base_amount numeric NOT NULL,
+  gross_amount numeric NOT NULL,
+  net_amount numeric NOT NULL,
+  additions jsonb DEFAULT '[]'::jsonb,
+  deductions jsonb DEFAULT '[]'::jsonb,
+  status text DEFAULT 'draft'::text,
+  payment_date date,
+  notes text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  employee_status text DEFAULT 'pending'::text CHECK (employee_status = ANY (ARRAY['pending'::text, 'approved'::text, 'disputed'::text])),
+  dispute_reason text,
+  employee_approved_at timestamp with time zone,
+  admin_approval_status text DEFAULT 'pending'::text CHECK (admin_approval_status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  admin_approved_at timestamp with time zone,
+  admin_approved_by uuid,
+  CONSTRAINT salary_payments_pkey PRIMARY KEY (id),
+  CONSTRAINT salary_payments_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT salary_payments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id),
+  CONSTRAINT salary_payments_admin_approved_by_fkey FOREIGN KEY (admin_approved_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.shifts (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT shifts_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.travel_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  request_id uuid,
+  employee_id uuid,
+  destination text NOT NULL,
+  purpose text NOT NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  estimated_cost numeric,
+  created_at timestamp with time zone DEFAULT now(),
+  check_out_time time without time zone,
+  check_in_time time without time zone,
+  CONSTRAINT travel_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT travel_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
+  CONSTRAINT travel_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+);
+CREATE TABLE public.user_roles (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid,
+  role_id uuid,
+  granted_by uuid,
+  expires_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
+  CONSTRAINT user_roles_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.profiles(id)
+);
+CREATE TABLE public.visitors (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  full_name text NOT NULL,
+  email text,
+  phone text,
+  identification_id text,
+  company_name text,
+  purpose text NOT NULL,
+  host_employee_id uuid,
+  scheduled_arrival timestamp with time zone NOT NULL,
+  check_in_time timestamp with time zone,
+  check_out_time timestamp with time zone,
+  status USER-DEFINED DEFAULT 'scheduled'::visitor_status,
+  badge_number text,
+  notes text,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT visitors_pkey PRIMARY KEY (id),
+  CONSTRAINT visitors_host_employee_id_fkey FOREIGN KEY (host_employee_id) REFERENCES public.employees(id),
+  CONSTRAINT visitors_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
