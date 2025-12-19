@@ -2,6 +2,51 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { uploadToB2 } from './upload-actions'
+
+/**
+ * Upload Asset Condition Image
+ */
+export async function uploadAssetConditionImage(formData: FormData) {
+    const file = formData.get('file') as File
+    const employeeId = formData.get('employeeId') as string
+
+    if (!file) throw new Error('No file provided')
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        throw new Error('Please upload an image file')
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size should be less than 10MB')
+    }
+
+    try {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `asset-conditions/${employeeId}/${Date.now()}.${fileExt}`
+
+        // Add filename to formData for uploadToB2
+        formData.append('filename', fileName)
+
+        const result = await uploadToB2(formData)
+
+        if (!result.success || !result.publicUrl) {
+            throw new Error(result.error || 'Upload failed')
+        }
+
+        return {
+            url: result.publicUrl,
+            name: file.name,
+            type: file.type,
+            size: file.size
+        }
+    } catch (error: any) {
+        console.error('Asset condition image upload failed:', error)
+        throw error
+    }
+}
 
 /**
  * Get all inventory categories
@@ -123,6 +168,7 @@ export async function addInventoryItem(employeeId: string, item: {
     notes?: string
     general_inventory_id?: string
     quantity_assigned?: number
+    condition_image_url?: string
 }) {
     const supabase = await createClient()
 
