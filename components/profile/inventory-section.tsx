@@ -321,7 +321,7 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                     <div className="text-center py-8 text-gray-500">Loading...</div>
                 ) : inventory.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                        No inventory items yet. Click &quot;Add Item&quot; to get started.
+                        No inventory items assigned you yet.
                     </div>
                 ) : (
                     <div className="space-y-6">
