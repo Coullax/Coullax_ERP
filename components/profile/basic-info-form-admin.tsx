@@ -342,7 +342,7 @@ export function BasicInfoFormAdmin({ userId, profile, employee }: BasicInfoFormA
                     ) : (
                         <>
                             <CheckCircle className="w-4 h-4 mr-2" />
-                            {isVerified ? 'Update & Re-verify Basic Info' : 'Verify Basic Info'}
+                            {isVerified ? 'Update & Re-verify Basic Info' : 'save & Verify Basic Info'}
                         </>
                     )}
                 </Button>
