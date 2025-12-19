@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
+import { updateRequestStatus, updateAssetIssueRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
 import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays, MoreHorizontal, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { generateRequestPDF, generateRequestsExcel } from '@/lib/export-utils'
@@ -67,6 +67,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notes, setNotes] = useState('')
   const [coveringDecision, setCoveringDecision] = useState<string>('')
+  const [assetIssueDecision, setAssetIssueDecision] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
@@ -134,7 +135,27 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   const handleApprove = async (requestId: string) => {
     setLoading(true)
     try {
-      await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined, coveringDecision || undefined)
+      // Check if this is an asset issue request
+      const isAssetIssue = selectedRequest?.asset_issue_requests && selectedRequest.asset_issue_requests.length > 0
+
+      if (isAssetIssue) {
+        // Asset issue request - requires decision
+        if (!assetIssueDecision) {
+          toast.error('Please select a decision for the asset (Maintenance/Bin/Return)')
+          setLoading(false)
+          return
+        }
+        await updateAssetIssueRequestStatus(
+          requestId,
+          'approved',
+          reviewerId,
+          assetIssueDecision as 'maintenance' | 'bin' | 'return' | 'reject',
+          notes || undefined
+        )
+      } else {
+        // Regular request
+        await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined, coveringDecision || undefined)
+      }
 
       // Track covering hours if it's a leave request with "cover" decision
       if (selectedRequest?.request_type === 'leave' && coveringDecision === 'cover') {
@@ -160,6 +181,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
       setSelectedRequest(null)
       setNotes('')
       setCoveringDecision('')
+      setAssetIssueDecision('')
       window.location.reload()
     } catch (error: any) {
       toast.error(error.message || 'Failed to approve request')
@@ -336,14 +358,30 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         break
 
       case 'asset_request':
-        const assetData = Array.isArray(request.asset_requests)
-          ? request.asset_requests[0]
-          : request.asset_requests || request.request_data
+        // Check if this is an asset issue request
+        const assetIssueData = Array.isArray(request.asset_issue_requests)
+          ? request.asset_issue_requests[0]
+          : request.asset_issue_requests
 
-        if (assetData) {
-          if (assetData.asset_type) details.push({ label: 'Asset Type', value: assetData.asset_type, highlight: true })
-          if (assetData.quantity) details.push({ label: 'Quantity', value: assetData.quantity })
-          if (assetData.reason) details.push({ label: 'Reason', value: assetData.reason })
+        if (assetIssueData) {
+          // Asset Issue Request
+          details.push({ label: 'Request Sub-Type', value: 'Asset Issue Report', highlight: true })
+          if (assetIssueData.issue_description) details.push({ label: 'Issue Description', value: assetIssueData.issue_description })
+          if (assetIssueData.issue_quantity) details.push({ label: 'Affected Quantity', value: `${assetIssueData.issue_quantity} unit(s)`, highlight: true })
+          if (assetIssueData.issue_image_url) details.push({ label: 'Issue Photo', value: assetIssueData.issue_image_url })
+        } else {
+          // New Asset Request
+          const assetData = Array.isArray(request.asset_requests)
+            ? request.asset_requests[0]
+            : request.asset_requests || request.request_data
+
+          if (assetData) {
+            details.push({ label: 'Request Sub-Type', value: 'New Asset Request', highlight: true })
+            if (assetData.asset_type) details.push({ label: 'Asset Type', value: assetData.asset_type, highlight: true })
+            if (assetData.quantity) details.push({ label: 'Quantity', value: assetData.quantity })
+            if (assetData.asset_specification) details.push({ label: 'Specification', value: assetData.asset_specification })
+            if (assetData.reason) details.push({ label: 'Reason', value: assetData.reason })
+          }
         }
         break
 
@@ -369,21 +407,21 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         console.log('Full Request Object:', request)
 
         // if (coveringData) {
-          details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
-          if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
-          if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
-          // Calculate hours if both times are available
-          if (coveringData.start_time && coveringData.end_time) {
-            const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
-            details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
-          }
-          if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
-          if (coveringData.covering_decision) {
-            const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
-              ? 'No Need to Cover'
-              : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
-            details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
-          }
+        details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
+        if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
+        if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
+        // Calculate hours if both times are available
+        if (coveringData.start_time && coveringData.end_time) {
+          const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
+          details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
+        }
+        if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
+        if (coveringData.covering_decision) {
+          const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
+            ? 'No Need to Cover'
+            : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
+          details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
+        }
         // }
         break
 
@@ -912,6 +950,27 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                             <SelectItem value="no_need_to_cover">No Need to Cover</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+
+                    {/* Asset Issue Decision - only for asset issue requests */}
+                    {selectedRequest.asset_issue_requests && selectedRequest.asset_issue_requests.length > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="asset-issue-decision">Decision (Required for Asset Issues) *</Label>
+                        <Select value={assetIssueDecision} onValueChange={setAssetIssueDecision}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select where to move this asset" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="maintenance">Move to Maintenance</SelectItem>
+                            <SelectItem value="bin">Move to Bin (Disposal)</SelectItem>
+                            <SelectItem value="return">Return to Employee (No Action)</SelectItem>
+                            <SelectItem value="reject">Reject Request</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">
+                          This determines where the reported asset will be moved when approved.
+                        </p>
                       </div>
                     )}
 
