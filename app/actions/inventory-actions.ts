@@ -328,3 +328,77 @@ export async function verifyEmployeeInventory(employeeId: string, verifiedByAdmi
     revalidatePath('/admin/employees')
     return { success: true }
 }
+
+/**
+ * Add a new inventory category
+ */
+export async function addInventoryCategory(category: {
+    name: string
+    description?: string
+    icon?: string
+}) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('inventory_categories')
+        .insert(category)
+
+    if (error) throw error
+
+    revalidatePath('/super-admin/inventory-categories')
+    revalidatePath('/profile')
+    return { success: true }
+}
+
+/**
+ * Update an inventory category
+ */
+export async function updateInventoryCategory(id: string, category: {
+    name?: string
+    description?: string
+    icon?: string
+}) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('inventory_categories')
+        .update(category)
+        .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/super-admin/inventory-categories')
+    revalidatePath('/profile')
+    return { success: true }
+}
+
+/**
+ * Delete an inventory category
+ */
+export async function deleteInventoryCategory(id: string) {
+    const supabase = await createClient()
+
+    // Check if category is in use
+    const { data: inUse, error: checkError } = await supabase
+        .from('employee_inventory')
+        .select('id')
+        .eq('category_id', id)
+        .limit(1)
+
+    if (checkError) throw checkError
+
+    if (inUse && inUse.length > 0) {
+        throw new Error('Cannot delete category that is in use')
+    }
+
+    const { error } = await supabase
+        .from('inventory_categories')
+        .delete()
+        .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/super-admin/inventory-categories')
+    revalidatePath('/profile')
+    return { success: true }
+}
