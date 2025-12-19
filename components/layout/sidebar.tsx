@@ -77,7 +77,7 @@ const employeeNavItems = [
   { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: HelpCircle, label: "Help Center", href: "/help" },
   { icon: Users, label: "My Team", href: "/my-team" },
-
+  { icon: Users, label: "Coullax Family", href: "/coullax-family" },
 ];
 
 const adminNavItems = [
