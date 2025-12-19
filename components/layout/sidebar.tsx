@@ -34,6 +34,7 @@ import {
   UserSquare2,
   Package,
   Wrench,
+  Megaphone,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ const adminNavItems = [
   },
   { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
   { icon: UserSquare2, label: "Visitors", href: "/admin/visitors" },
+  { icon: Megaphone, label: "Announcements", href: "/admin/announcements" },
 ];
 
 const superAdminSections = [

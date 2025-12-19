@@ -19,6 +19,7 @@ import {
 import { formatDate } from '@/lib/utils'
 import { LeaveSection } from '@/components/employee/leave-section'
 import { DashboardCalendar } from '@/components/employee/dashboard-calendar'
+import { AnnouncementSection } from '@/components/employee/announcement-section'
 import { getCalendarEvents, getUserCalendars } from '@/app/(dashboard)/calendar/actions'
 import type { CalendarEventWithDetails } from '@/lib/types/calendar'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
@@ -47,18 +48,18 @@ export function EmployeeDashboardClient({
         setCalendarLoading(true)
         const startDate = format(startOfMonth(new Date()), "yyyy-MM-dd")
         const endDate = format(endOfMonth(new Date()), "yyyy-MM-dd")
-        
+
         // Get user's calendars and filter for personal calendars only
         const calendars = await getUserCalendars()
         const personalCalendarIds = calendars
           .filter(cal => cal.type === 'personal' && cal.owner_id === profile.id)
           .map(cal => cal.id)
-        
+
         // Fetch events only from personal calendars to avoid showing other employees' events
         const events = personalCalendarIds.length > 0
           ? await getCalendarEvents(startDate, endDate, personalCalendarIds)
           : []
-        
+
         setCalendarEvents(events)
       } catch (error) {
         console.error('Failed to load calendar events:', error)
@@ -111,6 +112,9 @@ export function EmployeeDashboardClient({
           </Link>
         </div>
       </div>
+
+      {/* Announcements */}
+      <AnnouncementSection />
 
       {/* Today's Status */}
       <Card className="bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black">
