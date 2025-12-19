@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -42,6 +43,12 @@ interface InventoryItem {
         name: string
         description?: string
         icon?: string
+    }
+    general_item?: {
+        id: string
+        item_name: string
+        category: string
+        image_url?: string | null
     }
 }
 
@@ -335,52 +342,66 @@ export function InventorySection({ employeeId }: InventorySectionProps) {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
                                             >
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-semibold">{item.item_name}</h4>
-                                                            {item.isverified && (
-                                                                <Badge variant="default" className="bg-green-600">
-                                                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                                                    Verified
-                                                                </Badge>
+                                                <div className="flex items-start gap-4">
+                                                    {/* Image Thumbnail */}
+                                                    {item.general_item?.image_url && (
+                                                        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                                                            <Image
+                                                                src={item.general_item.image_url}
+                                                                alt={item.item_name}
+                                                                fill
+                                                                className="object-cover"
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex items-start justify-between flex-1">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-semibold">{item.item_name}</h4>
+                                                                {item.isverified && (
+                                                                    <Badge variant="default" className="bg-green-600">
+                                                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                                                        Verified
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            {item.item_type && (
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400">{item.item_type}</p>
+                                                            )}
+                                                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                                {item.quantity_assigned && (
+                                                                    <Badge variant="default" className="bg-blue-600">
+                                                                        Qty: {item.quantity_assigned}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.serial_number && (
+                                                                    <Badge variant="outline">SN: {item.serial_number}</Badge>
+                                                                )}
+                                                                {item.assigned_date && (
+                                                                    <Badge variant="secondary">
+                                                                        Assigned: {new Date(item.assigned_date).toLocaleDateString()}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.condition && (
+                                                                    <Badge variant="outline">{item.condition}</Badge>
+                                                                )}
+                                                            </div>
+                                                            {item.notes && (
+                                                                <p className="text-sm text-gray-500 mt-2">{item.notes}</p>
                                                             )}
                                                         </div>
-                                                        {item.item_type && (
-                                                            <p className="text-sm text-gray-600 dark:text-gray-400">{item.item_type}</p>
-                                                        )}
-                                                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                            {item.quantity_assigned && (
-                                                                <Badge variant="default" className="bg-blue-600">
-                                                                    Qty: {item.quantity_assigned}
-                                                                </Badge>
-                                                            )}
-                                                            {item.serial_number && (
-                                                                <Badge variant="outline">SN: {item.serial_number}</Badge>
-                                                            )}
-                                                            {item.assigned_date && (
-                                                                <Badge variant="secondary">
-                                                                    Assigned: {new Date(item.assigned_date).toLocaleDateString()}
-                                                                </Badge>
-                                                            )}
-                                                            {item.condition && (
-                                                                <Badge variant="outline">{item.condition}</Badge>
-                                                            )}
-                                                        </div>
-                                                        {item.notes && (
-                                                            <p className="text-sm text-gray-500 mt-2">{item.notes}</p>
-                                                        )}
+                                                        {/* {!isInventoryVerified && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleDelete(item.id)}
+                                                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            )} */}
                                                     </div>
-                                                    {/* {!isInventoryVerified && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(item.id)}
-                                                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    )} */}
                                                 </div>
                                             </motion.div>
                                         ))}
