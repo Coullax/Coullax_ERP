@@ -30,7 +30,7 @@ export function ProfilePicture({
   const profile = useAuthStore((state) => state.profile)
   const isSuperAdmin = useAuthStore((state) => state.isSuperAdmin)
 
-  // console.log('Profile role:', profile?.role)
+  console.log('Profile role:', profile?.role)
   // console.log('Is Super Admin:', isSuperAdmin())
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +81,7 @@ export function ProfilePicture({
           </AvatarFallback>
         </Avatar>
 
-        {isSuperAdmin() && (
+        {!isSuperAdmin() && (
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -104,7 +104,7 @@ export function ProfilePicture({
         className="hidden"
       />
 
-      {isSuperAdmin() && (
+      {!isSuperAdmin() && (
         <div className="text-center">
           <p className="text-sm text-gray-500">
             Click camera icon to upload new photo
