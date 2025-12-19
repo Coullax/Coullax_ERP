@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { updateProfile, updateEmployeeInfo } from '@/app/actions/profile-actions'
-import { Save } from 'lucide-react'
+import { Save, Shield, CheckCircle } from 'lucide-react'
 
 interface BasicInfoFormProps {
   userId: string
@@ -90,6 +90,24 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Verification Status Badge */}
+      {isFormDisabled && (
+        <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl">
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div>
+              <p className="font-semibold text-green-900 dark:text-green-100">Personal Details Verified</p>
+              {employee?.verified_at && (
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Verified on {new Date(employee.verified_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </div>
+          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+        </div>
+      )}
+
       {/* Personal Information */}
       <Card>
         <CardHeader>
