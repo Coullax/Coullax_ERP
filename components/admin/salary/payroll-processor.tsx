@@ -13,11 +13,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Circle, Play, Eye } from "lucide-react"
+import { CheckCircle2, Circle, Play, Eye, Copy, Link } from "lucide-react"
 import { ProcessSalaryModal } from "./process-salary-modal"
 import { format } from "date-fns"
 import { Loader2 } from "lucide-react"
 import { SalaryPayment } from "@/lib/types"
+import { toast } from "sonner"
+import { adminApproveSalarySlip } from "@/app/actions/salary-slip-actions"
 
 export function PayrollProcessor() {
     const [employees, setEmployees] = useState<any[]>([])
@@ -133,15 +135,33 @@ export function PayrollProcessor() {
                                                         </Badge>
                                                     )}
                                                     {payment.employee_status === 'disputed' && (
-                                                        <Badge variant="destructive" className="w-fit text-[10px] px-1 py-0 h-5">
-                                                            Emp: Disputed
-                                                        </Badge>
+                                                        <div className="flex flex-col gap-1">
+                                                            <Badge variant="destructive" className="w-fit text-[10px] px-1 py-0 h-5">
+                                                                Emp: Disputed
+                                                            </Badge>
+                                                            {payment.dispute_reason && (
+                                                                <span className="text-[10px] text-red-600 max-w-[150px] leading-tight">
+                                                                    "{payment.dispute_reason}"
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                     {(!payment.employee_status || payment.employee_status === 'pending') && (
                                                         <Badge variant="secondary" className="text-muted-foreground w-fit text-[10px] px-1 py-0 h-5">
                                                             Emp: Pending
                                                         </Badge>
                                                     )}
+
+                                                    {/* Admin Approval Status */}
+                                                    {payment.admin_approval_status === 'approved' ? (
+                                                        <Badge variant="outline" className="border-blue-600 text-blue-600 w-fit text-[10px] px-1 py-0 h-5">
+                                                            Admin: Approved
+                                                        </Badge>
+                                                    ) : payment.employee_status === 'approved' ? (
+                                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 w-fit text-[10px] px-1 py-0 h-5">
+                                                            Admin: Pending
+                                                        </Badge>
+                                                    ) : null}
                                                 </div>
                                             ) : (
                                                 <Badge variant="outline" className="text-zinc-500">
@@ -166,9 +186,41 @@ export function PayrollProcessor() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {isPaid ? (
-                                                <Button variant="ghost" size="sm" onClick={() => handleProcess(emp)}>
-                                                    <Eye className="w-4 h-4 mr-2" /> View/Edit
-                                                </Button>
+                                                <>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleProcess(emp)}>
+                                                        <Eye className="w-4 h-4 mr-2" /> View/Edit
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const link = `${window.location.origin}/employee/salary/slip/${payment.id}`;
+                                                            navigator.clipboard.writeText(link);
+                                                            toast.success("Salary slip link copied to clipboard");
+                                                        }}
+                                                    >
+                                                        <Copy className="w-4 h-4 mr-2" /> Copy Link
+                                                    </Button>
+
+                                                    {/* Admin Final Approve Button */}
+                                                    {payment.employee_status === 'approved' && payment.admin_approval_status !== 'approved' && (
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-blue-600 hover:bg-blue-700"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await adminApproveSalarySlip(payment.id)
+                                                                    toast.success("Salary slip finally approved")
+                                                                    fetchData()
+                                                                } catch (err) {
+                                                                    toast.error("Failed to approve")
+                                                                }
+                                                            }}
+                                                        >
+                                                            <CheckCircle2 className="w-4 h-4 mr-2" /> Final Approve
+                                                        </Button>
+                                                    )}
+                                                </>
                                             ) : (
                                                 <Button
                                                     size="sm"
@@ -187,16 +239,18 @@ export function PayrollProcessor() {
                 </Table>
             </div>
 
-            {selectedEmployee && (
-                <ProcessSalaryModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    employeeId={selectedEmployee.id}
-                    employeeName={selectedEmployee.profiles?.full_name}
-                    initialMonth={month}
-                    onSuccess={fetchData}
-                />
-            )}
-        </div>
+            {
+                selectedEmployee && (
+                    <ProcessSalaryModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        employeeId={selectedEmployee.id}
+                        employeeName={selectedEmployee.profiles?.full_name}
+                        initialMonth={month}
+                        onSuccess={fetchData}
+                    />
+                )
+            }
+        </div >
     )
 }

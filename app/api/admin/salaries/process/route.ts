@@ -126,6 +126,10 @@ export async function POST(request: Request) {
                 status: status || 'draft',
                 employee_status: 'pending', // Reset status on update/re-process
                 dispute_reason: null, // Clear dispute reason on update
+                employee_approved_at: null,
+                admin_approval_status: 'pending',
+                admin_approved_at: null,
+                admin_approved_by: null,
                 notes,
                 created_by: user.id,
                 updated_at: new Date().toISOString()

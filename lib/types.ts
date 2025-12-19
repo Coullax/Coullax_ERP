@@ -122,6 +122,10 @@ export interface SalaryPayment {
   payment_date?: string
   notes?: string
   employee_status?: 'pending' | 'approved' | 'disputed'
+  employee_approved_at?: string
+  admin_approval_status?: 'pending' | 'approved' | 'rejected'
+  admin_approved_at?: string
+  admin_approved_by?: string
   dispute_reason?: string
   created_by?: string
   created_at?: string
