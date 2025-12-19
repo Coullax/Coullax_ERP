@@ -319,18 +319,20 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
         </CardContent>
       </Card>
 
-      {/* <div className="flex justify-end">
-        <Button type="submit" disabled={loading} size="lg">
-          {loading ? (
-            'Saving...'
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </Button>
-      </div> */}
+      {!isFormDisabled && (
+        <div className="flex justify-end">
+          <Button type="submit" disabled={loading} size="lg">
+            {loading ? (
+              'Saving...'
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </form>
   )
 }
