@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addGeneralInventoryItem, updateGeneralInventoryItem, uploadInventoryImage, type GeneralInventoryItem } from "@/app/actions/general-inventory-actions"
+import { getInventoryCategories } from "@/app/actions/inventory-actions"
 import { toast } from "sonner"
 import { Loader2, ImagePlus, X } from "lucide-react"
 
@@ -24,10 +25,11 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
     const [uploading, setUploading] = useState(false)
     const [imageFile, setImageFile] = useState<File | null>(null)
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url || null)
+    const [categories, setCategories] = useState<Array<{ id: string, name: string }>>([])
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [formData, setFormData] = useState({
         item_name: item?.item_name || "",
-        category: item?.category || "equipment",
+        category: item?.category || "",
         description: item?.description || "",
         serial_number: item?.serial_number || "",
         quantity: item?.quantity?.toString() || "1",
@@ -41,12 +43,31 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
         notes: item?.notes || "",
     })
 
+    // Load categories on mount
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const data = await getInventoryCategories()
+                setCategories(data)
+                // Set first category as default when adding new item
+                if (!item && data.length > 0 && !formData.category) {
+                    setFormData(prev => ({ ...prev, category: data[0].name }))
+                }
+            } catch (error) {
+                console.error('Failed to load categories:', error)
+                // Set empty if fetch fails to avoid blocking the dialog
+                setCategories([])
+            }
+        }
+        loadCategories()
+    }, [])
+
     // Update form data when item changes (for editing different items)
     useEffect(() => {
         if (item) {
             setFormData({
                 item_name: item.item_name || "",
-                category: item.category || "equipment",
+                category: item.category || "",
                 description: item.description || "",
                 serial_number: item.serial_number || "",
                 quantity: item.quantity?.toString() || "1",
@@ -65,7 +86,7 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
             // Reset form for adding new item
             setFormData({
                 item_name: "",
-                category: "equipment",
+                category: categories.length > 0 ? categories[0].name : "",
                 description: "",
                 serial_number: "",
                 quantity: "1",
@@ -81,7 +102,7 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
             setImagePreview(null)
             setImageFile(null)
         }
-    }, [item])
+    }, [item, categories])
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -225,20 +246,23 @@ export function InventoryDialog({ open, onOpenChange, item, onSuccess }: Invento
                             <Label htmlFor="category">Category *</Label>
                             <Select
                                 value={formData.category}
-                                onValueChange={(value) => setFormData({ ...formData, category: value as 'furniture' | 'equipment' | 'supplies' | 'electronics' | 'appliances' | 'tools' | 'vehicles' | 'other' })}
+                                onValueChange={(value) => setFormData({ ...formData, category: value as any })}
                             >
                                 <SelectTrigger id="category">
-                                    <SelectValue />
+                                    <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="furniture">Furniture</SelectItem>
-                                    <SelectItem value="equipment">Equipment</SelectItem>
-                                    <SelectItem value="supplies">Supplies</SelectItem>
-                                    <SelectItem value="electronics">Electronics</SelectItem>
-                                    <SelectItem value="appliances">Appliances</SelectItem>
-                                    <SelectItem value="tools">Tools</SelectItem>
-                                    <SelectItem value="vehicles">Vehicles</SelectItem>
-                                    <SelectItem value="other">Other</SelectItem>
+                                    {categories.length === 0 ? (
+                                        <SelectItem value="equipment" disabled>
+                                            No categories available
+                                        </SelectItem>
+                                    ) : (
+                                        categories.map((cat) => (
+                                            <SelectItem key={cat.id} value={cat.name}>
+                                                {cat.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
