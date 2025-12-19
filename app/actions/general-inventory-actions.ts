@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { uploadToB2 } from './upload-actions'
 
 export type GeneralInventoryItem = {
     id: string
@@ -19,6 +20,7 @@ export type GeneralInventoryItem = {
     warranty_expiry?: string | null
     supplier?: string | null
     notes?: string | null
+    image_url?: string | null
     created_at: string
     updated_at: string
     created_by?: string | null
@@ -168,6 +170,7 @@ export async function addGeneralInventoryItem(item: {
     warranty_expiry?: string
     supplier?: string
     notes?: string
+    image_url?: string
 }) {
     const supabase = await createClient()
 
@@ -224,6 +227,7 @@ export async function updateGeneralInventoryItem(id: string, item: {
     warranty_expiry?: string
     supplier?: string
     notes?: string
+    image_url?: string
 }) {
     const supabase = await createClient()
 
@@ -323,4 +327,33 @@ export async function searchInventory(query: string) {
     }
 
     return data as GeneralInventoryItem[]
+}
+
+/**
+ * Upload inventory item image to Backblaze
+ */
+export async function uploadInventoryImage(formData: FormData) {
+    const file = formData.get('file') as File
+    const itemId = formData.get('itemId') as string
+
+    if (!file) throw new Error('No file provided')
+
+    try {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `inventory-images/${itemId}/${Date.now()}.${fileExt}`
+
+        // Add filename to formData for uploadToB2
+        formData.append('filename', fileName)
+
+        const result = await uploadToB2(formData)
+
+        if (!result.success || !result.publicUrl) {
+            throw new Error(result.error || 'Upload failed')
+        }
+
+        return { url: result.publicUrl }
+    } catch (error: any) {
+        console.error('Inventory image upload failed:', error)
+        throw error
+    }
 }
