@@ -24,6 +24,7 @@ export async function getMyRequests(userId: string) {
       expense_reimbursements(*),
       attendance_regularization_requests(*),
       asset_requests(*),
+      asset_issue_requests(*),
       resignations(*),
       covering_requests(*),
       request_for_covering_requests(*)
@@ -76,6 +77,7 @@ export async function getAllRequests(status?: string) {
       travel_requests(*),
       attendance_regularization_requests(*),
       asset_requests(*),
+      asset_issue_requests(*),
       resignations(*),
       covering_requests!covering_requests_request_id_fkey(*),
       request_for_covering_requests(*)
@@ -579,6 +581,7 @@ export async function createAssetRequest(employeeId: string, data: {
   asset_type: string
   quantity: number
   reason: string
+  asset_specification?: string
 }) {
   const supabase = await createClient()
 
@@ -596,6 +599,84 @@ export async function createAssetRequest(employeeId: string, data: {
 
   const { error: detailError } = await supabase
     .from('asset_requests')
+    .insert({
+      request_id: request.id,
+      employee_id: employeeId,
+      ...data,
+    })
+
+  if (detailError) throw detailError
+
+  revalidatePath('/requests')
+  return { success: true, requestId: request.id }
+}
+
+// Upload Asset Issue Image
+export async function uploadAssetIssueImage(formData: FormData) {
+  const file = formData.get('file') as File
+  const employeeId = formData.get('employeeId') as string
+
+  if (!file) throw new Error('No file provided')
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Please upload an image file')
+  }
+
+  // Validate file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Image size should be less than 10MB')
+  }
+
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `asset-issues/${employeeId}/${Date.now()}.${fileExt}`
+
+    // Add filename to formData for uploadToB2
+    formData.append('filename', fileName)
+
+    const result = await uploadToB2(formData)
+
+    if (!result.success || !result.publicUrl) {
+      throw new Error(result.error || 'Upload failed')
+    }
+
+    return {
+      url: result.publicUrl,
+      name: file.name,
+      type: file.type,
+      size: file.size
+    }
+  } catch (error: any) {
+    console.error('Asset issue image upload failed:', error)
+    throw error
+  }
+}
+
+// Create Asset Issue Request
+export async function createAssetIssueRequest(employeeId: string, data: {
+  employee_inventory_id: string
+  issue_description: string
+  issue_image_url: string
+  issue_quantity: number
+  requested_action: 'repair' | 'dispose' | 'evaluate'
+}) {
+  const supabase = await createClient()
+
+  const { data: request, error: requestError } = await supabase
+    .from('requests')
+    .insert({
+      employee_id: employeeId,
+      request_type: 'asset_request',
+      status: 'pending',
+    })
+    .select()
+    .single()
+
+  if (requestError) throw requestError
+
+  const { error: detailError } = await supabase
+    .from('asset_issue_requests')
     .insert({
       request_id: request.id,
       employee_id: employeeId,
@@ -882,7 +963,213 @@ export async function updateRequestStatus(
   }
 
   revalidatePath('/requests')
-  revalidatePath('/admin/approvals')
+  revalidatePath('/admin/requests')
+  return { success: true }
+}
+
+// Helper function to handle asset issue request approval (inventory movement)
+async function handleAssetIssueApproval(
+  requestId: string,
+  adminDecision: 'maintenance' | 'bin' | 'return' | 'reject',
+  adminNotes: string,
+  reviewerId: string
+) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Get the asset issue request details using admin client to bypass RLS
+  const { data: assetIssue, error: issueError } = await adminClient
+    .from('asset_issue_requests')
+    .select('*, employee_inventory:employee_inventory_id(*, category:category_id(name))')
+    .eq('request_id', requestId)
+    .single()
+
+  if (issueError || !assetIssue) {
+    console.error('Asset issue request query error:', {
+      requestId,
+      error: issueError,
+      data: assetIssue
+    })
+    throw new Error(`Asset issue request not found for request_id: ${requestId}. Error: ${issueError?.message || 'No data returned'}`)
+  }
+
+  // Update the asset issue request with admin decision
+  const { error: updateError } = await adminClient
+    .from('asset_issue_requests')
+    .update({
+      admin_decision: adminDecision,
+      admin_notes: adminNotes
+    })
+    .eq('request_id', requestId)
+
+  if (updateError) {
+    throw new Error(`Failed to update asset issue: ${updateError.message}`)
+  }
+
+  // Handle inventory movement based on admin decision
+  if (adminDecision === 'maintenance') {
+    // Move to maintenance inventory
+    const empInv = Array.isArray(assetIssue.employee_inventory)
+      ? assetIssue.employee_inventory[0]
+      : assetIssue.employee_inventory
+
+    if (!empInv) throw new Error('Employee inventory item not found')
+
+    const issueQty = assetIssue.issue_quantity || 1
+    const totalQty = empInv.quantity_assigned || 1
+
+    if (issueQty >= totalQty) {
+      // All units have issues - delete from employee_inventory
+      const { error: deleteError } = await adminClient
+        .from('employee_inventory')
+        .delete()
+        .eq('id', assetIssue.employee_inventory_id)
+
+      if (deleteError) {
+        throw new Error(`Failed to remove from employee inventory: ${deleteError.message}`)
+      }
+    } else {
+      // Partial quantity - reduce employee inventory
+      const { error: updateError } = await adminClient
+        .from('employee_inventory')
+        .update({
+          quantity_assigned: totalQty - issueQty
+        })
+        .eq('id', assetIssue.employee_inventory_id)
+
+      if (updateError) {
+        throw new Error(`Failed to update employee inventory: ${updateError.message}`)
+      }
+    }
+
+    // Insert into maintenance_inventory
+    const { error: maintenanceError } = await adminClient
+      .from('maintenance_inventory')
+      .insert({
+        general_inventory_id: empInv.general_inventory_id || null,
+        item_name: empInv.item_name,
+        category: empInv.category?.name || 'Uncategorized',
+        serial_number: empInv.serial_number,
+        quantity: issueQty,
+        unit_price: null,
+        issue_description: assetIssue.issue_description,
+        repair_notes: adminNotes,
+        status: 'pending',
+        source_employee_id: assetIssue.employee_id,
+        source_employee_inventory_id: assetIssue.employee_inventory_id,
+        created_by: reviewerId,
+        last_updated_by: reviewerId
+      })
+
+    if (maintenanceError) {
+      throw new Error(`Failed to add to maintenance: ${maintenanceError.message}`)
+    }
+
+    revalidatePath('/super-admin/maintenance-inventory')
+  } else if (adminDecision === 'bin') {
+    // Move to bin inventory
+    const empInv = Array.isArray(assetIssue.employee_inventory)
+      ? assetIssue.employee_inventory[0]
+      : assetIssue.employee_inventory
+
+    if (!empInv) throw new Error('Employee inventory item not found')
+
+    const issueQty = assetIssue.issue_quantity || 1
+    const totalQty = empInv.quantity_assigned || 1
+
+    if (issueQty >= totalQty) {
+      // All units to bin - delete from employee_inventory
+      const { error: deleteError } = await adminClient
+        .from('employee_inventory')
+        .delete()
+        .eq('id', assetIssue.employee_inventory_id)
+
+      if (deleteError) {
+        throw new Error(`Failed to remove from employee inventory: ${deleteError.message}`)
+      }
+    } else {
+      // Partial quantity - reduce employee inventory
+      const { error: updateError } = await adminClient
+        .from('employee_inventory')
+        .update({
+          quantity_assigned: totalQty - issueQty
+        })
+        .eq('id', assetIssue.employee_inventory_id)
+
+      if (updateError) {
+        throw new Error(`Failed to update employee inventory: ${updateError.message}`)
+      }
+    }
+
+    // Insert into bin_inventory
+    const { error: binError } = await adminClient
+      .from('bin_inventory')
+      .insert({
+        general_inventory_id: empInv.general_inventory_id || null,
+        item_name: empInv.item_name,
+        category: empInv.category?.name || 'Uncategorized',
+        serial_number: empInv.serial_number,
+        quantity: issueQty,
+        unit_price: null,
+        reason: assetIssue.issue_description,
+        notes: adminNotes,
+        created_by: reviewerId
+      })
+
+    if (binError) {
+      throw new Error(`Failed to add to bin: ${binError.message}`)
+    }
+
+    revalidatePath('/super-admin/bin-inventory')
+  }
+  // 'return' and 'reject' don't move inventory
+
+  revalidatePath('/profile')
+  return { success: true }
+}
+
+// Update request status with asset issue support
+export async function updateAssetIssueRequestStatus(
+  requestId: string,
+  status: 'approved' | 'rejected',
+  reviewerId: string,
+  adminDecision?: 'maintenance' | 'bin' | 'return' | 'reject',
+  notes?: string
+) {
+  const supabase = await createClient()
+
+  // Update main request status
+  const { error: updateError } = await supabase
+    .from('requests')
+    .update({
+      status,
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+      review_notes: notes,
+    })
+    .eq('id', requestId)
+
+  if (updateError) throw updateError
+
+  // Handle inventory movement if approved
+  if (status === 'approved' && adminDecision) {
+    await handleAssetIssueApproval(requestId, adminDecision, notes || '', reviewerId)
+  } else if (status === 'approved' && !adminDecision) {
+    // Still need to update the asset_issue_requests with reject decision
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
+
+    await adminClient
+      .from('asset_issue_requests')
+      .update({
+        admin_decision: 'reject',
+        admin_notes: notes || ''
+      })
+      .eq('request_id', requestId)
+  }
+
+  revalidatePath('/requests')
+  revalidatePath('/admin/requests')
   return { success: true }
 }
 
