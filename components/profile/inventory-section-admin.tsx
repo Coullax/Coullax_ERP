@@ -30,9 +30,10 @@ import {
     updateInventoryItem,
     deleteInventoryItem,
     getInventoryCategories,
+    uploadAssetConditionImage,
 } from '@/app/actions/inventory-actions'
 import { getGeneralInventory, type GeneralInventoryItem } from '@/app/actions/general-inventory-actions'
-import { Package, CheckCircle, Shield, ShieldCheck, Laptop, Phone, Key, Home, Briefcase, Pencil, Plus, Edit, Trash2 } from 'lucide-react'
+import { Package, CheckCircle, Shield, ShieldCheck, Laptop, Phone, Key, Home, Briefcase, Pencil, Plus, Edit, Trash2, Upload, X } from 'lucide-react'
 import { useAuthStore } from '@/store/auth-store'
 
 interface InventorySectionAdminProps {
@@ -96,6 +97,9 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
     const [categories, setCategories] = useState<Category[]>([])
     const [generalInventory, setGeneralInventory] = useState<GeneralInventoryItem[]>([])
     const [selectedGeneralItem, setSelectedGeneralItem] = useState<GeneralInventoryItem | null>(null)
+    const [conditionImageFile, setConditionImageFile] = useState<File | null>(null)
+    const [conditionImagePreview, setConditionImagePreview] = useState<string | null>(null)
+    const [uploadingImage, setUploadingImage] = useState(false)
     const [formData, setFormData] = useState({
         category_id: '',
         item_name: '',
@@ -106,6 +110,7 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
         notes: '',
         general_inventory_id: '',
         quantity_assigned: '1',
+        condition_image_url: '',
     })
     const user = useAuthStore((state) => state.user)
 
@@ -176,10 +181,13 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                 notes: item.notes || '',
                 general_inventory_id: item.general_inventory_id || '',
                 quantity_assigned: item.quantity_assigned?.toString() || '1',
+                condition_image_url: '',
             })
         } else {
             setEditingItem(null)
             setSelectedGeneralItem(null)
+            setConditionImageFile(null)
+            setConditionImagePreview(null)
             setFormData({
                 category_id: '',
                 item_name: '',
@@ -190,6 +198,7 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                 notes: '',
                 general_inventory_id: '',
                 quantity_assigned: '1',
+                condition_image_url: '',
             })
         }
         setIsDialogOpen(true)
@@ -198,6 +207,58 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
     const handleCloseDialog = () => {
         setIsDialogOpen(false)
         setEditingItem(null)
+    }
+
+    const handleConditionImageUpload = async () => {
+        if (!conditionImageFile) return
+
+        setUploadingImage(true)
+        try {
+            const imageFormData = new FormData()
+            imageFormData.append('file', conditionImageFile)
+            imageFormData.append('employeeId', employeeId)
+
+            const result = await uploadAssetConditionImage(imageFormData)
+            setFormData({ ...formData, condition_image_url: result.url })
+            toast.success('Image uploaded successfully!')
+        } catch (error: any) {
+            console.error('Image upload failed:', error)
+            toast.error(error.message || 'Failed to upload image')
+        } finally {
+            setUploadingImage(false)
+        }
+    }
+
+    const handleConditionImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file')
+            return
+        }
+
+        // Validate file size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('Image size should be less than 10MB')
+            return
+        }
+
+        setConditionImageFile(file)
+
+        // Create preview
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setConditionImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+    }
+
+    const handleRemoveConditionImage = () => {
+        setConditionImageFile(null)
+        setConditionImagePreview(null)
+        setFormData({ ...formData, condition_image_url: '' })
     }
 
     const handleSave = async () => {
@@ -212,6 +273,12 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
             return
         }
 
+        // Upload condition image if selected but not yet uploaded
+        if (conditionImageFile && !formData.condition_image_url) {
+            toast.error('Please upload the condition image before saving')
+            return
+        }
+
         setSaving(true)
         try {
             // Clean up data - convert empty strings to undefined for UUID fields
@@ -220,6 +287,7 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                 general_inventory_id: formData.general_inventory_id || undefined,
                 category_id: formData.category_id || undefined,
                 quantity_assigned: formData.quantity_assigned ? parseInt(formData.quantity_assigned) : undefined,
+                condition_image_url: formData.condition_image_url || undefined,
             }
 
             if (editingItem) {
@@ -526,6 +594,66 @@ export function InventorySectionAdmin({ employeeId, inventory, onVerified }: Inv
                                 onChange={(e) => setFormData({ ...formData, assigned_date: e.target.value })}
                             />
                         </div>
+
+                        {/* Asset Condition Image */}
+                        {!editingItem && (
+                            <div className="grid gap-2">
+                                <Label htmlFor="condition_image">Asset Condition Image</Label>
+                                <div className="space-y-2">
+                                    <Input
+                                        id="condition_image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleConditionImageSelect}
+                                        disabled={uploadingImage}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Upload a photo showing the current condition of the asset (Optional, Max 10MB)
+                                    </p>
+
+                                    {conditionImagePreview && (
+                                        <div className="relative w-full max-w-md rounded-lg border-2 border-gray-200 overflow-hidden">
+                                            <img
+                                                src={conditionImagePreview}
+                                                alt="Asset condition preview"
+                                                className="w-full h-48 object-cover"
+                                            />
+                                            <div className="absolute top-2 right-2 flex gap-2">
+                                                {!formData.condition_image_url && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={handleConditionImageUpload}
+                                                        disabled={uploadingImage}
+                                                        className="bg-blue-600 hover:bg-blue-700"
+                                                    >
+                                                        <Upload className="w-4 h-4 mr-1" />
+                                                        {uploadingImage ? 'Uploading...' : 'Upload'}
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    onClick={handleRemoveConditionImage}
+                                                    disabled={uploadingImage}
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                            {formData.condition_image_url && (
+                                                <div className="absolute bottom-2 left-2">
+                                                    <Badge className="bg-green-600">
+                                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                                        Uploaded
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Notes */}
                         <div className="grid gap-2">
