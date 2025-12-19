@@ -110,9 +110,17 @@ const superAdminSections = [
       { icon: UserCog, label: "Roles", href: "/super-admin/roles" },
       { icon: History, label: "Audit Logs", href: "/super-admin/audit-logs" },
       { icon: Settings, label: "Settings", href: "/super-admin/settings" },
-      { icon: Package, label: "General Inventory", href: "/super-admin/inventory" },
-      { icon: Package, label: "Bin Inventory", href: "/super-admin/bin-inventory" },
-      { icon: Wrench, label: "Maintenance Inventory", href: "/super-admin/maintenance-inventory" },
+      {
+        icon: Package,
+        label: "Inventory",
+        isExpandable: true,
+        subItems: [
+          { icon: Plus, label: "Inventory Categories", href: "/super-admin/inventory-categories" },
+          { icon: Package, label: "General Inventory", href: "/super-admin/inventory" },
+          { icon: Wrench, label: "Maintenance Inventory", href: "/super-admin/maintenance-inventory" },
+          { icon: Package, label: "Bin Inventory", href: "/super-admin/bin-inventory" }
+        ],
+      },
     ],
   },
 ];
@@ -145,7 +153,8 @@ export function Sidebar() {
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
-  const pathname = usePathname();
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true });
+    const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
     useAuthStore();
@@ -227,7 +236,59 @@ export function Sidebar() {
     }
   };
 
-  const NavItem = ({ item, isCollapsed }: { item: any; isCollapsed: boolean }) => {
+  const toggleSection = (label: string) => {
+    setExpandedSections(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const NavItem = ({ item, isCollapsed, isSubItem = false }: { item: any; isCollapsed: boolean; isSubItem?: boolean }) => {
+    // Check if expandable (has subItems)
+    if (item.isExpandable && item.subItems) {
+      const isExpanded = expandedSections[item.label];
+      const Icon = item.icon;
+      const hasActiveSubItem = item.subItems.some((subItem: any) =>
+        pathname === subItem.href || pathname.startsWith(subItem.href + "/")
+      );
+
+      return (
+        <div>
+          <button
+            onClick={() => toggleSection(item.label)}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative",
+              hasActiveSubItem
+                ? "bg-primary/10 text-primary"
+                : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
+              isCollapsed && "justify-center px-2"
+            )}
+          >
+            <Icon className={cn("w-5 h-5 flex-shrink-0")} />
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">{item.label}</span>
+                <ChevronDown className={cn(
+                  "w-4 h-4 transition-transform",
+                  isExpanded && "rotate-180"
+                )} />
+              </>
+            )}
+            {isCollapsed && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                {item.label}
+              </div>
+            )}
+          </button>
+          {!isCollapsed && isExpanded && (
+            <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-800 pl-2">
+              {item.subItems.map((subItem: any) => (
+                <NavItem key={subItem.href} item={subItem} isCollapsed={isCollapsed} isSubItem={true} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Regular nav item
     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
     const Icon = item.icon;
 
@@ -239,15 +300,21 @@ export function Sidebar() {
           isActive
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
-          isCollapsed && "justify-center px-2"
+          isCollapsed && "justify-center px-2",
+          isSubItem && "py-2 text-xs"
         )}
       >
-        <Icon className={cn("w-5 h-5 flex-shrink-0")} />
+        <Icon className={cn("w-5 h-5 flex-shrink-0", isSubItem && "w-4 h-4")} />
         {!isCollapsed && (
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <Badge className="h-5 min-w-5 flex items-center justify-center px-1.5 bg-red-500 text-white">
+              <Badge className={cn(
+                "h-5 min-w-5 flex items-center justify-center px-1.5",
+                isActive
+                  ? "bg-primary-foreground text-primary"
+                  : "bg-primary text-primary-foreground"
+              )}>
                 {item.badge}
               </Badge>
             )}
