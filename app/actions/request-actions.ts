@@ -50,11 +50,66 @@ export async function getPendingRequests() {
         profile:profiles!employees_id_fkey(full_name, email)
       )
     `)
-    .eq('status', 'pending')
+    .eq('status', 'admin_approval_pending')
     .order('submitted_at', { ascending: true })
 
   if (error) throw error
   return data
+}
+
+// Get count of pending requests for admin (for sidebar badge)
+export async function getPendingRequestsCount() {
+  const supabase = await createClient()
+
+  const { count, error } = await supabase
+    .from('requests')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'admin_approval_pending')
+
+  if (error) throw error
+  return count || 0
+}
+
+// Get count of team lead pending requests (for sidebar badge)
+export async function getTeamLeadPendingRequestsCount(departmentHeadId: string) {
+  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Get departments where user is head
+  const { data: departments, error: deptError } = await supabase
+    .from('departments')
+    .select('id')
+    .eq('head_id', departmentHeadId)
+
+  if (deptError || !departments || departments.length === 0) {
+    return 0
+  }
+
+  const departmentIds = departments.map(d => d.id)
+
+  // Get team members
+  const { data: teamMembers, error: teamError } = await adminClient
+    .from('employees')
+    .select('id')
+    .in('department_id', departmentIds)
+    .neq('id', departmentHeadId)
+
+  if (teamError || !teamMembers || teamMembers.length === 0) {
+    return 0
+  }
+
+  const memberIds = teamMembers.map(m => m.id)
+
+  // Count pending requests
+  const { count, error } = await adminClient
+    .from('requests')
+    .select('*', { count: 'exact', head: true })
+    .in('employee_id', memberIds)
+    .eq('status', 'team_leader_approval_pending')
+
+  if (error) return 0
+  return count || 0
 }
 
 // Get all requests for admin (with optional status filter)
@@ -1226,6 +1281,205 @@ export async function upsertCoveringHours(employeeId: string, hoursToAdd: number
   }
 
   return { success: true }
+}
+
+// Team Lead Approval/Rejection (First level of approval)
+export async function teamLeadApproveRequest(
+  requestId: string,
+  reviewerId: string,
+  approve: boolean,
+  notes?: string
+) {
+  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Validation: Reject must have notes
+  if (!approve && !notes?.trim()) {
+    throw new Error('Notes are required when rejecting a request')
+  }
+
+  // Get request to validate current status - use admin client to bypass RLS
+  const { data: request, error: fetchError } = await adminClient
+    .from('requests')
+    .select('status, employee_id')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  // Validate request is in team_leader_approval_pending status
+  if (request.status !== 'team_leader_approval_pending') {
+    throw new Error(`Cannot approve request with status: ${request.status}. Only requests pending team leader approval can be reviewed.`)
+  }
+
+  // Set status based on approval decision
+  const newStatus = approve ? 'admin_approval_pending' : 'rejected'
+
+  // Update request - use admin client to bypass RLS
+  const { error } = await adminClient
+    .from('requests')
+    .update({
+      status: newStatus,
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+      review_notes: notes || null,
+    })
+    .eq('id', requestId)
+
+  if (error) throw error
+
+  // Create notification for employee
+  try {
+    const notificationMessage = approve
+      ? 'Your request has been approved by your department head and is now pending admin approval'
+      : `Your request has been rejected by your department head. ${notes ? `Reason: ${notes}` : ''}`
+
+    await adminClient.from('notifications').insert({
+      user_id: request.employee_id,
+      title: approve ? 'Request Approved by Department Head' : 'Request Rejected',
+      message: notificationMessage,
+      type: 'request_update'
+    })
+  } catch (notifError) {
+    console.error('Error creating notification:', notifError)
+  }
+
+  revalidatePath('/requests')
+  revalidatePath('/team-lead/approvals')
+  return { success: true, status: newStatus }
+}
+
+// Get Department Head's Pending Requests (for any department where user is head)
+export async function getDepartmentHeadPendingRequests(departmentHeadId: string) {
+  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Get ALL departments where user is head
+  const { data: departments, error: deptError } = await supabase
+    .from('departments')
+    .select('id')
+    .eq('head_id', departmentHeadId)
+
+  if (deptError) throw deptError
+
+  if (!departments || departments.length === 0) {
+    return [] // No departments managed
+  }
+
+  const departmentIds = departments.map(d => d.id)
+
+  // Use admin client to bypass RLS for employees query
+  const { data: teamMembers, error: teamError } = await adminClient
+    .from('employees')
+    .select('id')
+    .in('department_id', departmentIds)
+    .neq('id', departmentHeadId) // Don't include the head's own employee record
+
+  if (teamError) throw teamError
+
+  if (!teamMembers || teamMembers.length === 0) {
+    return [] // No team members
+  }
+
+  const memberIds = teamMembers.map(m => m.id)
+
+  // Use admin client to bypass RLS for requests query
+  const { data, error } = await adminClient
+    .from('requests')
+    .select(`
+      *,
+      employee:employees!requests_employee_id_fkey(
+        id,
+        employee_id,
+        profile:profiles!employees_id_fkey(full_name, email)
+      ),
+      leave_requests(*),
+      overtime_requests(*),
+      expense_reimbursements(*),
+      travel_requests(*),
+      attendance_regularization_requests(*),
+      asset_requests(*),
+      asset_issue_requests(*),
+      resignations(*),
+      covering_requests(*),
+      request_for_covering_requests(*)
+    `)
+    .in('employee_id', memberIds)
+    .eq('status', 'team_leader_approval_pending')
+    .order('submitted_at', { ascending: true })
+
+  if (error) throw error
+
+  return data
+}
+
+// Alias for backward compatibility
+export const getTeamLeadPendingRequests = getDepartmentHeadPendingRequests
+
+// Get ALL Department Requests (not just pending) for team lead view
+export async function getAllDepartmentRequests(departmentHeadId: string) {
+  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Get ALL departments where user is head
+  const { data: departments, error: deptError } = await supabase
+    .from('departments')
+    .select('id')
+    .eq('head_id', departmentHeadId)
+
+  if (deptError) throw deptError
+
+  if (!departments || departments.length === 0) {
+    return [] // No departments managed
+  }
+
+  const departmentIds = departments.map(d => d.id)
+
+  // Use admin client to bypass RLS for employees query
+  const { data: teamMembers, error: teamError } = await adminClient
+    .from('employees')
+    .select('id')
+    .in('department_id', departmentIds)
+    .neq('id', departmentHeadId) // Don't include the head's own employee record
+
+  if (teamError) throw teamError
+
+  if (!teamMembers || teamMembers.length === 0) {
+    return [] // No team members
+  }
+
+  const memberIds = teamMembers.map(m => m.id)
+
+  // Use admin client to bypass RLS for requests query - GET ALL STATUSES
+  const { data, error } = await adminClient
+    .from('requests')
+    .select(`
+      *,
+      employee:employees!requests_employee_id_fkey(
+        id,
+        employee_id,
+        profile:profiles!employees_id_fkey(full_name, email)
+      ),
+      leave_requests(*),
+      overtime_requests(*),
+      expense_reimbursements(*),
+      travel_requests(*),
+      attendance_regularization_requests(*),
+      asset_requests(*),
+      asset_issue_requests(*),
+      resignations(*),
+      covering_requests(*),
+      request_for_covering_requests(*)
+    `)
+    .in('employee_id', memberIds)
+    .order('submitted_at', { ascending: false }) // Most recent first
+
+  if (error) throw error
+
+  return data
 }
 
 // Cancel Request

@@ -127,7 +127,8 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   // Calculate stats
   const stats = {
     all: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
+    teamLeadPending: requests.filter(r => r.status === 'team_leader_approval_pending').length,
+    adminPending: requests.filter(r => r.status === 'admin_approval_pending').length,
     approved: requests.filter(r => r.status === 'approved').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
   }
@@ -478,17 +479,17 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           </CardContent>
         </Card>
         <Card
-          className={`cursor-pointer transition-all ${statusFilter === 'pending' ? 'ring-2 ring-black dark:ring-white' : ''}`}
+          className={`cursor-pointer transition-all ${statusFilter === 'admin_approval_pending' ? 'ring-2 ring-black dark:ring-white' : ''}`}
           onClick={() => {
-            setStatusFilter('pending')
+            setStatusFilter('admin_approval_pending')
             setOffset(0)
           }}
         >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
+                <p className="text-sm text-gray-500">Admin Pending</p>
+                <p className="text-2xl font-bold">{stats.adminPending}</p>
               </div>
               <XCircle className="w-8 h-8 text-yellow-500" />
             </div>
@@ -607,18 +608,86 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           <CardTitle className="flex items-center justify-between text-lg">
             <span>
               {statusFilter === 'all' ? 'All Requests' :
-                statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) + ' Requests'}
+                statusFilter.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Requests'}
             </span>
             <span className="text-sm font-normal text-gray-500">
               Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
             </span>
           </CardTitle>
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={statusFilter === 'admin_approval_pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('admin_approval_pending')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Admin Pending
+              {stats.adminPending > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">
+                  {stats.adminPending}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={statusFilter === 'team_leader_approval_pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('team_leader_approval_pending')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Team Lead Pending
+              {/* {stats.teamLeadPending > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white rounded-full text-xs font-bold">
+                  {stats.teamLeadPending}
+                </span>
+              )} */}
+            </Button>
+            <Button
+              variant={statusFilter === 'approved' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('approved')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Approved
+            </Button>
+            <Button
+              variant={statusFilter === 'rejected' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('rejected')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Rejected
+            </Button>
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('all')
+                setOffset(0)
+              }}
+            >
+              All Requests
+            </Button>
+          </div>
+
         </CardHeader>
         <CardContent className="p-0">
           {filteredRequests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No {statusFilter === 'all' ? '' : statusFilter} requests found</p>
+              <p>No requests found</p>
               {dateFilter !== 'all' && (
                 <p className="text-sm mt-2">Try adjusting your date filter</p>
               )}

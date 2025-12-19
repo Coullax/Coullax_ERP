@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
+import { teamLeadApproveRequest, updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
 import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays, MoreHorizontal, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { generateRequestPDF, generateRequestsExcel } from '@/lib/export-utils'
@@ -104,7 +104,15 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(r => r.status === statusFilter)
+      if (statusFilter === 'pending') {
+        // Team leads only see team_leader_approval_pending requests
+        filtered = filtered.filter(r => r.status === 'team_leader_approval_pending')
+      } else if (statusFilter === 'approved') {
+        // Show both fully approved and admin_approval_pending (approved by team lead)
+        filtered = filtered.filter(r => r.status === 'approved' || r.status === 'admin_approval_pending')
+      } else {
+        filtered = filtered.filter(r => r.status === statusFilter)
+      }
     }
 
     // Date filter
@@ -126,36 +134,18 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   // Calculate stats
   const stats = {
     all: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
+    pending: requests.filter(r => r.status === 'team_leader_approval_pending').length,
+    approved: requests.filter(r => r.status === 'approved' || r.status === 'admin_approval_pending').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
   }
 
   const handleApprove = async (requestId: string) => {
     setLoading(true)
     try {
-      await updateRequestStatus(requestId, 'approved', reviewerId, notes || undefined, coveringDecision || undefined)
+      // Team lead approves - use teamLeadApproveRequest with approve=true
+      await teamLeadApproveRequest(requestId, reviewerId, true, notes || undefined)
 
-      // Track covering hours if it's a leave request with "cover" decision
-      if (selectedRequest?.request_type === 'leave' && coveringDecision === 'cover') {
-        const leaveRequest = selectedRequest.leave_requests?.[0]
-        if (leaveRequest?.start_time && leaveRequest?.end_time) {
-          // Calculate leave hours
-          const leaveHours = calculateLeaveHours(leaveRequest.start_time, leaveRequest.end_time)
-
-          // Upsert covering hours for the employee
-          try {
-            await upsertCoveringHours(selectedRequest.employee_id, leaveHours)
-            console.log(`Covering hours added for employee ${selectedRequest.employee_id}: ${leaveHours} hours`)
-          } catch (coveringError: any) {
-            console.error('Failed to update covering hours:', coveringError)
-            // Don't fail the approval if covering hours update fails
-            toast.warning('Request approved, but failed to update covering hours')
-          }
-        }
-      }
-
-      toast.success('Request approved successfully!')
+      toast.success('Request approved and sent to admin for final approval!')
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
@@ -176,8 +166,9 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
     setLoading(true)
     try {
-      await updateRequestStatus(requestId, 'rejected', reviewerId, notes, coveringDecision || undefined)
-      toast.success('Request rejected')
+      // Team lead rejects - use teamLeadApproveRequest with approve=false and notes
+      await teamLeadApproveRequest(requestId, reviewerId, false, notes)
+      toast.success('Request rejected - no admin review required')
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
@@ -369,21 +360,21 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         console.log('Full Request Object:', request)
 
         // if (coveringData) {
-          details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
-          if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
-          if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
-          // Calculate hours if both times are available
-          if (coveringData.start_time && coveringData.end_time) {
-            const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
-            details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
-          }
-          if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
-          if (coveringData.covering_decision) {
-            const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
-              ? 'No Need to Cover'
-              : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
-            details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
-          }
+        details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
+        if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
+        if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
+        // Calculate hours if both times are available
+        if (coveringData.start_time && coveringData.end_time) {
+          const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
+          details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
+        }
+        if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
+        if (coveringData.covering_decision) {
+          const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
+            ? 'No Need to Cover'
+            : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
+          details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
+        }
         // }
         break
 
@@ -569,18 +560,80 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           <CardTitle className="flex items-center justify-between text-lg">
             <span>
               {statusFilter === 'all' ? 'All Requests' :
-                statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) + ' Requests'}
+                statusFilter.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Requests'}
             </span>
             <span className="text-sm font-normal text-gray-500">
               Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
             </span>
           </CardTitle>
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Button
+              variant={statusFilter === 'team_leader_approval_pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('team_leader_approval_pending')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Team Lead Pending
+              {stats.pending > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">
+                  {stats.pending}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={statusFilter === 'admin_approval_pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('admin_approval_pending')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Admin Pending
+            </Button>
+            <Button
+              variant={statusFilter === 'approved' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('approved')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Approved
+            </Button>
+            <Button
+              variant={statusFilter === 'rejected' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('rejected')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Rejected
+            </Button>
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('all')
+                setOffset(0)
+              }}
+            >
+              All Requests
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {filteredRequests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No {statusFilter === 'all' ? '' : statusFilter} requests found</p>
+              <p>No requests found</p>
               {dateFilter !== 'all' && (
                 <p className="text-sm mt-2">Try adjusting your date filter</p>
               )}
@@ -894,7 +947,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               )}
 
               {/* Actions for pending requests */}
-              {selectedRequest.status === 'pending' && (
+              {selectedRequest.status === 'team_leader_approval_pending' && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -933,7 +986,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {selectedRequest?.status === 'pending' ? (
+            {selectedRequest?.status === 'team_leader_approval_pending' ? (
               <>
                 <Button
                   onClick={() => handleApprove(selectedRequest.id)}

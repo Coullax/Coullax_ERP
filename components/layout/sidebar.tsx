@@ -63,6 +63,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { getPendingVerificationsCount } from "@/app/actions/verification-actions";
+import { getPendingRequestsCount, getTeamLeadPendingRequestsCount } from "@/app/actions/request-actions";
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
@@ -118,7 +119,7 @@ const teamLeadSections = [
   {
     title: "Team Lead",
     items: [
-      { icon: FileText, label: "Approvals", href: "/team-lead/approvals" },
+      { icon: FileText, label: "Approvals", href: "/team-lead/approvals", badge: 0 },
       { icon: Users, label: "Team Members", href: "/team-lead/team-members" },
       { icon: Users, label: "Team Members Attendance", href: "/team-lead/team-members-attendance" },
     ],
@@ -140,43 +141,73 @@ export function Sidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
     useAuthStore();
 
-  // Fetch pending verifications count for admins
+  // Fetch pending verifications and approvals count for admins and team leads
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchPendingCounts = async () => {
       const isUserAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+      const userId = profile?.id;
 
       if (isUserAdmin) {
         try {
-          const count = await getPendingVerificationsCount();
-          setPendingVerificationsCount(count);
+          const [verificationsCount, approvalsCount] = await Promise.all([
+            getPendingVerificationsCount(),
+            getPendingRequestsCount()
+          ]);
+          setPendingVerificationsCount(verificationsCount);
+          setPendingApprovalsCount(approvalsCount);
         } catch (error) {
-          console.error('Sidebar: Failed to fetch pending verifications count:', error);
+          console.error('Sidebar: Failed to fetch pending counts:', error);
+        }
+      }
+
+      // Fetch team lead pending count
+      if (userId) {
+        try {
+          const teamLeadCount = await getTeamLeadPendingRequestsCount(userId);
+          setTeamLeadPendingCount(teamLeadCount);
+        } catch (error) {
+          console.error('Sidebar: Failed to fetch team lead pending count:', error);
         }
       }
     };
 
-    fetchPendingCount();
+    fetchPendingCounts();
 
-    // Refresh count every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000);
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchPendingCounts, 30000);
     return () => clearInterval(interval);
   }, [profile?.role]);
 
-  // Update admin nav items with pending count
+  // Update admin nav items with pending counts
   const mainItems = isSuperAdmin() || isAdmin()
     ? adminNavItems.map(item => {
-      const updatedItem = item.href === '/admin/verifications'
-        ? { ...item, badge: pendingVerificationsCount }
-        : item;
-      return updatedItem;
+      if (item.href === '/admin/verifications') {
+        return { ...item, badge: pendingVerificationsCount };
+      } else if (item.href === '/admin/approvals') {
+        return { ...item, badge: pendingApprovalsCount };
+      }
+      return item;
     })
     : employeeNavItems;
-  const sections = isSuperAdmin() ? superAdminSections : isTeamLead() ? teamLeadSections : isDepartmentHead() ? departmentHeadSections : [];
+
+  // Update team lead sections with pending count
+  const updatedTeamLeadSections = teamLeadSections.map(section => ({
+    ...section,
+    items: section.items.map(item =>
+      item.href === '/team-lead/approvals'
+        ? { ...item, badge: teamLeadPendingCount }
+        : item
+    )
+  }));
+
+  const sections = isSuperAdmin() ? superAdminSections : isTeamLead() ? updatedTeamLeadSections : isDepartmentHead() ? departmentHeadSections : [];
 
   const handleLogout = async () => {
     try {
@@ -214,12 +245,7 @@ export function Sidebar() {
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <Badge className={cn(
-                "h-5 min-w-5 flex items-center justify-center px-1.5",
-                isActive
-                  ? "bg-primary-foreground text-primary"
-                  : "bg-primary text-primary-foreground"
-              )}>
+              <Badge className="h-5 min-w-5 flex items-center justify-center px-1.5 bg-red-500 text-white">
                 {item.badge}
               </Badge>
             )}
