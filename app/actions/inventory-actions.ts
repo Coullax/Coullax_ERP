@@ -28,7 +28,8 @@ export async function getEmployeeInventory(employeeId: string) {
         .from('employee_inventory')
         .select(`
       *,
-      category:inventory_categories(id, name, description, icon)
+      category:inventory_categories(id, name, description, icon),
+      general_item:general_inventory(id, item_name, category, image_url)
     `)
         .eq('employee_id', employeeId)
         .order('assigned_date', { ascending: false })
