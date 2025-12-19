@@ -66,7 +66,7 @@ import { getPendingVerificationsCount } from "@/app/actions/verification-actions
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
-  { icon: UserCircle, label: "Profile", href: "/profile" },
+  // { icon: UserCircle, label: "Profile", href: "/profile" },
   { icon: FileCheck, label: "Verification", href: "/verification" },
   { icon: FileText, label: "Requests", href: "/requests" },
   { icon: Clock, label: "Attendance", href: "/attendance" },
