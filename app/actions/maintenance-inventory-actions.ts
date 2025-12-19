@@ -19,6 +19,8 @@ export type MaintenanceInventoryItem = {
     actual_completion_date?: string | null
     moved_to_maintenance_date: string
     returned_to_inventory_date?: string | null
+    source_employee_id?: string | null
+    source_employee_inventory_id?: string | null
     created_by?: string | null
     created_at: string
     updated_at: string
@@ -223,7 +225,7 @@ export async function updateMaintenanceStatus(
 }
 
 /**
- * Return items from maintenance back to general inventory
+ * Return items from maintenance back to general inventory or employee inventory
  */
 export async function returnFromMaintenance(id: string) {
     const supabase = await createClient()
@@ -261,61 +263,149 @@ export async function returnFromMaintenance(id: string) {
         throw new Error('Item has already been returned to inventory')
     }
 
-    // Get the general inventory item
-    const { data: generalItem, error: generalFetchError } = await supabase
-        .from('general_inventory')
-        .select('*')
-        .eq('id', maintenanceItem.general_inventory_id)
-        .single()
+    // Use admin client for operations that may need to bypass RLS
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminClient = createAdminClient()
 
-    if (generalFetchError || !generalItem) {
-        throw new Error('Original inventory item not found')
-    }
+    // Determine if this item came from employee_inventory or general_inventory
+    const isFromEmployee = !!maintenanceItem.source_employee_id
 
-    // Calculate new quantity (add back the maintenance quantity)
-    const newQuantity = generalItem.quantity + maintenanceItem.quantity
+    if (isFromEmployee) {
+        // Return to employee inventory
+        console.log('Returning item to employee inventory for employee:', maintenanceItem.source_employee_id)
 
-    // Update general inventory quantity
-    const { error: updateError } = await supabase
-        .from('general_inventory')
-        .update({
-            quantity: newQuantity,
-            last_updated_by: user.id
-        })
-        .eq('id', maintenanceItem.general_inventory_id)
+        // Check if the employee inventory record still exists
+        const { data: existingEmpInv, error: empInvFetchError } = await adminClient
+            .from('employee_inventory')
+            .select('*')
+            .eq('employee_id', maintenanceItem.source_employee_id)
+            .eq('item_name', maintenanceItem.item_name)
+            .maybeSingle()
 
-    if (updateError) {
-        console.error('Error updating general inventory:', updateError)
-        throw new Error(`Failed to update inventory: ${updateError.message}`)
-    }
+        if (empInvFetchError) {
+            console.error('Error fetching employee inventory:', empInvFetchError)
+            throw new Error(`Failed to check employee inventory: ${empInvFetchError.message}`)
+        }
 
-    // Update maintenance inventory status to 'returned'
-    const { data: updatedMaintenance, error: maintenanceUpdateError } = await supabase
-        .from('maintenance_inventory')
-        .update({
-            status: 'returned',
-            returned_to_inventory_date: new Date().toISOString().split('T')[0],
-            last_updated_by: user.id
-        })
-        .eq('id', id)
-        .select()
-        .single()
+        if (existingEmpInv) {
+            // Update existing record - add back the quantity
+            const newQuantity = (existingEmpInv.quantity_assigned || 0) + maintenanceItem.quantity
 
-    if (maintenanceUpdateError) {
-        // Rollback: restore the original quantity
-        await supabase
+            const { error: updateError } = await adminClient
+                .from('employee_inventory')
+                .update({
+                    quantity_assigned: newQuantity
+                })
+                .eq('id', existingEmpInv.id)
+
+            if (updateError) {
+                console.error('Error updating employee inventory:', updateError)
+                throw new Error(`Failed to restore employee inventory: ${updateError.message}`)
+            }
+
+            console.log('Successfully updated employee inventory quantity to:', newQuantity)
+        } else {
+            // Create new employee inventory record
+            const { error: insertError } = await adminClient
+                .from('employee_inventory')
+                .insert({
+                    employee_id: maintenanceItem.source_employee_id,
+                    general_inventory_id: maintenanceItem.general_inventory_id,
+                    item_name: maintenanceItem.item_name,
+                    category_id: null, // Will be handled by triggers or defaults
+                    serial_number: maintenanceItem.serial_number,
+                    quantity_assigned: maintenanceItem.quantity,
+                    assigned_date: new Date().toISOString().split('T')[0],
+                    isverified: false
+                })
+
+            if (insertError) {
+                console.error('Error creating employee inventory:', insertError)
+                throw new Error(`Failed to create employee inventory record: ${insertError.message}`)
+            }
+
+            console.log('Successfully created new employee inventory record')
+        }
+
+        // Mark maintenance item as returned
+        const { error: maintenanceUpdateError } = await adminClient
+            .from('maintenance_inventory')
+            .update({
+                status: 'returned',
+                returned_to_inventory_date: new Date().toISOString().split('T')[0],
+                last_updated_by: user.id
+            })
+            .eq('id', id)
+
+        if (maintenanceUpdateError) {
+            console.error('Error updating maintenance inventory status:', maintenanceUpdateError)
+            throw new Error(`Failed to mark item as returned: ${maintenanceUpdateError.message}`)
+        }
+
+        revalidatePath('/profile')
+        revalidatePath('/super-admin/maintenance-inventory')
+
+        return { success: true, returned_to: 'employee_inventory' }
+    } else {
+        // Return to general inventory (original behavior)
+        console.log('Returning item to general inventory')
+
+        // Get the general inventory item
+        const { data: generalItem, error: generalFetchError } = await supabase
             .from('general_inventory')
-            .update({ quantity: generalItem.quantity })
+            .select('*')
+            .eq('id', maintenanceItem.general_inventory_id)
+            .single()
+
+        if (generalFetchError || !generalItem) {
+            throw new Error('Original inventory item not found')
+        }
+
+        // Calculate new quantity (add back the maintenance quantity)
+        const newQuantity = generalItem.quantity + maintenanceItem.quantity
+
+        // Update general inventory quantity
+        const { error: updateError } = await supabase
+            .from('general_inventory')
+            .update({
+                quantity: newQuantity,
+                last_updated_by: user.id
+            })
             .eq('id', maintenanceItem.general_inventory_id)
 
-        console.error('Error updating maintenance inventory:', maintenanceUpdateError)
-        throw new Error(`Failed to return item: ${maintenanceUpdateError.message}`)
+        if (updateError) {
+            console.error('Error updating general inventory:', updateError)
+            throw new Error(`Failed to update inventory: ${updateError.message}`)
+        }
+
+        // Update maintenance inventory status to 'returned'
+        const { data: updatedMaintenance, error: maintenanceUpdateError } = await supabase
+            .from('maintenance_inventory')
+            .update({
+                status: 'returned',
+                returned_to_inventory_date: new Date().toISOString().split('T')[0],
+                last_updated_by: user.id
+            })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (maintenanceUpdateError) {
+            // Rollback: restore the original quantity
+            await supabase
+                .from('general_inventory')
+                .update({ quantity: generalItem.quantity })
+                .eq('id', maintenanceItem.general_inventory_id)
+
+            console.error('Error updating maintenance inventory:', maintenanceUpdateError)
+            throw new Error(`Failed to return item: ${maintenanceUpdateError.message}`)
+        }
+
+        revalidatePath('/super-admin/inventory')
+        revalidatePath('/super-admin/maintenance-inventory')
+
+        return { success: true, data: updatedMaintenance, returned_to: 'general_inventory' }
     }
-
-    revalidatePath('/super-admin/inventory')
-    revalidatePath('/super-admin/maintenance-inventory')
-
-    return { success: true, data: updatedMaintenance }
 }
 
 /**
