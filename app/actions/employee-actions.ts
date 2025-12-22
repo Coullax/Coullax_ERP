@@ -13,6 +13,7 @@ export async function getAllEmployees() {
       id,
       employee_id,
       employee_no,
+      employee_type,
       joining_date,
       is_active,
       policy_id,
@@ -240,6 +241,7 @@ export async function createEmployee(data: {
   full_name: string
   employee_no: string
   role: 'employee' | 'admin' | 'super_admin'
+  employee_type?: 'intern_trainee' | 'freelancer' | 'permanent' | 'contract'
   department_id?: string
   designation_id?: string
   phone?: string
@@ -275,12 +277,15 @@ export async function createEmployee(data: {
     // Create employee record using admin client to bypass RLS
     const employeeId = `EMP${Date.now().toString().slice(-6)}`
     const joiningDate = new Date()
+    // Set employee_type to 'permanent' if role is not 'employee'
+    const employeeType = data.role === 'employee' ? (data.employee_type || 'permanent') : 'permanent'
     const { error: employeeError } = await adminClient
       .from('employees')
       .insert({
         id: authData.user.id,
         employee_id: employeeId,
         employee_no: data.employee_no,
+        employee_type: employeeType,
         joining_date: joiningDate.toISOString().split('T')[0],
         department_id: data.department_id,
         designation_id: data.designation_id,
