@@ -122,6 +122,10 @@ export function EmployeeDetailsDialog({
                                 <Package className="w-4 h-4" />
                                 Inventory
                             </TabsTrigger>
+                            <TabsTrigger value="EPF/ETF" className="gap-2">
+                                <Award className="w-4 h-4" />
+                                EPF/ETF
+                            </TabsTrigger>
                             {/* <TabsTrigger value="emergency" className="gap-2">
                                 <Phone className="w-4 h-4" />
                                 Emergency
