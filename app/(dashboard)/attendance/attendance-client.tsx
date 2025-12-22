@@ -94,6 +94,9 @@ export function AttendancePageClient({
   const weeklyStats = calculateTotalHours(weekRange.start, weekRange.end)
   const monthlyStats = calculateTotalHours(monthRange.start, monthRange.end)
 
+  // Get current day of the month (e.g., if today is 22nd, totalDays = 22)
+  const totalDays = new Date().getDate()
+
   const handleCheckIn = async () => {
     setLoading(true)
     try {
@@ -210,7 +213,7 @@ export function AttendancePageClient({
             <div className="text-center">
               <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-400" />
               <p className="text-sm text-gray-500">Total Days</p>
-              <p className="text-2xl font-bold">{summary.total}</p>
+              <p className="text-2xl font-bold">{totalDays}</p>
             </div>
           </CardContent>
         </Card>
