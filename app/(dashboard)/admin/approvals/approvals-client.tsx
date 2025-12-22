@@ -262,9 +262,11 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
       approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
       rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
       cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
+      team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
-    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     return <span className={className}>{label}</span>
   }
 
@@ -404,26 +406,38 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           ? request.covering_requests[0]
           : request.covering_requests || request.request_data
 
-        console.log('Covering Request Data:', coveringData)
-        console.log('Full Request Object:', request)
+        if (coveringData) {
+          details.push({ label: 'Covering Date', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
+          if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
+          if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
 
-        // if (coveringData) {
-        details.push({ label: 'Covering Dated', value: format(new Date(coveringData.covering_date), 'MMMM dd, yyyy'), highlight: true })
-        if (coveringData.start_time) details.push({ label: 'Start Time', value: coveringData.start_time })
-        if (coveringData.end_time) details.push({ label: 'End Time', value: coveringData.end_time })
-        // Calculate hours if both times are available
-        if (coveringData.start_time && coveringData.end_time) {
-          const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
-          details.push({ label: 'Total Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
+          // Calculate hours if both times are available
+          if (coveringData.start_time && coveringData.end_time) {
+            const hours = calculateLeaveHours(coveringData.start_time, coveringData.end_time)
+            details.push({ label: 'Covering Hours', value: `${hours.toFixed(1)} hour(s)`, highlight: true })
+          }
+
+          if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
+
+          // Show proof submission status
+          if (coveringData.attachment_type) {
+            const proofType = coveringData.attachment_type === 'commit_link' ? 'Commit Link' : 'File Upload'
+            details.push({ label: 'Proof Type', value: proofType })
+          }
+          if (coveringData.proof_submitted_at) {
+            details.push({ label: 'Proof Submitted', value: format(new Date(coveringData.proof_submitted_at), 'MMMM dd, yyyy HH:mm') })
+          }
+          if (coveringData.work_verified_at) {
+            details.push({ label: 'Work Verified', value: format(new Date(coveringData.work_verified_at), 'MMMM dd, yyyy HH:mm') })
+          }
+
+          if (coveringData.covering_decision) {
+            const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
+              ? 'No Need to Cover'
+              : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
+            details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
+          }
         }
-        if (coveringData.work_description) details.push({ label: 'Work Description', value: coveringData.work_description })
-        if (coveringData.covering_decision) {
-          const decisionLabel = coveringData.covering_decision === 'no_need_to_cover'
-            ? 'No Need to Cover'
-            : coveringData.covering_decision.charAt(0).toUpperCase() + coveringData.covering_decision.slice(1)
-          details.push({ label: 'Covering Decision', value: decisionLabel, highlight: true })
-        }
-        // }
         break
 
       default:
@@ -625,7 +639,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               }}
               className="gap-1"
             >
-              Admin Pending
+              Admin Approval Pending
               {stats.adminPending > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">
                   {stats.adminPending}
@@ -641,7 +655,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               }}
               className="gap-1"
             >
-              Team Lead Pending
+              Team Lead Approval Pending
               {/* {stats.teamLeadPending > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white rounded-full text-xs font-bold">
                   {stats.teamLeadPending}
@@ -923,6 +937,12 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                           ).toFixed(1)} hours
                         </p>
                       </div>
+                      {selectedRequest.covering_requests[0].work_description && (
+                        <div>
+                          <p className="text-gray-500 text-xs">Work Description</p>
+                          <p className="font-medium text-sm">{selectedRequest.covering_requests[0].work_description}</p>
+                        </div>
+                      )}
                     </>
                   )}
                   <div>
@@ -971,25 +991,65 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               <Separator />
 
               {/* Review Information */}
-              {selectedRequest.reviewed_by ? (
-                <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
-                  <h4 className="font-semibold mb-3">Review Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Reviewed By:</span>
-                      <span className="font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Reviewed Date:</span>
-                      <span className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</span>
-                    </div>
-                    {selectedRequest.review_notes && (
-                      <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-                        <p className="text-gray-600 dark:text-gray-400 text-xs mb-1">Notes:</p>
-                        <p className="italic bg-white dark:bg-gray-900 p-2 rounded text-sm">{selectedRequest.review_notes}</p>
+              {selectedRequest.reviewed_by || (selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by) ? (
+                <div className="space-y-3">
+                  {/* Team Lead Verification - for covering requests */}
+                  {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by && (
+                    <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                      <h4 className="font-semibold mb-3">Team Lead Verification</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Verified By:</span>
+                          <span className="font-medium">{selectedRequest.covering_requests[0].verified_by_profile?.full_name || 'Unknown'}</span>
+                        </div>
+                        {selectedRequest.covering_requests[0].work_verified_at && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Verified Date:</span>
+                            <span className="font-medium">{formatDateTime(selectedRequest.covering_requests[0].work_verified_at)}</span>
+                          </div>
+                        )}
+                        {selectedRequest.covering_requests[0].attachment_type && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Proof Type:</span>
+                            <span className="font-medium capitalize">{selectedRequest.covering_requests[0].attachment_type === 'commit_link' ? 'Commit Link' : 'File Upload'}</span>
+                          </div>
+                        )}
+                        {selectedRequest.covering_requests[0].proof_submitted_at && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Proof Submitted:</span>
+                            <span className="font-medium">{formatDateTime(selectedRequest.covering_requests[0].proof_submitted_at)}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Admin/Final Approval */}
+                  {selectedRequest.reviewed_by && (
+                    <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+                      <h4 className="font-semibold mb-3">
+                        {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by
+                          ? 'Admin Final Approval'
+                          : 'Review Information'}
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Reviewed By:</span>
+                          <span className="font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Reviewed Date:</span>
+                          <span className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</span>
+                        </div>
+                        {selectedRequest.review_notes && (
+                          <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                            <p className="text-gray-600 dark:text-gray-400 text-xs mb-1">Notes:</p>
+                            <p className="italic bg-white dark:bg-gray-900 p-2 rounded text-sm">{selectedRequest.review_notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="border rounded-lg p-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-900">
@@ -1000,8 +1060,101 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                 </div>
               )}
 
+              {/* Proof Preview - for proof_verification_pending and admin_final_approval_pending */}
+              {(selectedRequest.status === 'proof_verification_pending' || selectedRequest.status === 'admin_final_approval_pending') && selectedRequest.request_type === 'covering' && (
+                <>
+                  <Separator />
+                  <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Submitted Proof of Work
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedRequest.covering_requests?.[0]?.attachment_type === 'commit_link' && selectedRequest.covering_requests?.[0]?.commit_link && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Commit Link</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={selectedRequest.covering_requests[0].commit_link}
+                              readOnly
+                              className="flex-1 bg-white dark:bg-gray-900"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedRequest.covering_requests[0].commit_link)
+                                toast.success('Link copied to clipboard!')
+                              }}
+                            >
+                              Copy
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => window.open(selectedRequest.covering_requests[0].commit_link, '_blank')}
+                            >
+                              Open
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedRequest.covering_requests?.[0]?.attachment_type === 'file_upload' && selectedRequest.covering_requests?.[0]?.covering_files && selectedRequest.covering_requests[0].covering_files.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Uploaded Files ({selectedRequest.covering_requests[0].covering_files.length})</Label>
+                          <div className="grid grid-cols-1 gap-2">
+                            {selectedRequest.covering_requests[0].covering_files.map((file: string, index: number) => {
+                              const fileName = file.split('/').pop() || 'file'
+                              const isImage = file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+
+                              return (
+                                <div key={index} className="border rounded-lg p-3 bg-white dark:bg-gray-900">
+                                  {isImage ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={file}
+                                        alt={fileName}
+                                        className="w-full h-48 object-contain rounded border"
+                                      />
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">{fileName}</span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => window.open(file, '_blank')}
+                                        >
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="w-4 h-4 flex-shrink-0" />
+                                        <span className="text-sm truncate">{fileName}</span>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => window.open(file, '_blank')}
+                                      >
+                                        Download
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Actions for pending requests */}
-              {selectedRequest.status === 'pending' && (
+              {(selectedRequest?.status === 'team_leader_approval_pending' || selectedRequest?.status === 'admin_approval_pending' || selectedRequest?.status === 'admin_final_approval_pending' || selectedRequest?.status === 'proof_verification_pending') && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -1061,7 +1214,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {selectedRequest?.status === 'pending' ? (
+            {(selectedRequest?.status === 'team_leader_approval_pending' || selectedRequest?.status === 'admin_approval_pending' || selectedRequest?.status === 'admin_final_approval_pending' || selectedRequest?.status === 'proof_verification_pending') ? (
               <>
                 <Button
                   onClick={() => handleApprove(selectedRequest.id)}

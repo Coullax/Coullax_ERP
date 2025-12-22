@@ -26,7 +26,7 @@ export async function getMyRequests(userId: string) {
       asset_requests(*),
       asset_issue_requests(*),
       resignations(*),
-      covering_requests(*),
+      covering_requests(*, verified_by_profile:verified_by(full_name)),
       request_for_covering_requests(*)
     `)
     .eq('employee_id', userId)
@@ -101,22 +101,44 @@ export async function getTeamLeadPendingRequestsCount(departmentHeadId: string) 
 
   const memberIds = teamMembers.map(m => m.id)
 
-  // Count pending requests
+  // Count pending requests (both team_leader_approval_pending and proof_verification_pending)
   const { count, error } = await adminClient
     .from('requests')
     .select('*', { count: 'exact', head: true })
     .in('employee_id', memberIds)
-    .eq('status', 'team_leader_approval_pending')
+    .in('status', ['team_leader_approval_pending', 'proof_verification_pending'])
 
   if (error) return 0
   return count || 0
 }
 
-// Get all requests for admin (with optional status filter)
-export async function getAllRequests(status?: string) {
+// Helper function to determine initial request status
+// Department heads skip team lead approval and go directly to admin
+async function getInitialRequestStatus(employeeId: string): Promise<'team_leader_approval_pending' | 'admin_approval_pending'> {
   const supabase = await createClient()
 
-  let query = supabase
+  // Check if employee is a department head
+  const { data: departments, error } = await supabase
+    .from('departments')
+    .select('id')
+    .eq('head_id', employeeId)
+    .limit(1)
+
+  // If employee is a department head, skip to admin approval
+  if (!error && departments && departments.length > 0) {
+    return 'admin_approval_pending'
+  }
+
+  // Regular employee goes through team lead approval first
+  return 'team_leader_approval_pending'
+}
+
+// Get all requests for admin (with optional status filter)
+export async function getAllRequests(status?: string) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  let query = adminClient
     .from('requests')
     .select(`
       *,
@@ -134,7 +156,7 @@ export async function getAllRequests(status?: string) {
       asset_requests(*),
       asset_issue_requests(*),
       resignations(*),
-      covering_requests!covering_requests_request_id_fkey(*),
+      covering_requests(*, verified_by_profile:verified_by(full_name)),
       request_for_covering_requests(*)
     `)
 
@@ -265,13 +287,16 @@ export async function createLeaveRequest(employeeId: string, data: {
     throw new Error(`Insufficient leave balance. Available: ${balanceCheck.available} days, Requested: ${balanceCheck.requested} days`)
   }
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   // Create main request
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'leave',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -417,12 +442,15 @@ export async function createOvertimeRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'overtime',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -456,12 +484,15 @@ export async function createTravelRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'travel_request',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -566,12 +597,15 @@ export async function createExpenseRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'expense_reimbursement',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -605,12 +639,15 @@ export async function createAttendanceRegularization(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'attendance_regularization',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -640,12 +677,15 @@ export async function createAssetRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'asset_request',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -718,12 +758,15 @@ export async function createAssetIssueRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'asset_request',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -753,12 +796,15 @@ export async function createResignation(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'resignation',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -791,12 +837,15 @@ export async function createCoveringRequest(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'covering',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -832,12 +881,15 @@ export async function createRequestForCovering(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
+  // Determine initial status based on whether employee is a department head
+  const initialStatus = await getInitialRequestStatus(employeeId)
+
   const { data: request, error: requestError } = await supabase
     .from('requests')
     .insert({
       employee_id: employeeId,
       request_type: 'request_for_covering',
-      status: 'pending',
+      status: initialStatus,
     })
     .select()
     .single()
@@ -861,6 +913,203 @@ export async function createRequestForCovering(employeeId: string, data: {
   return { success: true, requestId: request.id }
 }
 
+// Team Lead Adds Work Description (First Approval Round)
+export async function teamLeadAddWorkDescription(
+  requestId: string,
+  reviewerId: string,
+  workDescription: string,
+  approve: boolean,
+  notes?: string
+) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  if (!approve && !notes?.trim()) {
+    throw new Error('Notes are required when rejecting a request')
+  }
+
+  // Get request to validate
+  const { data: request, error: fetchError } = await adminClient
+    .from('requests')
+    .select('status, employee_id')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  if (request.status !== 'team_leader_approval_pending') {
+    throw new Error(`Cannot approve request with status: ${request.status}`)
+  }
+
+  if (approve) {
+    // Update covering request with work description
+    const { error: coveringError } = await adminClient
+      .from('covering_requests')
+      .update({ work_description: workDescription })
+      .eq('request_id', requestId)
+
+    if (coveringError) throw coveringError
+
+    // Move to admin approval
+    const { error } = await adminClient
+      .from('requests')
+      .update({
+        status: 'admin_approval_pending',
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+        review_notes: notes || null,
+      })
+      .eq('id', requestId)
+
+    if (error) throw error
+  } else {
+    // Reject
+    const { error } = await adminClient
+      .from('requests')
+      .update({
+        status: 'rejected',
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+        review_notes: notes,
+      })
+      .eq('id', requestId)
+
+    if (error) throw error
+  }
+
+  revalidatePath('/requests')
+  revalidatePath('/team-lead/approvals')
+  return { success: true }
+}
+
+// Employee Submits Covering Proof
+export async function employeeSubmitCoveringProof(
+  requestId: string,
+  employeeId: string,
+  data: {
+    work_description?: string
+    attachment_type?: string
+    commit_link?: string
+    covering_files?: string[]
+  }
+) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  // Validate request status
+  const { data: request, error: fetchError } = await adminClient
+    .from('requests')
+    .select('status, employee_id')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  if (request.employee_id !== employeeId) {
+    throw new Error('Unauthorized')
+  }
+
+  if (request.status !== 'awaiting_proof_submission') {
+    throw new Error(`Cannot submit proof for request with status: ${request.status}`)
+  }
+
+  // Update covering request with proof
+  const { error: coveringError } = await adminClient
+    .from('covering_requests')
+    .update({
+      work_description: data.work_description,
+      attachment_type: data.attachment_type,
+      commit_link: data.commit_link,
+      covering_files: data.covering_files,
+      proof_submitted_at: new Date().toISOString(),
+    })
+    .eq('request_id', requestId)
+
+  if (coveringError) throw coveringError
+
+  // Update request status to proof verification pending
+  const { error } = await adminClient
+    .from('requests')
+    .update({ status: 'proof_verification_pending' })
+    .eq('id', requestId)
+
+  if (error) throw error
+
+  revalidatePath('/requests')
+  return { success: true }
+}
+
+// Team Lead Verifies Covering Work (Second Verification Round)
+export async function teamLeadVerifyCoveringWork(
+  requestId: string,
+  reviewerId: string,
+  approve: boolean,
+  notes?: string
+) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  if (!approve && !notes?.trim()) {
+    throw new Error('Notes are required when rejecting')
+  }
+
+  // Get request to validate
+  const { data: request, error: fetchError } = await adminClient
+    .from('requests')
+    .select('status, employee_id')
+    .eq('id', requestId)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  if (request.status !== 'proof_verification_pending') {
+    throw new Error(`Cannot verify request with status: ${request.status}`)
+  }
+
+  if (approve) {
+    // Update covering request with verification
+    const { error: coveringError } = await adminClient
+      .from('covering_requests')
+      .update({
+        work_verified_at: new Date().toISOString(),
+        verified_by: reviewerId,
+      })
+      .eq('request_id', requestId)
+
+    if (coveringError) throw coveringError
+
+    // Move to final admin approval
+    const { error } = await adminClient
+      .from('requests')
+      .update({
+        status: 'admin_final_approval_pending',
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+        review_notes: notes || null,
+      })
+      .eq('id', requestId)
+
+    if (error) throw error
+  } else {
+    // Reject
+    const { error } = await adminClient
+      .from('requests')
+      .update({
+        status: 'rejected',
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+        review_notes: notes,
+      })
+      .eq('id', requestId)
+
+    if (error) throw error
+  }
+
+  revalidatePath('/requests')
+  revalidatePath('/team-lead/approvals')
+  return { success: true }
+}
+
 // Approve/Reject Request
 export async function updateRequestStatus(
   requestId: string,
@@ -880,10 +1129,23 @@ export async function updateRequestStatus(
 
   if (requestError) throw requestError
 
+  // Special handling for covering requests in admin approval
+  let finalStatus = status
+  if (request.request_type === 'covering' && status === 'approved') {
+    // Check current status to determine which approval round this is
+    if (request.status === 'admin_approval_pending') {
+      // First admin approval - move to awaiting proof
+      finalStatus = 'awaiting_proof_submission' as any
+    } else if (request.status === 'admin_final_approval_pending') {
+      // Final admin approval - fully approve
+      finalStatus = 'approved'
+    }
+  }
+
   const { error } = await supabase
     .from('requests')
     .update({
-      status,
+      status: finalStatus,
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
       review_notes: notes,
@@ -1463,6 +1725,7 @@ export async function getAllDepartmentRequests(departmentHeadId: string) {
         employee_id,
         profile:profiles!employees_id_fkey(full_name, email)
       ),
+      reviewer:profiles!requests_reviewed_by_fkey(full_name),
       leave_requests(*),
       overtime_requests(*),
       expense_reimbursements(*),
@@ -1471,7 +1734,7 @@ export async function getAllDepartmentRequests(departmentHeadId: string) {
       asset_requests(*),
       asset_issue_requests(*),
       resignations(*),
-      covering_requests(*),
+      covering_requests(*, verified_by_profile:verified_by(full_name)),
       request_for_covering_requests(*)
     `)
     .in('employee_id', memberIds)

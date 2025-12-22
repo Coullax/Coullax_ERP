@@ -43,7 +43,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis
 } from '@/components/ui/pagination'
-import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, Upload } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO, format } from 'date-fns'
 import { Label } from '@/components/ui/label'
@@ -65,7 +65,6 @@ const REQUEST_TYPES: Record<string, { label: string; icon: any; color: string }>
   payroll_query: { label: 'Payroll', icon: FileText, color: 'yellow' },
   document_request: { label: 'Document', icon: FileText, color: 'indigo' },
   covering: { label: 'Covering', icon: FileText, color: 'teal' },
-  request_for_covering: { label: 'Request for Covering', icon: CalendarDays, color: 'emerald' },
 }
 
 const REQUEST_LINKS = [
@@ -76,8 +75,7 @@ const REQUEST_LINKS = [
   { type: 'attendance_regularization', label: 'Attendance Regularization', description: 'Request attendance correction' },
   { type: 'asset', label: 'Asset Request', description: 'Request company assets or equipment' },
   { type: 'resignation', label: 'Resignation', description: 'Submit your resignation' },
-  { type: 'covering', label: 'Covered Request', description: 'Apply for covered request' },
-  { type: 'request_for_covering', label: 'Request for Covering', description: 'Request to do covering for a specific time period' },
+  { type: 'covering', label: 'Covering Request', description: 'Apply for covering request' },
 ]
 
 type DateFilter = '1d' | '7d' | '1m' | 'custom' | 'all'
@@ -102,6 +100,12 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const [editingRequest, setEditingRequest] = useState<any>(null)
   const [editData, setEditData] = useState('')
   const [saving, setSaving] = useState(false)
+  const [proofDialogOpen, setProofDialogOpen] = useState(false)
+  const [proofRequest, setProofRequest] = useState<any>(null)
+  const [attachmentType, setAttachmentType] = useState<'commit_link' | 'file_upload'>('commit_link')
+  const [commitLink, setCommitLink] = useState('')
+  const [coveringFiles, setCoveringFiles] = useState<string[]>([])
+  const [uploadingProof, setUploadingProof] = useState(false)
   const limit = 10
 
   // Filter by status, date, and search query
@@ -252,6 +256,14 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   const handleViewDetails = (request: any) => {
     setSelectedRequest(request)
     setDetailsDialogOpen(true)
+  }
+
+  const handleViewProof = (request: any) => {
+    setProofRequest(request)
+    setProofDialogOpen(true)
+    setAttachmentType('commit_link')
+    setCommitLink('')
+    setCoveringFiles([])
   }
 
   const handleEditClick = (request: any) => {
@@ -442,15 +454,82 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     }
   }
 
+  const handleProofSubmit = async () => {
+    if (!proofRequest) return
+
+    // Validation
+    if (attachmentType === 'commit_link' && !commitLink.trim()) {
+      toast.error('Please provide a commit link')
+      return
+    }
+    if (attachmentType === 'file_upload' && coveringFiles.length === 0) {
+      toast.error('Please upload at least one file')
+      return
+    }
+
+    setUploadingProof(true)
+    try {
+      const { employeeSubmitCoveringProof } = await import('@/app/actions/request-actions')
+
+      await employeeSubmitCoveringProof(proofRequest.id, userId, {
+        attachment_type: attachmentType,
+        commit_link: attachmentType === 'commit_link' ? commitLink : undefined,
+        covering_files: attachmentType === 'file_upload' ? coveringFiles : undefined,
+      })
+
+      toast.success('Proof submitted successfully!')
+      setProofDialogOpen(false)
+      window.location.reload()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to submit proof')
+    } finally {
+      setUploadingProof(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploadingProof(true)
+    try {
+      const { uploadToB2 } = await import('@/app/actions/upload-actions')
+
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const timestamp = Date.now()
+        const uniqueFilename = `covering/${userId}/${timestamp}_${file.name}`
+        formData.append('filename', uniqueFilename)
+
+        const result = await uploadToB2(formData)
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed')
+        }
+        return result.publicUrl
+      })
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+      setCoveringFiles([...coveringFiles, ...uploadedUrls])
+      toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload files')
+    } finally {
+      setUploadingProof(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
       pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
       approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
       rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
       cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
+      team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
-    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     return <span className={className}>{label}</span>
   }
 
@@ -784,7 +863,8 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
+                                {request.status === 'awaiting_proof_submission' && <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>}
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -793,6 +873,12 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
+                              {request.status === 'awaiting_proof_submission' && (
+                                <DropdownMenuItem onClick={() => handleViewProof(request)}>
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Submit Proof
+                                </DropdownMenuItem>
+                              )}
                               {request.status === 'pending' && (
                                 <>
                                   <DropdownMenuItem onClick={() => handleEditClick(request)}>
@@ -908,41 +994,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
-                {/* Complete Record Information */}
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                  <h3 className="font-semibold text-sm mb-3">Record Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-gray-500 text-xs">Request Type</p>
-                      <p className="font-medium">
-                        {REQUEST_TYPES[selectedRequest.request_type]?.label || selectedRequest.request_type}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Request ID</p>
-                      <p className="font-medium font-mono text-xs">{selectedRequest.id.slice(0, 8)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs">Status</p>
-                      <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedRequest.reviewer && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Reviewed By</p>
-                    <p className="text-sm font-medium">{selectedRequest.reviewer.full_name}</p>
-                  </div>
-                )}
-
-                {selectedRequest.review_notes && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Review Notes</p>
-                    <p className="text-sm italic">&quot;{selectedRequest.review_notes}&quot;</p>
-                  </div>
-                )}
-
                 {/* Leave Request Specific Details */}
                 {selectedRequest.request_type === 'leave' && selectedRequest.leave_requests && (() => {
                   const leaveData = Array.isArray(selectedRequest.leave_requests)
@@ -1013,14 +1064,10 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                   )
                 })()}
 
-                <Separator />
-
-                {/* Remove old leave/travel specific sections since they're now in renderAllRequestDetails */}
-
+                {selectedRequest.request_data && (<Separator />)}
 
 
                 {/* Request Details - Structured Display */}
-                <Separator />
                 {selectedRequest.request_data && (
                   <div className="space-y-3">
                     <p className="text-sm font-medium text-gray-500">Request Information</p>
@@ -1042,6 +1089,229 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Record Information for Non-Covering Requests */}
+                {selectedRequest.request_type !== 'covering' && (
+                  <>
+                    <Separator />
+                    <div className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900 rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-3">Record Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-500 text-xs">Request Type</p>
+                          <p className="font-medium">
+                            {REQUEST_TYPES[selectedRequest.request_type]?.label || selectedRequest.request_type}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Request ID</p>
+                          <p className="font-medium font-mono text-xs">{selectedRequest.id.slice(0, 8)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Status</p>
+                          <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Covering Request Specific Details */}
+                {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0] && (
+                  <>
+                    {/* <Separator /> */}
+                    <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-900">
+                      <h4 className="font-semibold mb-3">Covering Request Details</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-gray-500 text-xs">Covering Date</p>
+                          <p className="font-medium text-sm">{new Date(selectedRequest.covering_requests[0].covering_date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Start Time</p>
+                          <p className="font-medium text-sm">{selectedRequest.covering_requests[0].start_time}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">End Time</p>
+                          <p className="font-medium text-sm">{selectedRequest.covering_requests[0].end_time}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Covering Hours</p>
+                          <p className="font-medium text-sm">
+                            {(() => {
+                              const start = selectedRequest.covering_requests[0].start_time.split(':')
+                              const end = selectedRequest.covering_requests[0].end_time.split(':')
+                              const startMinutes = parseInt(start[0]) * 60 + parseInt(start[1])
+                              const endMinutes = parseInt(end[0]) * 60 + parseInt(end[1])
+                              return ((endMinutes - startMinutes) / 60).toFixed(1)
+                            })()} hours
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs">Status</p>
+                          <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                        </div>
+                        {selectedRequest.covering_requests[0].work_description && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Task Description</p>
+                            <p className="font-medium text-sm">{selectedRequest.covering_requests[0].work_description}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Proof Preview */}
+                    {(selectedRequest.status === 'proof_verification_pending' || selectedRequest.status === 'admin_final_approval_pending' || selectedRequest.status === 'approved') && (
+                      <>
+                        <Separator />
+                        <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                          <h4 className="font-semibold mb-3">Submitted Proof</h4>
+                          <div className="space-y-3">
+                            {selectedRequest.covering_requests[0].attachment_type === 'commit_link' && selectedRequest.covering_requests[0].commit_link && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Commit Link</Label>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    value={selectedRequest.covering_requests[0].commit_link}
+                                    readOnly
+                                    className="flex-1 bg-white dark:bg-gray-900"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(selectedRequest.covering_requests[0].commit_link)
+                                      toast.success('Link copied to clipboard!')
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => window.open(selectedRequest.covering_requests[0].commit_link, '_blank')}
+                                  >
+                                    Open
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedRequest.covering_requests[0].attachment_type === 'file_upload' && selectedRequest.covering_requests[0].covering_files && selectedRequest.covering_requests[0].covering_files.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Uploaded Files ({selectedRequest.covering_requests[0].covering_files.length})</Label>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {selectedRequest.covering_requests[0].covering_files.map((file: string, index: number) => {
+                                    const fileName = file.split('/').pop() || 'file'
+                                    const isImage = file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+
+                                    return (
+                                      <div key={index} className="border rounded-lg p-3 bg-white dark:bg-gray-900">
+                                        {isImage ? (
+                                          <div className="space-y-2">
+                                            <img
+                                              src={file}
+                                              alt={fileName}
+                                              className="w-full h-48 object-contain rounded border"
+                                            />
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">{fileName}</span>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => window.open(file, '_blank')}
+                                              >
+                                                Download
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                              <FileText className="w-4 h-4 flex-shrink-0" />
+                                              <span className="text-sm truncate">{fileName}</span>
+                                            </div>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => window.open(file, '_blank')}
+                                            >
+                                              Download
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* Review Information */}
+                <Separator />
+                {selectedRequest.reviewed_by || (selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by) ? (
+                  <div className="space-y-3">
+                    {/* Team Lead Verification */}
+                    {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by && (
+                      <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                        <h4 className="font-semibold mb-3">Team Lead Verification</h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Verified By:</span>
+                            <span className="font-medium">{selectedRequest.covering_requests[0].verified_by_profile?.full_name || 'Unknown'}</span>
+                          </div>
+                          {selectedRequest.covering_requests[0].work_verified_at && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Verified Date:</span>
+                              <span className="font-medium">{new Date(selectedRequest.covering_requests[0].work_verified_at).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Admin Approval */}
+                    {selectedRequest.reviewed_by && (
+                      <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+                        <h4 className="font-semibold mb-3">
+                          {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by
+                            ? 'Admin Final Approval'
+                            : 'Review Information'}
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Reviewed By:</span>
+                            <span className="font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
+                          </div>
+                          {selectedRequest.reviewed_at && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Reviewed Date:</span>
+                              <span className="font-medium">{new Date(selectedRequest.reviewed_at).toLocaleString()}</span>
+                            </div>
+                          )}
+                          {selectedRequest.review_notes && (
+                            <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                              <p className="text-gray-600 dark:text-gray-400 text-xs mb-1">Notes:</p>
+                              <p className="italic bg-white dark:bg-gray-900 p-2 rounded text-sm">{selectedRequest.review_notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-900">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      This request has not been reviewed yet.
+                    </p>
                   </div>
                 )}
 
@@ -1126,6 +1396,120 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                     variant="outline"
                     onClick={() => setEditDialogOpen(false)}
                     disabled={saving}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit Proof Dialog */}
+      <Dialog open={proofDialogOpen} onOpenChange={setProofDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {proofRequest && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Submit Proof of Work
+                </DialogTitle>
+                <DialogDescription>
+                  Submit proof for your covering request on {proofRequest.covering_requests?.[0]?.covering_date}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {/* Attachment Type Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="attachment_type">Proof of Work *</Label>
+                  <select
+                    id="attachment_type"
+                    value={attachmentType}
+                    onChange={(e) => setAttachmentType(e.target.value as 'commit_link' | 'file_upload')}
+                    className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <option value="commit_link">Commit Message Link</option>
+                    <option value="file_upload">Upload Files</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    {attachmentType === 'commit_link'
+                      ? 'Provide a link to your GitHub commit or pull request'
+                      : 'Upload files as proof of work (screenshots, documents, etc.)'}
+                  </p>
+                </div>
+
+                {/* Conditional rendering based on selection */}
+                {attachmentType === 'commit_link' ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="commit_link">Commit Message Link *</Label>
+                    <Input
+                      id="commit_link"
+                      type="url"
+                      value={commitLink}
+                      onChange={(e) => setCommitLink(e.target.value)}
+                      placeholder="https://github.com/username/repo/commit/abc123"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Enter the full URL to your commit, pull request, or branch
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="covering_files">Upload Files *</Label>
+                    <Input
+                      id="covering_files"
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.txt,.yml,.yaml,.xml,.csv,.log"
+                      onChange={handleFileUpload}
+                      className="cursor-pointer"
+                      disabled={uploadingProof}
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Upload proof of work files (images, PDFs, code files, etc., max 10MB each)
+                    </p>
+                    {coveringFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                          Uploaded Files:
+                        </p>
+                        <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
+                          {coveringFiles.map((url, index) => (
+                            <li key={index}>{url.split('/').pop()}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button
+                    onClick={handleProofSubmit}
+                    disabled={uploadingProof}
+                    className="flex-1 bg-green-500 hover:bg-green-600"
+                  >
+                    {uploadingProof ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Submit Proof
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setProofDialogOpen(false)}
+                    disabled={uploadingProof}
                     className="flex-1"
                   >
                     Cancel

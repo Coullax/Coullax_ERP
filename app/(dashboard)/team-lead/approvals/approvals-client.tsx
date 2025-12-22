@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { teamLeadApproveRequest, updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
+import { teamLeadApproveRequest, teamLeadAddWorkDescription, teamLeadVerifyCoveringWork, updateRequestStatus, upsertCoveringHours } from '@/app/actions/request-actions'
 import { CheckCircle, XCircle, FileText, User, Download, FileSpreadsheet, Loader2, Calendar, CalendarDays, MoreHorizontal, Eye } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { generateRequestPDF, generateRequestsExcel } from '@/lib/export-utils'
@@ -66,6 +66,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   const [selectedRequest, setSelectedRequest] = useState<any>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notes, setNotes] = useState('')
+  const [workDescription, setWorkDescription] = useState('')
   const [coveringDecision, setCoveringDecision] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -104,9 +105,9 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
     // Status filter
     if (statusFilter !== 'all') {
-      if (statusFilter === 'pending') {
-        // Team leads only see team_leader_approval_pending requests
-        filtered = filtered.filter(r => r.status === 'team_leader_approval_pending')
+      if (statusFilter === 'pending' || statusFilter === 'team_leader_approval_pending') {
+        // Team leads see both team_leader_approval_pending and proof_verification_pending requests
+        filtered = filtered.filter(r => r.status === 'team_leader_approval_pending' || r.status === 'proof_verification_pending')
       } else if (statusFilter === 'approved') {
         // Show both fully approved and admin_approval_pending (approved by team lead)
         filtered = filtered.filter(r => r.status === 'approved' || r.status === 'admin_approval_pending')
@@ -134,21 +135,39 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   // Calculate stats
   const stats = {
     all: requests.length,
-    pending: requests.filter(r => r.status === 'team_leader_approval_pending').length,
+    pending: requests.filter(r => r.status === 'team_leader_approval_pending' || r.status === 'proof_verification_pending').length,
     approved: requests.filter(r => r.status === 'approved' || r.status === 'admin_approval_pending').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
+    proof_verification_pending: requests.filter(r => r.status === 'proof_verification_pending').length,
   }
 
   const handleApprove = async (requestId: string) => {
+    // Check if it's a covering request needing work description
+    if (selectedRequest?.status === 'team_leader_approval_pending' && selectedRequest?.request_type === 'covering' && !workDescription.trim()) {
+      toast.error('Please provide work description for covering request')
+      return
+    }
+
     setLoading(true)
     try {
-      // Team lead approves - use teamLeadApproveRequest with approve=true
-      await teamLeadApproveRequest(requestId, reviewerId, true, notes || undefined)
+      if (selectedRequest?.status === 'proof_verification_pending') {
+        // Verify covering work proof
+        await teamLeadVerifyCoveringWork(requestId, reviewerId, true, notes || undefined)
+        toast.success('Proof verified and approved!')
+      } else if (selectedRequest?.request_type === 'covering') {
+        // Use teamLeadAddWorkDescription for covering requests
+        await teamLeadAddWorkDescription(requestId, reviewerId, workDescription, true, notes || undefined)
+        toast.success('Covering request approved with work description!')
+      } else {
+        // Team lead approves other types - use teamLeadApproveRequest with approve=true
+        await teamLeadApproveRequest(requestId, reviewerId, true, notes || undefined)
+        toast.success('Request approved and sent to admin for final approval!')
+      }
 
-      toast.success('Request approved and sent to admin for final approval!')
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
+      setWorkDescription('')
       setCoveringDecision('')
       window.location.reload()
     } catch (error: any) {
@@ -172,6 +191,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
       setDialogOpen(false)
       setSelectedRequest(null)
       setNotes('')
+      setWorkDescription('')
       setCoveringDecision('')
       window.location.reload()
     } catch (error: any) {
@@ -230,9 +250,11 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
       approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
       rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
       cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
+      team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
-    const label = status.charAt(0).toUpperCase() + status.slice(1)
+    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     return <span className={className}>{label}</span>
   }
 
@@ -577,10 +599,26 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               }}
               className="gap-1"
             >
-              Team Lead Pending
+              Team Lead Approval Pending
               {stats.pending > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">
                   {stats.pending}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={statusFilter === 'proof_verification_pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setStatusFilter('proof_verification_pending')
+                setOffset(0)
+              }}
+              className="gap-1"
+            >
+              Proof Verification Pending
+              {stats.proof_verification_pending > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 min-w-5 min-h-5 bg-red-500 text-white rounded-full text-xs font-bold">
+                  {stats.proof_verification_pending}
                 </span>
               )}
             </Button>
@@ -593,7 +631,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
               }}
               className="gap-1"
             >
-              Admin Pending
+              Admin Approval Pending
             </Button>
             <Button
               variant={statusFilter === 'approved' ? 'default' : 'outline'}
@@ -884,7 +922,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                 </div>
               </div>
 
-              <Separator />
+              {selectedRequest.request_data && Object.keys(selectedRequest.request_data).length > 0 && (<Separator />)}
 
               {/* Request-specific data */}
               {selectedRequest.request_data && Object.keys(selectedRequest.request_data).length > 0 && (
@@ -914,10 +952,10 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                 </div>
               )}
 
-              <Separator />
+              {/* <Separator /> */}
 
               {/* Review Information */}
-              {selectedRequest.reviewed_by ? (
+              {/* {selectedRequest.reviewed_by ? (
                 <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
                   <h4 className="font-semibold mb-3">Review Information</h4>
                   <div className="space-y-2 text-sm">
@@ -936,6 +974,159 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       </div>
                     )}
                   </div>
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-900">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    This request has not been reviewed yet.
+                  </p>
+                </div>
+              )} */}
+
+              {/* Proof Preview - only for proof_verification_pending status */}
+              {(selectedRequest.status === 'proof_verification_pending' || selectedRequest.status === 'admin_final_approval_pending' || selectedRequest.status === 'approved') && selectedRequest.request_type === 'covering' && (
+                <>
+                  <Separator />
+                  <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Submitted Proof of Work
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedRequest.covering_requests?.[0]?.attachment_type === 'commit_link' && selectedRequest.covering_requests?.[0]?.commit_link && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Commit Link</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={selectedRequest.covering_requests[0].commit_link}
+                              readOnly
+                              className="flex-1 bg-white dark:bg-gray-900"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedRequest.covering_requests[0].commit_link)
+                                toast.success('Link copied to clipboard!')
+                              }}
+                            >
+                              Copy
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => window.open(selectedRequest.covering_requests[0].commit_link, '_blank')}
+                            >
+                              Open
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedRequest.covering_requests?.[0]?.attachment_type === 'file_upload' && selectedRequest.covering_requests?.[0]?.covering_files && selectedRequest.covering_requests[0].covering_files.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Uploaded Files ({selectedRequest.covering_requests[0].covering_files.length})</Label>
+                          <div className="grid grid-cols-1 gap-2">
+                            {selectedRequest.covering_requests[0].covering_files.map((file: string, index: number) => {
+                              const fileName = file.split('/').pop() || 'file'
+                              const isImage = file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+
+                              return (
+                                <div key={index} className="border rounded-lg p-3 bg-white dark:bg-gray-900">
+                                  {isImage ? (
+                                    <div className="space-y-2">
+                                      <img
+                                        src={file}
+                                        alt={fileName}
+                                        className="w-full h-48 object-contain rounded border"
+                                      />
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">{fileName}</span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => window.open(file, '_blank')}
+                                        >
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="w-4 h-4 flex-shrink-0" />
+                                        <span className="text-sm truncate">{fileName}</span>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => window.open(file, '_blank')}
+                                      >
+                                        Download
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              {/* Review Information */}
+              {selectedRequest.reviewed_by || (selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by) ? (
+                <div className="space-y-3">
+                  {/* Team Lead Verification - for covering requests */}
+                  {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by && (
+                    <div className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-900">
+                      <h4 className="font-semibold mb-3">Team Lead Verification</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Verified By:</span>
+                          <span className="font-medium">{selectedRequest.covering_requests[0].verified_by_profile?.full_name || 'Unknown'}</span>
+                        </div>
+                        {selectedRequest.covering_requests[0].work_verified_at && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Verified Date:</span>
+                            <span className="font-medium">{formatDateTime(selectedRequest.covering_requests[0].work_verified_at)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Admin/Final Approval */}
+                  {selectedRequest.reviewed_by && (
+                    <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+                      <h4 className="font-semibold mb-3">
+                        {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0]?.verified_by
+                          ? 'Admin Final Approval'
+                          : 'Review Information'}
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Reviewed By:</span>
+                          <span className="font-medium">{selectedRequest.reviewer?.full_name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Reviewed Date:</span>
+                          <span className="font-medium">{formatDateTime(selectedRequest.reviewed_at)}</span>
+                        </div>
+                        {selectedRequest.review_notes && (
+                          <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                            <p className="text-gray-600 dark:text-gray-400 text-xs mb-1">Notes:</p>
+                            <p className="italic bg-white dark:bg-gray-900 p-2 rounded text-sm">{selectedRequest.review_notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="border rounded-lg p-4 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-900">
@@ -968,6 +1159,22 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       </div>
                     )}
 
+                    {/* Work Description - only for covering requests */}
+                    {selectedRequest.request_type === 'covering' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="work_description">What are the works you doing? *</Label>
+                        <textarea
+                          id="work_description"
+                          value={workDescription}
+                          onChange={(e) => setWorkDescription(e.target.value)}
+                          required
+                          rows={4}
+                          className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                          placeholder="Describe the work you will be doing during this coverage period..."
+                        />
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes (Optional for approval, Required for rejection)</Label>
                       <textarea
@@ -982,11 +1189,31 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                   </div>
                 </>
               )}
+
+              {/* Actions for proof verification */}
+              {selectedRequest.status === 'proof_verification_pending' && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="verify-notes">Verification Notes (Optional for approval, Required for rejection)</Label>
+                      <textarea
+                        id="verify-notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={4}
+                        className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                        placeholder="Add your verification comments here..."
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {selectedRequest?.status === 'team_leader_approval_pending' ? (
+            {(selectedRequest?.status === 'team_leader_approval_pending' || selectedRequest?.status === 'proof_verification_pending') ? (
               <>
                 <Button
                   onClick={() => handleApprove(selectedRequest.id)}
@@ -994,7 +1221,7 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                   className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white"
                 >
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                  Approve
+                  {selectedRequest.status === 'proof_verification_pending' ? 'Verify & Approve' : 'Approve'}
                 </Button>
                 <Button
                   onClick={() => handleReject(selectedRequest.id)}

@@ -42,7 +42,6 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [supervisorName, setSupervisorName] = useState('')
   const [supervisorId, setSupervisorId] = useState('')
   const [supervisorLoading, setSupervisorLoading] = useState(false)
-  const [coveringAttachmentType, setCoveringAttachmentType] = useState<'commit_link' | 'file_upload'>('commit_link')
   const [workSchedule, setWorkSchedule] = useState<{
     work_start_time: string
     work_end_time: string
@@ -106,13 +105,6 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         })
     }
   }, [requestType, employeeId])
-
-  // Initialize attachment_type for covering requests with default value
-  useEffect(() => {
-    if (requestType === 'covering') {
-      setFormData((prev: any) => ({ ...prev, attachment_type: coveringAttachmentType }))
-    }
-  }, [requestType, coveringAttachmentType])
 
   // Fetch employee work schedule for leave requests
   useEffect(() => {
@@ -312,39 +304,6 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
           toast.success('Document uploaded successfully!')
         } catch (error: any) {
           toast.error(error.message || 'Failed to upload document')
-        } finally {
-          setLoading(false)
-        }
-      }
-    } else if (e.target instanceof HTMLInputElement && e.target.type === 'file' && e.target.name === 'covering_files') {
-      // Handle file inputs for covering request attachments
-      const files = e.target.files
-      if (files && files.length > 0) {
-        setLoading(true)
-        try {
-          // Upload all files to Backblaze B2
-          const uploadPromises = Array.from(files).map(async (file) => {
-            const formDataToUpload = new FormData()
-            formDataToUpload.append('file', file)
-            // Generate unique filename with timestamp
-            const timestamp = Date.now()
-            const uniqueFilename = `covering/${employeeId}/${timestamp}_${file.name}`
-            formDataToUpload.append('filename', uniqueFilename)
-
-            const result = await uploadToB2(formDataToUpload)
-            if (!result.success) {
-              throw new Error(result.error || 'Upload failed')
-            }
-            return result.publicUrl
-          })
-
-          const uploadedUrls = await Promise.all(uploadPromises)
-          // Merge new files with existing files instead of replacing
-          const existingFiles = formData.covering_files || []
-          setFormData({ ...formData, covering_files: [...existingFiles, ...uploadedUrls] })
-          toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
-        } catch (error: any) {
-          toast.error(error.message || 'Failed to upload files')
         } finally {
           setLoading(false)
         }
@@ -1310,89 +1269,11 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="work_description">What are the works you doing? *</Label>
-              <textarea
-                id="work_description"
-                name="work_description"
-                onChange={handleChange}
-                required
-                rows={4}
-                className="flex w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                placeholder="Describe the work you will be doing during this coverage period..."
-              />
-            </div>
-
-            {/* Dropdown to choose between commit link or file upload */}
-            <div className="space-y-2">
-              <Label htmlFor="attachment_type">Proof of Work *</Label>
-              <select
-                id="attachment_type"
-                name="attachment_type"
-                value={coveringAttachmentType}
-                onChange={(e) => {
-                  const newType = e.target.value as 'commit_link' | 'file_upload'
-                  setCoveringAttachmentType(newType)
-                  setFormData({ ...formData, attachment_type: newType })
-                }}
-                required
-                className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-              >
-                <option value="commit_link">Commit Message Link</option>
-                <option value="file_upload">Upload Files</option>
-              </select>
-              <p className="text-xs text-gray-500">
-                {coveringAttachmentType === 'commit_link'
-                  ? 'Provide a link to your GitHub commit or pull request'
-                  : 'Upload files as proof of work (screenshots, documents, etc.)'}
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ℹ️ <strong>Note:</strong> Work description and proof will be added later in the approval workflow.
               </p>
             </div>
-
-            {/* Conditional rendering based on selection */}
-            {coveringAttachmentType === 'commit_link' ? (
-              <div className="space-y-2">
-                <Label htmlFor="commit_link">Commit Message Link *</Label>
-                <Input
-                  id="commit_link"
-                  name="commit_link"
-                  type="url"
-                  onChange={handleChange}
-                  required
-                  placeholder="https://github.com/username/repo/commit/abc123"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Enter the full URL to your commit, pull request, or branch
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="covering_files">Upload Files *</Label>
-                <Input
-                  id="covering_files"
-                  name="covering_files"
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.txt,.yml,.yaml,.xml,.csv,.log"
-                  onChange={handleChange}
-                  className="cursor-pointer"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Upload proof of work files (images, PDFs, code files, etc., max 10MB each)
-                </p>
-                {formData.covering_files && formData.covering_files.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                      Uploaded Files:
-                    </p>
-                    <ul className="text-xs text-gray-600 dark:text-gray-300 list-disc list-inside">
-                      {formData.covering_files.map((url: string, index: number) => (
-                        <li key={index}>{url.split('/').pop()}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )
 
