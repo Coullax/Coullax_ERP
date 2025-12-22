@@ -154,7 +154,7 @@ export function Sidebar() {
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true });
-    const pathname = usePathname();
+  const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
     useAuthStore();
@@ -240,6 +240,52 @@ export function Sidebar() {
     setExpandedSections(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
+  // Filter function for search
+  const matchesSearch = (item: any, query: string): boolean => {
+    if (!query.trim()) return true;
+    const lowerQuery = query.toLowerCase();
+
+    // Check if label matches
+    if (item.label.toLowerCase().includes(lowerQuery)) return true;
+
+    // Check if any sub-items match
+    if (item.subItems) {
+      return item.subItems.some((subItem: any) =>
+        subItem.label.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    return false;
+  };
+
+  // Highlight matching text
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+
+    if (index === -1) return text;
+
+    return (
+      <>
+        {text.substring(0, index)}
+        <span className="bg-yellow-200 dark:bg-yellow-700 text-gray-900 dark:text-gray-100 px-0.5 rounded">
+          {text.substring(index, index + query.length)}
+        </span>
+        {text.substring(index + query.length)}
+      </>
+    );
+  };
+
+  // Filter items based on search
+  const filteredMainItems = mainItems.filter(item => matchesSearch(item, searchQuery));
+  const filteredSections = sections.map(section => ({
+    ...section,
+    items: section.items.filter(item => matchesSearch(item, searchQuery))
+  })).filter(section => section.items.length > 0);
+
   const NavItem = ({ item, isCollapsed, isSubItem = false }: { item: any; isCollapsed: boolean; isSubItem?: boolean }) => {
     // Check if expandable (has subItems)
     if (item.isExpandable && item.subItems) {
@@ -248,6 +294,14 @@ export function Sidebar() {
       const hasActiveSubItem = item.subItems.some((subItem: any) =>
         pathname === subItem.href || pathname.startsWith(subItem.href + "/")
       );
+
+      // Filter sub-items based on search
+      const filteredSubItems = item.subItems.filter((subItem: any) =>
+        matchesSearch(subItem, searchQuery)
+      );
+
+      // Auto-expand if searching and has matching sub-items
+      const shouldExpand = searchQuery.trim() ? filteredSubItems.length > 0 : isExpanded;
 
       return (
         <div>
@@ -264,10 +318,10 @@ export function Sidebar() {
             <Icon className={cn("w-5 h-5 flex-shrink-0")} />
             {!isCollapsed && (
               <>
-                <span className="flex-1 text-left">{item.label}</span>
+                <span className="flex-1 text-left">{highlightText(item.label, searchQuery)}</span>
                 <ChevronDown className={cn(
                   "w-4 h-4 transition-transform",
-                  isExpanded && "rotate-180"
+                  shouldExpand && "rotate-180"
                 )} />
               </>
             )}
@@ -277,9 +331,9 @@ export function Sidebar() {
               </div>
             )}
           </button>
-          {!isCollapsed && isExpanded && (
+          {!isCollapsed && shouldExpand && (
             <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-800 pl-2">
-              {item.subItems.map((subItem: any) => (
+              {filteredSubItems.map((subItem: any) => (
                 <NavItem key={subItem.href} item={subItem} isCollapsed={isCollapsed} isSubItem={true} />
               ))}
             </div>
@@ -307,7 +361,7 @@ export function Sidebar() {
         <Icon className={cn("w-5 h-5 flex-shrink-0", isSubItem && "w-4 h-4")} />
         {!isCollapsed && (
           <>
-            <span className="flex-1">{item.label}</span>
+            <span className="flex-1">{highlightText(item.label, searchQuery)}</span>
             {item.badge !== undefined && item.badge > 0 && (
               <Badge className={cn(
                 "h-5 min-w-5 flex items-center justify-center px-1.5",
@@ -397,13 +451,13 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto p-3 space-y-6 scrollbar-hide">
         {/* Main Items */}
         <div className="space-y-1">
-          {mainItems.map((item) => (
+          {filteredMainItems.map((item) => (
             <NavItem key={item.href} item={item} isCollapsed={isCollapsed} />
           ))}
         </div>
 
         {/* Sections */}
-        {sections.map((section, idx) => (
+        {filteredSections.map((section, idx) => (
           <div key={idx}>
             {!isCollapsed && (
               <div className="flex items-center justify-between px-3 mb-2">
