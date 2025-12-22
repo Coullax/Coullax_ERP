@@ -29,6 +29,7 @@ export function CreateEmployeeDialog({
     full_name: '',
     employee_no: '',
     role: 'employee' as 'employee' | 'admin' | 'super_admin',
+    employee_type: 'permanent' as 'intern_trainee' | 'freelancer' | 'permanent' | 'contract',
     phone: '',
     department_id: '',
     designation_id: '',
@@ -134,6 +135,23 @@ export function CreateEmployeeDialog({
                   <option value="super_admin">Super Admin</option>
                 </select>
               </div>
+              {formData.role === 'employee' && (
+                <div className="space-y-2">
+                  <Label htmlFor="employee_type">Employee Type *</Label>
+                  <select
+                    id="employee_type"
+                    value={formData.employee_type}
+                    onChange={(e) => setFormData({ ...formData, employee_type: e.target.value as any })}
+                    required
+                    className="flex h-11 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  >
+                    <option value="permanent">Permanent</option>
+                    <option value="intern_trainee">Intern/Trainee</option>
+                    <option value="freelancer">Freelancer</option>
+                    <option value="contract">Contract</option>
+                  </select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <select
