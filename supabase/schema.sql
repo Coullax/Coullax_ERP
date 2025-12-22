@@ -6,7 +6,7 @@ CREATE TABLE public.announcements (
   title text NOT NULL,
   content text NOT NULL,
   priority text DEFAULT 'normal'::text,
-  is_active boolean DEFAULT true,
+  status text DEFAULT 'pending'::text,
   created_by uuid,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
@@ -250,15 +250,19 @@ CREATE TABLE public.covering_requests (
   covering_date date NOT NULL,
   start_time time without time zone NOT NULL,
   end_time time without time zone NOT NULL,
-  work_description text NOT NULL,
+  work_description text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   attachment_type text CHECK (attachment_type = ANY (ARRAY['commit_link'::text, 'file_upload'::text])),
   commit_link text,
   covering_files jsonb,
+  proof_submitted_at timestamp without time zone,
+  work_verified_at timestamp without time zone,
+  verified_by uuid,
   CONSTRAINT covering_requests_pkey PRIMARY KEY (id),
   CONSTRAINT covering_requests_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.requests(id),
-  CONSTRAINT covering_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id)
+  CONSTRAINT covering_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id),
+  CONSTRAINT covering_requests_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id)
 );
 CREATE TABLE public.departments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
