@@ -64,7 +64,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { getPendingVerificationsCount } from "@/app/actions/verification-actions";
-import { getPendingRequestsCount, getTeamLeadPendingRequestsCount } from "@/app/actions/request-actions";
+import { getPendingRequestsCount, getTeamLeadPendingRequestsCount, getAwaitingProofSubmissionCount } from "@/app/actions/request-actions";
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
@@ -153,6 +153,7 @@ export function Sidebar() {
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
+  const [awaitingProofCount, setAwaitingProofCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true });
   const pathname = usePathname();
   const router = useRouter();
@@ -187,6 +188,16 @@ export function Sidebar() {
           console.error('Sidebar: Failed to fetch team lead pending count:', error);
         }
       }
+
+      // Fetch awaiting proof submission count for employees
+      if (userId && !isUserAdmin) {
+        try {
+          const proofCount = await getAwaitingProofSubmissionCount(userId);
+          setAwaitingProofCount(proofCount);
+        } catch (error) {
+          console.error('Sidebar: Failed to fetch awaiting proof count:', error);
+        }
+      }
     };
 
     fetchPendingCounts();
@@ -194,7 +205,7 @@ export function Sidebar() {
     // Refresh counts every 30 seconds
     const interval = setInterval(fetchPendingCounts, 30000);
     return () => clearInterval(interval);
-  }, [profile?.role]);
+  }, [profile?.role, profile?.id]);
 
   // Update admin nav items with pending counts
   const mainItems = isSuperAdmin() || isAdmin()
@@ -206,7 +217,12 @@ export function Sidebar() {
       }
       return item;
     })
-    : employeeNavItems;
+    : employeeNavItems.map(item => {
+      if (item.href === '/requests') {
+        return { ...item, badge: awaitingProofCount, badgeColor: 'red' };
+      }
+      return item;
+    });
 
   // Update team lead sections with pending count
   const updatedTeamLeadSections = teamLeadSections.map(section => ({
@@ -365,9 +381,11 @@ export function Sidebar() {
             {item.badge !== undefined && item.badge > 0 && (
               <Badge className={cn(
                 "h-5 min-w-5 flex items-center justify-center px-1.5",
-                isActive
-                  ? "bg-primary-foreground text-primary"
-                  : "bg-primary text-primary-foreground"
+                item.badgeColor === 'red'
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : isActive
+                    ? "bg-primary-foreground text-primary"
+                    : "bg-primary text-primary-foreground"
               )}>
                 {item.badge}
               </Badge>

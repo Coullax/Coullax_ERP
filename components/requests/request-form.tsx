@@ -23,6 +23,7 @@ import {
   uploadResignationDocument,
   getDepartmentHeadForEmployee,
   getEmployeePolicySchedule,
+  getCoveringHours,
 } from '@/app/actions/request-actions'
 import { getEmployeeCurrentBalance } from '@/app/actions/policy-actions'
 import { getEmployeeInventory } from '@/app/actions/inventory-actions'
@@ -62,6 +63,10 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [issueImage, setIssueImage] = useState<File | null>(null)
   const [issueImagePreview, setIssueImagePreview] = useState<string | null>(null)
   const [uploadingIssueImage, setUploadingIssueImage] = useState(false)
+
+  // Covering hours state
+  const [coveringHours, setCoveringHours] = useState<number | null>(null)
+  const [coveringHoursLoading, setCoveringHoursLoading] = useState(false)
 
   // Helper function to format days to "Xd Yh" format
   const formatDaysToHours = (days: number, workHoursPerDay: number = 9): string => {
@@ -124,6 +129,24 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         })
         .finally(() => {
           setScheduleLoading(false)
+        })
+    }
+  }, [requestType, employeeId])
+
+  // Fetch covering hours for covering requests
+  useEffect(() => {
+    if (requestType === 'covering' && employeeId) {
+      setCoveringHoursLoading(true)
+      getCoveringHours(employeeId)
+        .then((hours) => {
+          setCoveringHours(hours)
+        })
+        .catch((error) => {
+          console.error('Failed to fetch covering hours:', error)
+          toast.error('Failed to fetch covering hours: ' + error.message)
+        })
+        .finally(() => {
+          setCoveringHoursLoading(false)
         })
     }
   }, [requestType, employeeId])
@@ -1237,6 +1260,46 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'covering':
         return (
           <>
+            {/* Covering Hours Balance Display */}
+            {coveringHoursLoading ? (
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Loading covering hours...</p>
+              </div>
+            ) : coveringHours !== null && coveringHours > 0 ? (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Your Covering Hours Balance
+                    </h4>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Hours you need to cover
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      {coveringHours.toFixed(1)}
+                    </p>
+                    <p className="text-xs text-blue-500 dark:text-blue-500">hours</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-xl border-2 border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 dark:text-green-400 text-lg">✓</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-green-900 dark:text-green-100">
+                      No Covering Hours Required
+                    </h4>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      You don't have any covering hours to complete at the moment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="covering_date">Covering Date *</Label>
               <Input

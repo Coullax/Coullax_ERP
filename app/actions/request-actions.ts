@@ -108,6 +108,21 @@ export async function getTeamLeadPendingRequestsCount(departmentHeadId: string) 
     .in('employee_id', memberIds)
     .in('status', ['team_leader_approval_pending', 'proof_verification_pending'])
 
+
+  if (error) return 0
+  return count || 0
+}
+
+// Get count of awaiting proof submission requests for a user (for sidebar badge)
+export async function getAwaitingProofSubmissionCount(userId: string) {
+  const supabase = await createClient()
+
+  const { count, error } = await supabase
+    .from('requests')
+    .select('*', { count: 'exact', head: true })
+    .eq('employee_id', userId)
+    .eq('status', 'awaiting_proof_submission')
+
   if (error) return 0
   return count || 0
 }
@@ -1244,6 +1259,65 @@ export async function updateRequestStatus(
     }
   }
 
+  // If approved and it's a covering request at final approval stage, deduct from covering hours
+  if (finalStatus === 'approved' && request.request_type === 'covering' && request.covering_requests) {
+    const coveringRequest = Array.isArray(request.covering_requests)
+      ? request.covering_requests[0]
+      : request.covering_requests
+
+    if (coveringRequest && coveringRequest.start_time && coveringRequest.end_time) {
+      try {
+        // Calculate hours from start_time and end_time
+        const startParts = coveringRequest.start_time.split(':')
+        const endParts = coveringRequest.end_time.split(':')
+        const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1])
+        const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1])
+        const hoursWorked = (endMinutes - startMinutes) / 60
+
+        console.log(`Deducting ${hoursWorked} covering hours for employee ${request.employee_id}`)
+
+        // Deduct the hours from covering_hours table
+        const { createAdminClient } = await import('@/lib/supabase/server')
+        const adminClient = createAdminClient()
+
+        // Get current covering hours
+        const { data: currentHours, error: fetchError } = await adminClient
+          .from('covering_hours')
+          .select('hours_to_cover')
+          .eq('employee_id', request.employee_id)
+          .single()
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          throw fetchError
+        }
+
+        if (currentHours && currentHours.hours_to_cover > 0) {
+          // Subtract the hours worked
+          const newBalance = Math.max(0, currentHours.hours_to_cover - hoursWorked)
+
+          const { error: updateError } = await adminClient
+            .from('covering_hours')
+            .update({
+              hours_to_cover: newBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('employee_id', request.employee_id)
+
+          if (updateError) {
+            console.error('Failed to update covering hours:', updateError)
+          } else {
+            console.log(`Successfully deducted ${hoursWorked} hours. New balance: ${newBalance}`)
+          }
+        } else {
+          console.log('No covering hours record found or balance is already 0')
+        }
+      } catch (coveringError: any) {
+        // If deduction fails, log but don't fail the approval
+        console.error('Failed to deduct covering hours:', coveringError)
+      }
+    }
+  }
+
   // Create notification for the employee about the request decision
   try {
     const { createAdminClient } = await import('@/lib/supabase/server')
@@ -1543,6 +1617,27 @@ export async function upsertCoveringHours(employeeId: string, hoursToAdd: number
   }
 
   return { success: true }
+}
+
+// Get Covering Hours for Employee
+export async function getCoveringHours(employeeId: string) {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const adminClient = createAdminClient()
+
+  const { data, error } = await adminClient
+    .from('covering_hours')
+    .select('hours_to_cover')
+    .eq('employee_id', employeeId)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    // PGRST116 is "no rows returned" error, which is fine
+    console.error('Error fetching covering hours:', error)
+    throw error
+  }
+
+  // Return 0 if no record exists
+  return data ? data.hours_to_cover : 0
 }
 
 // Team Lead Approval/Rejection (First level of approval)

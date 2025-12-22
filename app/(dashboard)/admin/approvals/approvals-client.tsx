@@ -177,6 +177,26 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
         }
       }
 
+      // Deduct covering hours if it's a covering request being approved
+      if (selectedRequest?.request_type === 'covering') {
+        const coveringRequest = selectedRequest.covering_requests?.[0]
+        if (coveringRequest?.start_time && coveringRequest?.end_time) {
+          // Calculate covering hours worked
+          const hoursWorked = calculateLeaveHours(coveringRequest.start_time, coveringRequest.end_time)
+
+          // Deduct the hours from employee's covering hours balance
+          try {
+            // Negative value to subtract
+            await upsertCoveringHours(selectedRequest.employee_id, -hoursWorked)
+            console.log(`Covering hours deducted for employee ${selectedRequest.employee_id}: ${hoursWorked} hours`)
+          } catch (coveringError: any) {
+            console.error('Failed to deduct covering hours:', coveringError)
+            // Don't fail the approval if covering hours deduction fails
+            toast.warning('Request approved, but failed to update covering hours balance')
+          }
+        }
+      }
+
       toast.success('Request approved successfully!')
       setDialogOpen(false)
       setSelectedRequest(null)
@@ -264,6 +284,9 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
       cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
       admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
       team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_final_approval_pending: 'bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium',
+      proof_verification_pending: 'bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium',
+      awaiting_proof_submission: 'bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
     const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')

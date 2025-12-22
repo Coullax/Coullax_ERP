@@ -510,7 +510,8 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       })
 
       const uploadedUrls = await Promise.all(uploadPromises)
-      setCoveringFiles([...coveringFiles, ...uploadedUrls])
+      const validUrls = uploadedUrls.filter((url): url is string => url !== undefined)
+      setCoveringFiles([...coveringFiles, ...validUrls])
       toast.success(`${uploadedUrls.length} file(s) uploaded successfully!`)
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload files')
@@ -527,6 +528,9 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
       admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
       team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_final_approval_pending: 'bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium',
+      proof_verification_pending: 'bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium',
+      awaiting_proof_submission: 'bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
     const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
@@ -588,6 +592,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     pending: requests.filter(r => r.status === 'pending').length,
     approved: requests.filter(r => r.status === 'approved').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
+    awaiting_proof_submission: requests.filter(r => r.status === 'awaiting_proof_submission').length,
   }
 
   return (
@@ -693,17 +698,6 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
             </div>
 
             {/* Status Filter Dropdown */}
-            <Select value={filter} onValueChange={(value) => handleFilterChange(value)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
 
             {/* Sort By Dropdown */}
             {/* <Select 
@@ -798,11 +792,91 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       {/* Requests Table */}
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center justify-between text-lg">
-            <span>My Requests</span>
-            <span className="text-sm font-normal text-gray-500">
-              Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
-            </span>
+          <CardTitle className="text-lg">
+            <div className="flex items-center justify-between mb-4">
+              <span>My Requests</span>
+              <span className="text-sm font-normal text-gray-500">
+                Showing {Math.min(offset + limit, filteredRequests.length)} of {filteredRequests.length}
+              </span>
+            </div>
+
+            {/* Status Filter Buttons */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('all')}
+                className="flex items-center gap-2"
+              >
+                All
+              </Button>
+              <Button
+                variant={filter === 'team_leader_approval_pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  handleFilterChange('team_leader_approval_pending')
+                  setOffset(0)
+                }}
+                className="gap-1"
+              >
+                Team Lead Approval Pending
+              </Button>
+              <Button
+                variant={filter === 'admin_approval_pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('admin_approval_pending')}
+                className="flex items-center gap-2"
+              >
+                Admin Approval Pending
+              </Button>
+              <Button
+                variant={filter === 'awaiting_proof_submission' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('awaiting_proof_submission')}
+                className="flex items-center gap-2 relative"
+              >
+                Awaiting Proof Submission
+                {stats.awaiting_proof_submission > 0 && (
+                  <Badge className="ml-1 px-2 py-0 text-xs bg-red-500 hover:bg-red-600 text-white">
+                    {stats.awaiting_proof_submission}
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                variant={filter === 'proof_verification_pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('proof_verification_pending')}
+                className="flex items-center gap-2"
+              >
+                Proof Verification Pending
+              </Button>
+              <Button
+                variant={filter === 'admin_final_approval_pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('admin_final_approval_pending')}
+                className="flex items-center gap-2"
+              >
+                Admin Final Approval Pending
+              </Button>
+
+              <Button
+                variant={filter === 'approved' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('approved')}
+                className="flex items-center gap-2"
+              >
+                Approved
+              </Button>
+
+              <Button
+                variant={filter === 'rejected' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterChange('rejected')}
+                className="flex items-center gap-2"
+              >
+                Rejected
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -874,7 +948,8 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                                 View Details
                               </DropdownMenuItem>
                               {request.status === 'awaiting_proof_submission' && (
-                                <DropdownMenuItem onClick={() => handleViewProof(request)}>
+                                <DropdownMenuItem onClick={() => handleViewProof(request)} >
+                                  <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>
                                   <Upload className="w-4 h-4 mr-2" />
                                   Submit Proof
                                 </DropdownMenuItem>
