@@ -274,3 +274,33 @@ CREATE POLICY "Super admins can delete designations" ON designations
 DROP POLICY IF EXISTS "Employees can view designations" ON designations;
 CREATE POLICY "Employees can view designations" ON designations
   FOR SELECT USING (auth.role() = 'authenticated');
+
+-- =============================================
+-- INVENTORY CATEGORIES MANAGEMENT
+-- =============================================
+
+-- Allow all authenticated users to view inventory categories
+DROP POLICY IF EXISTS "Authenticated users can view categories" ON inventory_categories;
+CREATE POLICY "Authenticated users can view categories" ON inventory_categories
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Super admins can insert inventory categories
+DROP POLICY IF EXISTS "Super admins can insert inventory categories" ON inventory_categories;
+CREATE POLICY "Super admins can insert inventory categories" ON inventory_categories
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'super_admin')
+  );
+
+-- Super admins can update inventory categories
+DROP POLICY IF EXISTS "Super admins can update inventory categories" ON inventory_categories;
+CREATE POLICY "Super admins can update inventory categories" ON inventory_categories
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'super_admin')
+  );
+
+-- Super admins can delete inventory categories
+DROP POLICY IF EXISTS "Super admins can delete inventory categories" ON inventory_categories;
+CREATE POLICY "Super admins can delete inventory categories" ON inventory_categories
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'super_admin')
+  );
