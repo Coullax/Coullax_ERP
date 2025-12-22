@@ -50,7 +50,37 @@ export async function updateProfile(userId: string, data: {
   return { success: true }
 }
 
-export async function updateEmployeeInfo(userId: string, data: any) {
+export async function updateEmployeeInfo(userId: string, data: {
+  // Personal Information
+  date_of_birth?: string | null
+  gender?: string | null
+  blood_group?: string | null
+  marital_status?: string | null
+
+  // EPF/ETF Information
+  members_no?: string | null
+  date_employed_from?: string | null
+  name_with_initials?: string | null
+  other_names?: string | null
+  nationality?: string | null
+  place_of_birth?: string | null
+  name_of_spouse?: string | null
+  nic?: string | null
+  name_of_father?: string | null
+  name_of_mother?: string | null
+
+  // Address Information
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  country?: string | null
+
+  // Emergency Contact
+  emergency_contact_name?: string | null
+  emergency_contact_phone?: string | null
+  emergency_contact_relationship?: string | null
+}) {
   const supabase = await createClient()
 
   const { error } = await supabase

@@ -36,6 +36,18 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
     marital_status: employee?.marital_status || '',
     joining_date: employee?.joining_date || '',
 
+    // EPF/ETF data
+    members_no: employee?.members_no || '',
+    date_employed_from: employee?.date_employed_from || '',
+    name_with_initials: employee?.name_with_initials || '',
+    other_names: employee?.other_names || '',
+    nationality: employee?.nationality || '',
+    place_of_birth: employee?.place_of_birth || '',
+    name_of_spouse: employee?.name_of_spouse || '',
+    nic: employee?.nic || '',
+    name_of_father: employee?.name_of_father || '',
+    name_of_mother: employee?.name_of_mother || '',
+
     // Address
     address: employee?.address || '',
     city: employee?.city || '',
@@ -48,6 +60,19 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
     emergency_contact_phone: employee?.emergency_contact_phone || '',
     emergency_contact_relationship: employee?.emergency_contact_relationship || '',
   })
+
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth: string): string => {
+    if (!dateOfBirth) return ''
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age.toString()
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -70,6 +95,16 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
         gender: formData.gender || null,
         blood_group: formData.blood_group || null,
         marital_status: formData.marital_status || null,
+        members_no: formData.members_no || null,
+        date_employed_from: formData.date_employed_from || null,
+        name_with_initials: formData.name_with_initials || null,
+        other_names: formData.other_names || null,
+        nationality: formData.nationality || null,
+        place_of_birth: formData.place_of_birth || null,
+        name_of_spouse: formData.name_of_spouse || null,
+        nic: formData.nic || null,
+        name_of_father: formData.name_of_father || null,
+        name_of_mother: formData.name_of_mother || null,
         address: formData.address || null,
         city: formData.city || null,
         state: formData.state || null,
@@ -225,6 +260,138 @@ export function BasicInfoForm({ userId, profile, employee }: BasicInfoFormProps)
               <option value="divorced">Divorced</option>
               <option value="widowed">Widowed</option>
             </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* EPF/ETF Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>EPF/ETF</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="members_no">Members No</Label>
+            <Input
+              id="members_no"
+              name="members_no"
+              value={formData.members_no}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="date_employed_from">Date Employed From</Label>
+            <Input
+              id="date_employed_from"
+              name="date_employed_from"
+              type="date"
+              value={formData.date_employed_from}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="name_with_initials">Name with Initials</Label>
+            <Input
+              id="name_with_initials"
+              name="name_with_initials"
+              value={formData.name_with_initials}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="other_names">Other Names</Label>
+            <Input
+              id="other_names"
+              name="other_names"
+              value={formData.other_names}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nationality">Nationality</Label>
+            <Input
+              id="nationality"
+              name="nationality"
+              value={formData.nationality}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="age">Age</Label>
+            <Input
+              id="age"
+              name="age"
+              value={calculateAge(formData.date_of_birth)}
+              disabled
+              className="bg-gray-50 dark:bg-gray-900"
+              placeholder="Calculated from date of birth"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="place_of_birth">Place of Birth</Label>
+            <Input
+              id="place_of_birth"
+              name="place_of_birth"
+              value={formData.place_of_birth}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="name_of_spouse">Name of Spouse</Label>
+            <Input
+              id="name_of_spouse"
+              name="name_of_spouse"
+              value={formData.name_of_spouse}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nic">NIC</Label>
+            <Input
+              id="nic"
+              name="nic"
+              value={formData.nic}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="name_of_father">Name of Father</Label>
+            <Input
+              id="name_of_father"
+              name="name_of_father"
+              value={formData.name_of_father}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="name_of_mother">Name of Mother</Label>
+            <Input
+              id="name_of_mother"
+              name="name_of_mother"
+              value={formData.name_of_mother}
+              onChange={handleChange}
+              disabled={isFormDisabled}
+              className={isFormDisabled ? "bg-gray-50 dark:bg-gray-900" : ""}
+            />
           </div>
         </CardContent>
       </Card>

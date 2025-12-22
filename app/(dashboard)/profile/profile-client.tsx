@@ -76,9 +76,9 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
             <Package className="w-4 h-4" />
             Inventory
           </TabsTrigger>
-          <TabsTrigger value="EPF/ETF" className="gap-2">
+          <TabsTrigger value="Employee HandBook" className="gap-2">
             <Award className="w-4 h-4" />
-            EPF/ETF
+            Employee HandBook
           </TabsTrigger>
           {/* <TabsTrigger value="emergency" className="gap-2">
             <Phone className="w-4 h-4" />
