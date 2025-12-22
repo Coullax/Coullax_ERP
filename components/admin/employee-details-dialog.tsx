@@ -87,6 +87,11 @@ export function EmployeeDetailsDialog({
                                         <Badge variant="secondary" className="bg-white/20 text-white dark:bg-black/20 dark:text-black capitalize">
                                             {profile?.role}
                                         </Badge>
+                                        {employee?.employee_type && (
+                                            <Badge variant="secondary" className="bg-white/20 text-white dark:bg-black/20 dark:text-black capitalize">
+                                                {employee.employee_type.replace(/_/g, ' ')}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm opacity-90">
                                         <span>📧 {profile?.email}</span>
