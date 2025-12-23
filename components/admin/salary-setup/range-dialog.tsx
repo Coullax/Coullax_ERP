@@ -25,15 +25,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import {
-    createSalaryRange,
-    updateSalaryRange,
-    type SalaryRange,
+    createApitRange,
+    updateApitRange,
+    type ApitRange,
 } from "@/app/actions/salary-setup-actions";
 
 const rangeSchema = z.object({
     name: z.string().min(1, "Range name is required"),
     min_amount: z.coerce.number().min(0, "Minimum amount must be 0 or greater"),
     max_amount: z.coerce.number().nullable().optional(),
+    percentage: z.coerce.number().min(0, "Percentage must be 0 or greater").max(100, "Percentage cannot exceed 100"),
 });
 
 type RangeFormData = z.infer<typeof rangeSchema>;
@@ -41,7 +42,7 @@ type RangeFormData = z.infer<typeof rangeSchema>;
 interface RangeDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    range?: SalaryRange | null;
+    range?: ApitRange | null;
     onSuccess?: () => void;
 }
 
@@ -61,6 +62,7 @@ export function RangeDialog({
             name: range?.name || "",
             min_amount: range?.min_amount || 0,
             max_amount: range?.max_amount || undefined,
+            percentage: range?.percentage || 0,
         },
     });
 
@@ -73,20 +75,20 @@ export function RangeDialog({
             };
 
             const result = isEditing
-                ? await updateSalaryRange(range.id, submitData)
-                : await createSalaryRange(submitData);
+                ? await updateApitRange(range.id, submitData)
+                : await createApitRange(submitData);
 
             if (result.success) {
                 toast.success(
                     isEditing
-                        ? "Salary range updated successfully"
-                        : "Salary range created successfully"
+                        ? "APIT range updated successfully"
+                        : "APIT range created successfully"
                 );
                 form.reset();
                 onOpenChange(false);
                 onSuccess?.();
             } else {
-                toast.error(result.error || "Failed to save salary range");
+                toast.error(result.error || "Failed to save APIT range");
             }
         } catch (error: any) {
             toast.error(error.message || "An error occurred");
@@ -100,12 +102,12 @@ export function RangeDialog({
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? "Edit Salary Range" : "Add New Salary Range"}
+                        {isEditing ? "Edit APIT Range" : "Add New APIT Range"}
                     </DialogTitle>
                     <DialogDescription>
                         {isEditing
-                            ? "Update the salary range details."
-                            : "Create a new salary range bracket for calculations."}
+                            ? "Update the APIT range details."
+                            : "Create a new APIT range bracket for calculations."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -124,7 +126,7 @@ export function RangeDialog({
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        A descriptive name for this salary range
+                                        A descriptive name for this APIT range
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -145,6 +147,28 @@ export function RangeDialog({
                                             {...field}
                                         />
                                     </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="percentage"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>APIT Percentage (%)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Tax percentage for this range (0-100)
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
