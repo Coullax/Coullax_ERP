@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -65,6 +65,31 @@ export function RangeDialog({
             percentage: range?.percentage || 0,
         },
     });
+
+    // Reset form when dialog opens or range changes
+    useEffect(() => {
+        if (open) {
+            if (range) {
+                // Editing mode - populate form with range data
+                form.reset({
+                    name: range.name,
+                    min_amount: range.min_amount,
+                    max_amount: range.max_amount || undefined,
+                    percentage: range.percentage || 0,
+                });
+                setIsUnlimited(!range.max_amount);
+            } else {
+                // Create mode - reset to empty form
+                form.reset({
+                    name: "",
+                    min_amount: 0,
+                    max_amount: undefined,
+                    percentage: 0,
+                });
+                setIsUnlimited(false);
+            }
+        }
+    }, [open, range, form]);
 
     const onSubmit = async (data: RangeFormData) => {
         setIsSubmitting(true);
