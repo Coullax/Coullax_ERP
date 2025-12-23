@@ -74,9 +74,9 @@ export function LeaveSection({ employeeId }: LeaveSectionProps) {
                     <div className="flex items-center justify-between mb-3">
                         <div>
                             <h3 className="font-semibold">Current Month</h3>
-                            <p className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground">
                                 {currentBalance.policy.name}
-                            </p>
+                            </div>
                         </div>
                     </div>
 
