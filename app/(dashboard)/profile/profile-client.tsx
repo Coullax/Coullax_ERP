@@ -10,7 +10,9 @@ import { EducationSection } from '@/components/profile/education-section'
 import { SkillsSection } from '@/components/profile/skills-section'
 import { PasswordResetForm } from '@/components/profile/password-reset-form'
 import { InventorySection } from '@/components/profile/inventory-section'
+import { EmployeeHandbookSection } from '@/components/profile/employee-handbook-section'
 import { User, GraduationCap, Award, Package, Phone, Settings } from 'lucide-react'
+
 
 interface ProfilePageClientProps {
   profile: any
@@ -108,6 +110,10 @@ export function ProfilePageClient({ profile, employee }: ProfilePageClientProps)
 
         <TabsContent value="inventory">
           <InventorySection employeeId={profile?.id} />
+        </TabsContent>
+
+        <TabsContent value="Employee HandBook">
+          <EmployeeHandbookSection employeeId={profile?.id} />
         </TabsContent>
 
         <TabsContent value="emergency">
