@@ -7,18 +7,18 @@ import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CalendarEventWithDetails } from '@/lib/types/calendar'
-import { 
-    format, 
-    startOfMonth, 
-    endOfMonth, 
-    eachDayOfInterval, 
-    isSameMonth, 
-    isSameDay, 
-    addMonths, 
-    subMonths, 
-    startOfWeek, 
+import {
+    format,
+    startOfMonth,
+    endOfMonth,
+    eachDayOfInterval,
+    isSameMonth,
+    isSameDay,
+    addMonths,
+    subMonths,
+    startOfWeek,
     endOfWeek,
-    isToday 
+    isToday
 } from 'date-fns'
 
 interface DashboardCalendarProps {
@@ -69,7 +69,7 @@ export function DashboardCalendar({ events, loading }: DashboardCalendarProps) {
     }
 
     return (
-        <Card className="h-full">
+        <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function DashboardCalendar({ events, loading }: DashboardCalendarProps) {
                                 key={day.toISOString()}
                                 onClick={() => setSelectedDate(day)}
                                 className={cn(
-                                    'min-h-[50px] p-1 cursor-pointer rounded-lg transition-colors relative',
+                                    'min-h-[32px] p-1 cursor-pointer rounded-lg transition-colors relative',
                                     'hover:bg-gray-100 dark:hover:bg-gray-800',
                                     !isCurrentMonth && 'opacity-40',
                                     isSelected && 'bg-blue-50 dark:bg-blue-950 ring-2 ring-blue-500',
@@ -131,8 +131,8 @@ export function DashboardCalendar({ events, loading }: DashboardCalendarProps) {
                                     <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
                                         <div className="flex gap-0.5">
                                             {dayEvents.slice(0, 3).map((_, index) => (
-                                                <div 
-                                                    key={index} 
+                                                <div
+                                                    key={index}
                                                     className="w-1 h-1 rounded-full bg-blue-500"
                                                 />
                                             ))}
@@ -186,13 +186,13 @@ export function DashboardCalendar({ events, loading }: DashboardCalendarProps) {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Badge 
+                                            <Badge
                                                 variant={
-                                                    event.status === 'confirmed' 
-                                                        ? 'default' 
-                                                        : event.status === 'tentative' 
-                                                        ? 'secondary' 
-                                                        : 'destructive'
+                                                    event.status === 'confirmed'
+                                                        ? 'default'
+                                                        : event.status === 'tentative'
+                                                            ? 'secondary'
+                                                            : 'destructive'
                                                 }
                                                 className="shrink-0"
                                             >
@@ -201,8 +201,8 @@ export function DashboardCalendar({ events, loading }: DashboardCalendarProps) {
                                         </div>
                                         {event.calendar && (
                                             <div className="flex items-center gap-1 mt-2">
-                                                <div 
-                                                    className="w-2 h-2 rounded-full" 
+                                                <div
+                                                    className="w-2 h-2 rounded-full"
                                                     style={{ backgroundColor: event.calendar.color }}
                                                 />
                                                 <span className="text-xs text-muted-foreground">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, CheckCircle2, XCircle, TrendingUp } from 'lucide-react'
 import { getEmployeeCurrentBalance, getEmployeeLeaveHistory } from '@/app/actions/policy-actions'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 
 interface LeaveSectionProps {
     employeeId: string
@@ -58,14 +59,16 @@ export function LeaveSection({ employeeId }: LeaveSectionProps) {
     const usagePercentage = (currentBalance.used_leaves / currentBalance.total_leaves) * 100
 
     return (
-        <Card className="h-full">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
+        <Card>
+            <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                        <Calendar className="w-5 h-5 text-primary" />
+                    </div>
                     Leave Balance & History
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-2">
                 {/* Current Balance Section */}
                 <div>
                     <div className="flex items-center justify-between mb-3">
@@ -99,23 +102,35 @@ export function LeaveSection({ employeeId }: LeaveSectionProps) {
                         </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <span>Usage</span>
-                            <span>{usagePercentage.toFixed(0)}%</span>
+                    {/* Usage Chart */}
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <div className="space-y-1">
+                            <span className="text-sm font-medium text-gray-500">Usage</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-bold">{usagePercentage.toFixed(0)}%</span>
+                                <span className="text-xs text-gray-400">used</span>
+                            </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                            <div
-                                className={`h-2.5 rounded-full transition-all ${
-                                    usagePercentage > 80 
-                                        ? 'bg-red-600' 
-                                        : usagePercentage > 50 
-                                        ? 'bg-yellow-500' 
-                                        : 'bg-green-600'
-                                }`}
-                                style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-                            />
+                        <div className="h-[60px] w-[60px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={[
+                                            { value: currentBalance.used_leaves, fill: usagePercentage > 80 ? '#ef4444' : usagePercentage > 50 ? '#eab308' : '#22c55e' },
+                                            { value: currentBalance.available_leaves, fill: '#e5e7eb' }
+                                        ]}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={20}
+                                        outerRadius={25}
+                                        startAngle={90}
+                                        endAngle={-270}
+                                        dataKey="value"
+                                        stroke="none"
+                                        cornerRadius={10}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
@@ -134,8 +149,8 @@ export function LeaveSection({ employeeId }: LeaveSectionProps) {
                 {history.length > 0 && (
                     <div>
                         <h4 className="font-semibold mb-3">Leave History</h4>
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {history.slice(0, 6).map((record: any) => {
+                        <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                            {history.slice(0, 3).map((record: any) => {
                                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
                                 const isFullyUsed = record.used_leaves >= record.total_leaves
 

@@ -64,7 +64,7 @@ export function AnnouncementSection() {
                 <CardTitle className="text-lg">Announcements</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                {announcements.map((announcement) => (
+                {announcements.slice(0, 3).map((announcement) => (
                     <div
                         key={announcement.id}
                         className={`p-4 rounded-xl border-l-4 ${getPriorityColor(announcement.priority)}`}
