@@ -177,7 +177,7 @@ export function RangeDialog({
                             )}
                         />
 
-                        <FormField
+                        {/* <FormField
                             control={form.control}
                             name="percentage"
                             render={({ field }) => (
@@ -197,7 +197,7 @@ export function RangeDialog({
                                     <FormMessage />
                                 </FormItem>
                             )}
-                        />
+                        /> */}
 
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
@@ -238,6 +238,31 @@ export function RangeDialog({
                                 />
                             )}
                         </div>
+
+
+
+                                                <FormField
+                            control={form.control}
+                            name="percentage"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>APIT Percentage (%)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Tax percentage for this range (0-100)
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
 
                         <div className="flex justify-end gap-3 pt-4">
                             <Button
