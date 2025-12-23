@@ -92,6 +92,23 @@ export function AdminDashboardClient() {
     },
   ]
 
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, string> = {
+      pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
+      rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
+      cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
+      team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_final_approval_pending: 'bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium',
+      proof_verification_pending: 'bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium',
+      awaiting_proof_submission: 'bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium',
+    }
+    const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
+    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    return <span className={className}>{label}</span>
+  }
+
   return (
     <div className="space-y-6">
       {/* Greeting Card */}
@@ -161,18 +178,7 @@ export function AdminDashboardClient() {
                         {formatDistanceToNow(new Date(request.date), { addSuffix: true })}
                       </p>
                     </div>
-                    <Badge
-                      variant={
-                        request.status === 'approved'
-                          ? 'success'
-                          : request.status === 'rejected'
-                            ? 'destructive'
-                            : 'secondary'
-                      }
-                      className="ml-2"
-                    >
-                      {request.status}
-                    </Badge>
+                    {getStatusBadge(request.status)}
                   </div>
                 ))}
                 <Button

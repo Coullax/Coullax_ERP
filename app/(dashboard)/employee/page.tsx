@@ -49,6 +49,14 @@ export default async function EmployeeDashboard() {
     .order('submitted_at', { ascending: false })
     .limit(5)
 
+  // Check for covering requests awaiting proof submission
+  const { data: awaitingProofRequests } = await supabase
+    .from('requests')
+    .select('id')
+    .eq('employee_id', user.id)
+    .eq('request_type', 'covering')
+    .eq('status', 'awaiting_proof_submission')
+
   const attendanceStats = {
     present: monthAttendance?.filter(a => a.status === 'present').length || 0,
     absent: monthAttendance?.filter(a => a.status === 'absent').length || 0,
@@ -62,6 +70,7 @@ export default async function EmployeeDashboard() {
       todayAttendance={todayAttendance}
       attendanceStats={attendanceStats}
       recentRequests={recentRequests || []}
+      hasAwaitingProofSubmission={(awaitingProofRequests?.length || 0) > 0}
     />
   )
 }

@@ -15,6 +15,7 @@ import {
   LogIn,
   Plus,
   TrendingUp,
+  Upload,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { LeaveSection } from '@/components/employee/leave-section'
@@ -30,6 +31,7 @@ interface EmployeeDashboardClientProps {
   todayAttendance: any
   attendanceStats: any
   recentRequests: any[]
+  hasAwaitingProofSubmission: boolean
 }
 
 export function EmployeeDashboardClient({
@@ -38,6 +40,7 @@ export function EmployeeDashboardClient({
   todayAttendance,
   attendanceStats,
   recentRequests,
+  hasAwaitingProofSubmission,
 }: EmployeeDashboardClientProps) {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventWithDetails[]>([])
   const [calendarLoading, setCalendarLoading] = useState(true)
@@ -73,51 +76,90 @@ export function EmployeeDashboardClient({
   }, [profile.id])
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, any> = {
-      pending: { variant: 'secondary', icon: Clock, label: 'Pending' },
-      approved: { variant: 'success', icon: CheckCircle, label: 'Approved' },
-      rejected: { variant: 'destructive', icon: XCircle, label: 'Rejected' },
-      cancelled: { variant: 'outline', icon: XCircle, label: 'Cancelled' },
+    const variants: Record<string, string> = {
+      pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      approved: 'bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium',
+      rejected: 'bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium',
+      cancelled: 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_approval_pending: 'bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium',
+      team_leader_approval_pending: 'bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium',
+      admin_final_approval_pending: 'bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium',
+      proof_verification_pending: 'bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium',
+      awaiting_proof_submission: 'bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium',
     }
-    const config = variants[status] || { variant: 'secondary', icon: Clock, label: status }
-    const Icon = config.icon
-    return (
-      <Badge variant={config.variant} className="gap-1">
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </Badge>
-    )
+    const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
+    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    return <span className={className}>{label}</span>
   }
 
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Welcome back, {profile?.full_name?.split(' ')[0]}!</h1>
-          <p className="text-gray-500 mt-1">Here&apos;s your overview for today</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/attendance">
-            <Button variant="outline">
-              <LogIn className="w-4 h-4 mr-2" />
-              Mark Attendance
-            </Button>
-          </Link>
-          <Link href="/requests/new/leave">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              New Request
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <Card className=" bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome back, {profile?.full_name?.split(' ')[0]}!</h1>
+            <p className="text-gray-500 mt-1">Here&apos;s your overview for today</p>
+          </div>
+          <div className=' flex gap-2 flex-col justify-end items-end'>
+            <div className="flex gap-2">
+              <Link href="/attendance">
+                <Button variant="outline" className=' text-black dark:text-white'>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Mark Attendance
+                </Button>
+              </Link>
+              <Link href="/requests">
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Request
+                </Button>
+              </Link>
+            </div>
+            {todayAttendance ? (
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500 opacity-80">
+                  Checked in at {new Date(`${todayAttendance.date}T${todayAttendance.check_in}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                {todayAttendance.check_out && (
+                  <p className="text-sm text-gray-500 opacity-80">
+                    Checked out at {new Date(`${todayAttendance.date}T${todayAttendance.check_out}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2 items-center justify-center">
+                <Calendar className="w-5 h-5 opacity-50" />
+                <p className="text-sm opacity-80">Not marked yet</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+
+      {hasAwaitingProofSubmission && (
+        <Card className=" relative bg-gradient-to-r from-primary/90 to-primary dark:from-white dark:to-gray-200 text-black dark:text-white animate-pulse hover:animate-none transition-all delay-[3000ms] duration-[3000ms]">
+          <CardContent className=" relative p-6 flex items-center justify-between z-10">
+            <div>
+              <h1 className="text-3xl font-bold">Pending proofs submission for covering </h1>
+              <p className="text-gray-500 mt-1">Here&apos;s your overview for today</p>
+            </div>
+            <Link href="/requests">
+              <Button className=' bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80'>
+                <Upload className="w-4 h-4 mr-2" />
+                Submit proofs
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Announcements */}
       <AnnouncementSection />
 
       {/* Today's Status */}
-      <Card className="bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black">
+      {/* <Card className="bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -140,10 +182,10 @@ export function EmployeeDashboardClient({
             <Calendar className="w-12 h-12 opacity-50" />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Monthly Stats & Leave Balance Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -177,10 +219,10 @@ export function EmployeeDashboardClient({
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Quick Actions */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
@@ -212,7 +254,7 @@ export function EmployeeDashboardClient({
             </Link>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Leave Balance & Calendar - Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
