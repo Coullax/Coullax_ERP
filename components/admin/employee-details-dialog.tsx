@@ -14,6 +14,7 @@ import { PasswordResetForm } from '@/components/profile/password-reset-form'
 import { BasicInfoFormAdmin } from '../profile/basic-info-form-admin'
 import { EducationSectionAdmin } from '../profile/education-section-admin'
 import { InventorySectionAdmin } from '../profile/inventory-section-admin'
+import { HandbookManagementSection } from './handbook-management-section'
 import { getEmployeeInventory } from '@/app/actions/inventory-actions'
 
 interface EmployeeDetailsDialogProps {
@@ -166,6 +167,10 @@ export function EmployeeDetailsDialog({
                                     onVerified={handleInventoryVerified}
                                 />
                             )}
+                        </TabsContent>
+
+                        <TabsContent value="Employee HandBook">
+                            <HandbookManagementSection />
                         </TabsContent>
 
                         <TabsContent value="emergency">
