@@ -184,15 +184,17 @@ export function EmployeeDashboardClient({
                 <div className="p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
                   <Upload className="w-5 h-5 text-orange-600" />
                 </div>
-                <Badge className="bg-orange-500">Action Required</Badge>
+                <Badge className="bg-orange-500 animate-pulse">Action Required</Badge>
               </div>
               <div>
                 <p className="text-sm text-orange-800 dark:text-orange-300 font-medium">Pending Proofs</p>
                 <p className="text-2xl font-bold text-orange-900 dark:text-orange-100 mt-1">Submission</p>
-                <Link href="/requests" className="mt-3 block">
+                <Link href="/requests" className="mt-3 block relative w-fit pr-3">
                   <p className="text-xs text-orange-600 font-medium hover:underline flex items-center group">
                     Submit now <TrendingUp className="w-3 h-3 ml-1 transition-transform group-hover:translate-x-1" />
                   </p>
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></div>
                 </Link>
               </div>
             </CardContent>
