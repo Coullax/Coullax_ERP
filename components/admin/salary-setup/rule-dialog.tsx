@@ -37,12 +37,12 @@ import {
     updateCategoryRule,
     type SalaryCategoryRule,
     type SalaryCategory,
-    type SalaryRange,
+    type ApitRange,
 } from "@/app/actions/salary-setup-actions";
 
 const ruleSchema = z.object({
     category_id: z.string().min(1, "Category is required"),
-    salary_range_id: z.string().nullable().optional(),
+    apit_range_id: z.string().nullable().optional(),
     calculation_type: z.enum(["percentage", "fixed"]),
     value: z.coerce.number().min(0, "Value must be 0 or greater"),
     applies_to_category_id: z.string().nullable().optional(),
@@ -56,7 +56,7 @@ interface RuleDialogProps {
     onOpenChange: (open: boolean) => void;
     rule?: SalaryCategoryRule | null;
     categories: SalaryCategory[];
-    ranges: SalaryRange[];
+    ranges: ApitRange[];
     onSuccess?: () => void;
 }
 
@@ -69,14 +69,14 @@ export function RuleDialog({
     onSuccess,
 }: RuleDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [applyToAll, setApplyToAll] = useState(!rule?.salary_range_id);
+    const [applyToAll, setApplyToAll] = useState(!rule?.apit_range_id);
     const isEditing = !!rule;
 
     const form = useForm<RuleFormData>({
         resolver: zodResolver(ruleSchema),
         defaultValues: {
             category_id: rule?.category_id || "",
-            salary_range_id: rule?.salary_range_id || null,
+            apit_range_id: rule?.apit_range_id || null,
             calculation_type: rule?.calculation_type || "percentage",
             value: rule?.value || 0,
             applies_to_category_id: rule?.applies_to_category_id || null,
@@ -91,7 +91,7 @@ export function RuleDialog({
         try {
             const submitData = {
                 ...data,
-                salary_range_id: applyToAll ? null : data.salary_range_id,
+                apit_range_id: applyToAll ? null : data.apit_range_id,
             };
 
             const result = isEditing
@@ -175,24 +175,24 @@ export function RuleDialog({
                                     htmlFor="applyToAll"
                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
-                                    Apply to all salary ranges
+                                    Apply to all APIT ranges
                                 </label>
                             </div>
 
                             {!applyToAll && (
                                 <FormField
                                     control={form.control}
-                                    name="salary_range_id"
+                                    name="apit_range_id"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Salary Range</FormLabel>
+                                            <FormLabel>APIT Range</FormLabel>
                                             <Select
                                                 onValueChange={field.onChange}
                                                 defaultValue={field.value || undefined}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select salary range" />
+                                                        <SelectValue placeholder="Select APIT range" />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
