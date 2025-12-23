@@ -78,9 +78,10 @@ export function AnnouncementSection() {
                                         {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
                                     </span>
                                 </div>
-                                <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-wrap">
-                                    {announcement.content}
-                                </p>
+                                <div
+                                    className="text-gray-600 dark:text-gray-300 text-sm prose dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: announcement.content }}
+                                />
                                 {announcement.priority === 'critical' && (
                                     <Badge variant="destructive" className="mt-2 text-xs">
                                         Critical

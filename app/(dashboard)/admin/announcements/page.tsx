@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
     Table,
     TableBody,
@@ -202,14 +202,13 @@ export default function AnnouncementsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="content">Content</Label>
-                                <Textarea
-                                    id="content"
-                                    value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    placeholder="Enter announcement details..."
-                                    className="min-h-[100px]"
-                                    required
-                                />
+                                <div className="min-h-[250px]">
+                                    <RichTextEditor
+                                        value={content}
+                                        onChange={setContent}
+                                        placeholder="Enter announcement details..."
+                                    />
+                                </div>
                             </div>
                             <div className="flex items-center space-x-2 pt-2">
                                 <Checkbox
