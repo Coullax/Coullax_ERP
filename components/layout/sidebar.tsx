@@ -90,7 +90,15 @@ const adminNavItems = [
   { icon: FileText, label: "Approvals", href: "/admin/approvals" },
   { icon: Briefcase, label: "Designations", href: "/admin/designations" },
   { icon: Clock, label: "Attendance", href: "/admin/attendance" },
-  { icon: DollarSign, label: "Salary", href: "/admin/salary" },
+  {
+    icon: DollarSign,
+    label: "Salary",
+    isExpandable: true,
+    subItems: [
+      { icon: Settings, label: "Salary Setup", href: "/admin/salary/setup" },
+      { icon: DollarSign, label: "Salary Processing", href: "/admin/salary" },
+    ],
+  },
   {
     icon: FolderOpen,
     label: "Document Requests",
@@ -154,7 +162,7 @@ export function Sidebar() {
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const [awaitingProofCount, setAwaitingProofCount] = useState(0);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true, "Salary": true });
   const pathname = usePathname();
   const router = useRouter();
   const { profile, isAdmin, isSuperAdmin, isTeamLead, isDepartmentHead, setUser, setProfile } =
