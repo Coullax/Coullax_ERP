@@ -334,7 +334,7 @@ export function Sidebar() {
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative",
               hasActiveSubItem
-                ? "bg-primary/10 text-primary"
+                ? "bg-primary/10 text-gray-900 dark:text-primary"
                 : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",
               isCollapsed && "justify-center px-2"
             )}
@@ -367,7 +367,11 @@ export function Sidebar() {
     }
 
     // Regular nav item
-    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+    // For sub-items, use exact match to prevent false positives
+    // For main items, allow startsWith for nested routes
+    const isActive = isSubItem
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(item.href + "/");
     const Icon = item.icon;
 
     return (
