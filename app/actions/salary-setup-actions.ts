@@ -17,11 +17,12 @@ export type SalaryCategory = {
     updated_at: string;
 };
 
-export type SalaryRange = {
+export type ApitRange = {
     id: string;
     name: string;
     min_amount: number;
     max_amount: number | null;
+    percentage: number;
     created_at: string;
     updated_at: string;
 };
@@ -29,7 +30,7 @@ export type SalaryRange = {
 export type SalaryCategoryRule = {
     id: string;
     category_id: string;
-    salary_range_id: string | null;
+    apit_range_id: string | null;
     calculation_type: "percentage" | "fixed";
     value: number;
     applies_to_category_id: string | null;
@@ -37,7 +38,7 @@ export type SalaryCategoryRule = {
     created_at: string;
     updated_at: string;
     category?: SalaryCategory;
-    salary_range?: SalaryRange;
+    apit_range?: ApitRange;
     applies_to_category?: SalaryCategory;
 };
 
@@ -138,19 +139,20 @@ export async function getAllSalaryCategories() {
 }
 
 // =====================================================
-// Salary Ranges Actions
+// APIT Ranges Actions
 // =====================================================
 
-export async function createSalaryRange(data: {
+export async function createApitRange(data: {
     name: string;
     min_amount: number;
     max_amount?: number | null;
+    percentage: number;
 }) {
     try {
         const supabase = await createClient();
 
         const { data: range, error } = await supabase
-            .from("salary_ranges")
+            .from("apit_ranges")
             .insert([data])
             .select()
             .single();
@@ -160,24 +162,25 @@ export async function createSalaryRange(data: {
         revalidatePath("/admin/salary/setup");
         return { success: true, data: range };
     } catch (error: any) {
-        console.error("Error creating salary range:", error);
+        console.error("Error creating APIT range:", error);
         return { success: false, error: error.message };
     }
 }
 
-export async function updateSalaryRange(
+export async function updateApitRange(
     id: string,
     data: {
         name?: string;
         min_amount?: number;
         max_amount?: number | null;
+        percentage?: number;
     }
 ) {
     try {
         const supabase = await createClient();
 
         const { data: range, error } = await supabase
-            .from("salary_ranges")
+            .from("apit_ranges")
             .update(data)
             .eq("id", id)
             .select()
@@ -188,17 +191,17 @@ export async function updateSalaryRange(
         revalidatePath("/admin/salary/setup");
         return { success: true, data: range };
     } catch (error: any) {
-        console.error("Error updating salary range:", error);
+        console.error("Error updating APIT range:", error);
         return { success: false, error: error.message };
     }
 }
 
-export async function deleteSalaryRange(id: string) {
+export async function deleteApitRange(id: string) {
     try {
         const supabase = await createClient();
 
         const { error } = await supabase
-            .from("salary_ranges")
+            .from("apit_ranges")
             .delete()
             .eq("id", id);
 
@@ -207,25 +210,25 @@ export async function deleteSalaryRange(id: string) {
         revalidatePath("/admin/salary/setup");
         return { success: true };
     } catch (error: any) {
-        console.error("Error deleting salary range:", error);
+        console.error("Error deleting APIT range:", error);
         return { success: false, error: error.message };
     }
 }
 
-export async function getAllSalaryRanges() {
+export async function getAllApitRanges() {
     try {
         const supabase = await createClient();
 
         const { data, error } = await supabase
-            .from("salary_ranges")
+            .from("apit_ranges")
             .select("*")
             .order("min_amount", { ascending: true });
 
         if (error) throw error;
 
-        return { success: true, data: data as SalaryRange[] };
+        return { success: true, data: data as ApitRange[] };
     } catch (error: any) {
-        console.error("Error fetching salary ranges:", error);
+        console.error("Error fetching APIT ranges:", error);
         return { success: false, error: error.message, data: [] };
     }
 }
@@ -236,7 +239,7 @@ export async function getAllSalaryRanges() {
 
 export async function createCategoryRule(data: {
     category_id: string;
-    salary_range_id?: string | null;
+    apit_range_id?: string | null;
     calculation_type: "percentage" | "fixed";
     value: number;
     applies_to_category_id?: string | null;
@@ -265,7 +268,7 @@ export async function updateCategoryRule(
     id: string,
     data: {
         category_id?: string;
-        salary_range_id?: string | null;
+        apit_range_id?: string | null;
         calculation_type?: "percentage" | "fixed";
         value?: number;
         applies_to_category_id?: string | null;
@@ -320,7 +323,7 @@ export async function getAllCategoryRules() {
             .select(`
         *,
         category:salary_categories!category_id(*),
-        salary_range:salary_ranges(*),
+        apit_range:apit_ranges(*),
         applies_to_category:salary_categories!applies_to_category_id(*)
       `)
             .order("created_at", { ascending: false });
@@ -342,7 +345,7 @@ export async function getRulesByCategory(categoryId: string) {
             .from("salary_category_rules")
             .select(`
         *,
-        salary_range:salary_ranges(*),
+        apit_range:apit_ranges(*),
         applies_to_category:salary_categories!applies_to_category_id(*)
       `)
             .eq("category_id", categoryId)
@@ -365,7 +368,7 @@ export async function getSalarySetupData() {
     try {
         const [categoriesResult, rangesResult, rulesResult] = await Promise.all([
             getAllSalaryCategories(),
-            getAllSalaryRanges(),
+            getAllApitRanges(),
             getAllCategoryRules(),
         ]);
 
