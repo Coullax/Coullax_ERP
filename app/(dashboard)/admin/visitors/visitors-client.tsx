@@ -248,7 +248,7 @@ export function VisitorsClient({ initialVisitors, employeeOptions }: VisitorsCli
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="mt-2 text-xs font-medium text-gray-500">
-                                        {format(new Date(visitor.scheduled_arrival), 'h:mm a')}
+                                        {format(new Date(visitor.scheduled_arrival), 'MMM d, h:mm a')}
                                     </div>
                                 </div>
 
