@@ -31,16 +31,16 @@ import { RuleDialog } from "@/components/admin/salary-setup/rule-dialog";
 import {
     getSalarySetupData,
     deleteSalaryCategory,
-    deleteSalaryRange,
+    deleteApitRange,
     deleteCategoryRule,
     type SalaryCategory,
-    type SalaryRange,
+    type ApitRange,
     type SalaryCategoryRule,
 } from "@/app/actions/salary-setup-actions";
 
 export default function SalarySetupPage() {
     const [categories, setCategories] = useState<SalaryCategory[]>([]);
-    const [ranges, setRanges] = useState<SalaryRange[]>([]);
+    const [ranges, setRanges] = useState<ApitRange[]>([]);
     const [rules, setRules] = useState<SalaryCategoryRule[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -51,7 +51,7 @@ export default function SalarySetupPage() {
 
     // Edit states
     const [editingCategory, setEditingCategory] = useState<SalaryCategory | null>(null);
-    const [editingRange, setEditingRange] = useState<SalaryRange | null>(null);
+    const [editingRange, setEditingRange] = useState<ApitRange | null>(null);
     const [editingRule, setEditingRule] = useState<SalaryCategoryRule | null>(null);
 
     // Delete dialog states
@@ -79,7 +79,7 @@ export default function SalarySetupPage() {
         if (deleteType === "category") {
             result = await deleteSalaryCategory(deleteId);
         } else if (deleteType === "range") {
-            result = await deleteSalaryRange(deleteId);
+            result = await deleteApitRange(deleteId);
         } else {
             result = await deleteCategoryRule(deleteId);
         }
@@ -149,7 +149,7 @@ export default function SalarySetupPage() {
                     </TabsTrigger>
                     <TabsTrigger value="ranges" className="gap-2">
                         <TrendingUp className="w-4 h-4" />
-                        Salary Ranges
+                        APIIT Ranges
                     </TabsTrigger>
                     <TabsTrigger value="rules" className="gap-2">
                         <Calculator className="w-4 h-4" />
@@ -246,9 +246,9 @@ export default function SalarySetupPage() {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle>Salary Ranges</CardTitle>
+                                    <CardTitle>APIIT Salary Ranges</CardTitle>
                                     <CardDescription>
-                                        Create salary brackets for different calculation rules
+                                        Create APIIT salary brackets for different calculation rules
                                     </CardDescription>
                                 </div>
                                 <Button
@@ -276,6 +276,7 @@ export default function SalarySetupPage() {
                                             <TableHead>Name</TableHead>
                                             <TableHead>Minimum Amount</TableHead>
                                             <TableHead>Maximum Amount</TableHead>
+                                            <TableHead>APIT Percentage</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -285,6 +286,11 @@ export default function SalarySetupPage() {
                                                 <TableCell className="font-medium">{range.name}</TableCell>
                                                 <TableCell>{formatCurrency(range.min_amount)}</TableCell>
                                                 <TableCell>{formatCurrency(range.max_amount)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="default">
+                                                        {range.percentage}%
+                                                    </Badge>
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
@@ -369,7 +375,7 @@ export default function SalarySetupPage() {
                                                     {rule.category?.name || "-"}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {rule.salary_range?.name || (
+                                                    {rule.apit_range?.name || (
                                                         <Badge variant="outline">All Ranges</Badge>
                                                     )}
                                                 </TableCell>
