@@ -456,7 +456,7 @@ export function Sidebar() {
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
               <span className="text-xl font-bold text-primary-foreground">
@@ -485,7 +485,7 @@ export function Sidebar() {
         </div>
 
         {/* Search */}
-        {!isCollapsed && (
+        {/* {!isCollapsed && (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -495,7 +495,7 @@ export function Sidebar() {
               className="pl-9 h-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
             />
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Navigation */}
