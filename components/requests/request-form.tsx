@@ -53,6 +53,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   const [leaveBalance, setLeaveBalance] = useState<any>(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [calculatedDays, setCalculatedDays] = useState<number | null>(null)
+  const [timeValidationError, setTimeValidationError] = useState<string | null>(null)
 
   // Asset issue request states
   const [assetRequestMode, setAssetRequestMode] = useState<'new' | 'issue'>('new')
@@ -242,6 +243,51 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     }
   }, [requestType, workSchedule, startDate, endDate, formData.leave_duration, formData.start_time, formData.end_time, isSameDay])
 
+  // Validate that check-out time is before check-in time for leave and travel requests
+  useEffect(() => {
+    // Leave request validation
+    if (requestType === 'leave' && formData.start_time && formData.end_time && isSameDay) {
+      const [startHour, startMin] = formData.start_time.split(':').map(Number)
+      const [endHour, endMin] = formData.end_time.split(':').map(Number)
+      const startMinutes = startHour * 60 + startMin
+      const endMinutes = endHour * 60 + endMin
+
+      if (startMinutes >= endMinutes) {
+        setTimeValidationError('Check-out time must be before check-in time')
+      } else {
+        setTimeValidationError(null)
+      }
+    }
+    // Travel request validation
+    else if (requestType === 'travel' && formData.check_out_time && formData.check_in_time && startDate && endDate && startDate === endDate) {
+      const [checkOutHour, checkOutMin] = formData.check_out_time.split(':').map(Number)
+      const [checkInHour, checkInMin] = formData.check_in_time.split(':').map(Number)
+      const checkOutMinutes = checkOutHour * 60 + checkOutMin
+      const checkInMinutes = checkInHour * 60 + checkInMin
+
+      if (checkOutMinutes >= checkInMinutes) {
+        setTimeValidationError('Check-out time must be before check-in time')
+      } else {
+        setTimeValidationError(null)
+      }
+    }
+    // Covering request validation
+    else if (requestType === 'covering' && formData.start_time && formData.end_time) {
+      const [startHour, startMin] = formData.start_time.split(':').map(Number)
+      const [endHour, endMin] = formData.end_time.split(':').map(Number)
+      const startMinutes = startHour * 60 + startMin
+      const endMinutes = endHour * 60 + endMin
+
+      if (startMinutes >= endMinutes) {
+        setTimeValidationError('Check-in time must be before check-out time')
+      } else {
+        setTimeValidationError(null)
+      }
+    } else {
+      setTimeValidationError(null)
+    }
+  }, [requestType, formData.start_time, formData.end_time, formData.check_out_time, formData.check_in_time, isSameDay, startDate, endDate])
+
   // Load employee inventory for asset issue requests
   useEffect(() => {
     if (requestType === 'asset' && assetRequestMode === 'issue' && employeeId) {
@@ -345,6 +391,13 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Prevent submission if there are time validation errors
+    if (timeValidationError) {
+      toast.error(timeValidationError)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -565,6 +618,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="start_date"
                   name="start_date"
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
@@ -575,6 +629,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="end_date"
                   name="end_date"
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
@@ -620,7 +675,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="start_time">
-                        {isSameDay ? 'Start Time *' : 'Start Time (Optional)'}
+                        {isSameDay ? 'Check-Out Time *' : 'Check-Out Time (Optional)'}
                       </Label>
                       <Input
                         id="start_time"
@@ -638,7 +693,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="end_time">
-                        {isSameDay ? 'End Time *' : 'End Time (Optional)'}
+                        {isSameDay ? 'Check-In Time *' : 'Check-In Time (Optional)'}
                       </Label>
                       <Input
                         id="end_time"
@@ -654,6 +709,15 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                         {isSameDay ? 'Leave end time' : 'Time on last day (if partial)'}
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {/* Time Validation Error */}
+                {timeValidationError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950 rounded-xl border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      ⚠️ {timeValidationError}
+                    </p>
                   </div>
                 )}
 
@@ -805,6 +869,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="start_date"
                   name="start_date"
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
@@ -815,6 +880,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="end_date"
                   name="end_date"
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
@@ -848,6 +914,16 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 </p>
               </div>
             </div>
+
+            {/* Time Validation Error */}
+            {timeValidationError && requestType === 'travel' && (
+              <div className="p-3 bg-red-50 dark:bg-red-950 rounded-xl border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  ⚠️ {timeValidationError}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="purpose">Purpose *</Label>
               <textarea
@@ -1102,6 +1178,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                         item.item_name.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
                         (item.serial_number && item.serial_number.toLowerCase().includes(inventorySearchTerm.toLowerCase()))
                       )
+
                       .map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.item_name} {item.serial_number ? `(SN: ${item.serial_number})` : ''} - Qty: {item.quantity_assigned || 1}
@@ -1203,6 +1280,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 id="last_working_date"
                 name="last_working_date"
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 onChange={handleChange}
                 required
               />
@@ -1306,13 +1384,14 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 id="covering_date"
                 name="covering_date"
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 onChange={handleChange}
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="start_time">Start Time *</Label>
+                <Label htmlFor="start_time">Check-in Time *</Label>
                 <Input
                   id="start_time"
                   name="start_time"
@@ -1322,7 +1401,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="end_time">End Time *</Label>
+                <Label htmlFor="end_time">Check-out Time *</Label>
                 <Input
                   id="end_time"
                   name="end_time"
@@ -1332,6 +1411,16 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
             </div>
+
+            {/* Time Validation Error */}
+            {timeValidationError && requestType === 'covering' && (
+              <div className="p-3 bg-red-50 dark:bg-red-950 rounded-xl border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  ⚠️ {timeValidationError}
+                </p>
+              </div>
+            )}
+
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 ℹ️ <strong>Note:</strong> Work description and proof will be added later in the approval workflow.
@@ -1349,6 +1438,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 id="date"
                 name="date"
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 onChange={handleChange}
                 required
               />
