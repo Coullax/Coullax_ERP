@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS salary_ranges (
   name TEXT NOT NULL,
   min_amount NUMERIC(12, 2) NOT NULL CHECK (min_amount >= 0),
   max_amount NUMERIC(12, 2) CHECK (max_amount IS NULL OR max_amount > min_amount),
+  percentage NUMERIC(5, 2) DEFAULT 0 CHECK (percentage >= 0 AND percentage <= 100),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -248,8 +249,9 @@ INSERT INTO salary_categories (name, description, category_type, is_percentage_b
 ON CONFLICT (name) DO NOTHING;
 
 -- Sample Salary Ranges
-INSERT INTO salary_ranges (name, min_amount, max_amount) VALUES
-  ('Range 1: 0 - 50,000', 0, 50000),
-  ('Range 2: 50,001 - 100,000', 50001, 100000),
-  ('Range 3: 100,001 - 200,000', 100001, 200000),
-  ('Range 4: 200,001+', 200001, NULL);
+INSERT INTO salary_ranges (name, min_amount, max_amount, percentage) VALUES
+  ('Range 1: 0 - 50,000', 0, 50000, 0),
+  ('Range 2: 50,001 - 100,000', 50001, 100000, 6),
+  ('Range 3: 100,001 - 200,000', 100001, 200000, 12),
+  ('Range 4: 200,001+', 200001, NULL, 18);
+
