@@ -16,6 +16,7 @@ import {
   Plus,
   TrendingUp,
   Upload,
+  AlertCircle,
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { LeaveSection } from '@/components/employee/leave-section'
@@ -138,21 +139,51 @@ export function EmployeeDashboardClient({
       </Card>
 
 
+      {/* Proof Submission Alert */}
       {hasAwaitingProofSubmission && (
-        <Card className=" relative bg-gradient-to-r from-primary/90 to-primary dark:from-white dark:to-gray-200 text-black dark:text-white animate-pulse hover:animate-none transition-all delay-[3000ms] duration-[3000ms]">
-          <CardContent className=" relative p-6 flex items-center justify-between z-10">
-            <div>
-              <h1 className="text-3xl font-bold">Pending proofs submission for covering </h1>
-              <p className="text-gray-500 mt-1">Here&apos;s your overview for today</p>
-            </div>
-            <Link href="/requests">
-              <Button className=' bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80'>
-                <Upload className="w-4 h-4 mr-2" />
-                Submit proofs
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+            @keyframes slowPulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.8; }
+            }
+            .slow-pulse-alert {
+              animation: slowPulse 1s ease-in-out infinite;
+            }
+            .slow-pulse-alert:hover {
+              animation: none;
+            }
+          `}} />
+          <Card className="relative overflow-hidden bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 dark:from-amber-400 dark:via-orange-400 dark:to-amber-500 border-none shadow-lg slow-pulse-alert transition-all">
+            <CardContent className="relative p-6 z-10">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 mt-1">
+                    <AlertCircle className="w-6 h-6 text-white dark:text-black" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-white dark:text-black mb-1">
+                      Action Required: Proof Submission Pending
+                    </h3>
+                    <p className="text-sm text-white/90 dark:text-black/80">
+                      You have covering requests awaiting proof submission. Please upload the required documents.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/requests" className="flex-shrink-0">
+                  <Button
+                    className="bg-white dark:bg-black text-black dark:text-white hover:bg-white/90 dark:hover:bg-black/90 shadow-md font-semibold"
+                    size="default"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Submit Proofs
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Announcements */}

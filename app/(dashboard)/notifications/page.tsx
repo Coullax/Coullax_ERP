@@ -21,11 +21,13 @@ import {
   UserCheck,
   AlertCircle,
   Info,
-  X
+  Filter,
+  BellRing
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, isToday, isYesterday, isThisWeek, startOfDay } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { notificationService } from '@/lib/notification-service'
 
 interface Notification {
   id: string
@@ -64,16 +66,56 @@ const getNotificationIcon = (type: string) => {
 const getNotificationColor = (type: string) => {
   switch (type) {
     case 'document_request':
-      return 'bg-blue-100 text-blue-600'
+      return 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
     case 'leave_request':
-      return 'bg-green-100 text-green-600'
+      return 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400'
     case 'verification':
-      return 'bg-purple-100 text-purple-600'
+      return 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400'
     case 'alert':
-      return 'bg-red-100 text-red-600'
+      return 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400'
     default:
-      return 'bg-gray-100 text-gray-600'
+      return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   }
+}
+
+const getNotificationTypeLabel = (type: string) => {
+  switch (type) {
+    case 'document_request':
+      return 'Document Request'
+    case 'leave_request':
+      return 'Leave Request'
+    case 'verification':
+      return 'Verification'
+    case 'alert':
+      return 'Alert'
+    default:
+      return 'Info'
+  }
+}
+
+const getDateGroup = (dateString: string) => {
+  const date = new Date(dateString)
+
+  if (isToday(date)) return 'Today'
+  if (isYesterday(date)) return 'Yesterday'
+  if (isThisWeek(date, { weekStartsOn: 1 })) return 'This Week'
+  return 'Earlier'
+}
+
+const groupNotificationsByDate = (notifications: Notification[]) => {
+  const groups: Record<string, Notification[]> = {
+    'Today': [],
+    'Yesterday': [],
+    'This Week': [],
+    'Earlier': []
+  }
+
+  notifications.forEach(notification => {
+    const group = getDateGroup(notification.created_at)
+    groups[group].push(notification)
+  })
+
+  return groups
 }
 
 export default function NotificationsPage() {
@@ -81,6 +123,7 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
   const [preferencesOpen, setPreferencesOpen] = useState(false)
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     email_enabled: true,
@@ -129,6 +172,50 @@ export default function NotificationsPage() {
     fetchNotifications()
     fetchPreferences()
   }, [fetchNotifications, fetchPreferences])
+
+  // Subscribe to real-time notifications and request permission if needed
+  useEffect(() => {
+    // Get current user ID from the session
+    const setupNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications')
+        if (response.ok) {
+          const data = await response.json()
+
+          // If we have notifications, we can get the user_id from the first one
+          // Or we can fetch it from auth
+          const supabase = (await import('@/lib/supabase/client')).createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+
+          if (user) {
+            // Subscribe to real-time notifications using the store
+            const { subscribeToNotifications } = (await import('@/store/notification-store')).useNotificationStore.getState()
+            const unsubscribe = subscribeToNotifications(user.id)
+
+            // Request browser notification permission if push is enabled
+            if (preferences.push_enabled && notificationService.isSupported()) {
+              const permission = await notificationService.requestPermission()
+              if (permission === 'granted') {
+                console.log('Browser notifications enabled')
+              }
+            }
+
+            return unsubscribe
+          }
+        }
+      } catch (error) {
+        console.error('Failed to setup notifications:', error)
+      }
+    }
+
+    const cleanup = setupNotifications()
+
+    return () => {
+      cleanup.then(unsubscribe => {
+        if (unsubscribe) unsubscribe()
+      })
+    }
+  }, [preferences.push_enabled])
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -201,7 +288,18 @@ export default function NotificationsPage() {
 
       if (!response.ok) throw new Error('Failed to save preferences')
 
-      toast.success('Preferences saved')
+      // Request browser notification permission if push is enabled
+      if (preferences.push_enabled && notificationService.isSupported()) {
+        const permission = await notificationService.requestPermission()
+        if (permission === 'denied') {
+          toast.warning('Browser notifications are blocked. Please enable them in your browser settings.')
+        } else if (permission === 'granted') {
+          toast.success('Preferences saved and browser notifications enabled')
+        }
+      } else {
+        toast.success('Preferences saved')
+      }
+
       setPreferencesOpen(false)
     } catch (error) {
       toast.error('Failed to save preferences')
@@ -210,7 +308,16 @@ export default function NotificationsPage() {
     }
   }
 
-  const filteredNotifications = notifications
+  // Filter notifications by type
+  const filteredNotifications = typeFilter
+    ? notifications.filter(n => n.type === typeFilter)
+    : notifications
+
+  // Group notifications by date
+  const groupedNotifications = groupNotificationsByDate(filteredNotifications)
+
+  // Get unique notification types for filter
+  const notificationTypes = Array.from(new Set(notifications.map(n => n.type)))
 
   return (
     <div className="p-6 space-y-6">
@@ -243,8 +350,8 @@ export default function NotificationsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Bell className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+              <Bell className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="text-2xl font-bold">{notifications.length}</p>
@@ -255,8 +362,8 @@ export default function NotificationsPage() {
 
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-yellow-100 flex items-center justify-center">
-              <BellOff className="w-6 h-6 text-yellow-600" />
+            <div className="w-12 h-12 rounded-xl bg-yellow-100 dark:bg-yellow-950 flex items-center justify-center">
+              <BellRing className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div>
               <p className="text-2xl font-bold">{unreadCount}</p>
@@ -267,8 +374,8 @@ export default function NotificationsPage() {
 
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-              <Check className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-950 flex items-center justify-center">
+              <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
               <p className="text-2xl font-bold">{notifications.filter(n => n.read).length}</p>
@@ -278,109 +385,164 @@ export default function NotificationsPage() {
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">
-            All Notifications
-          </TabsTrigger>
-          <TabsTrigger value="unread">
-            Unread
-            {unreadCount > 0 && (
-              <Badge variant="warning" className="ml-2 px-1.5 py-0 text-xs">
-                {unreadCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="all">
+              All Notifications
+            </TabsTrigger>
+            <TabsTrigger value="unread">
+              Unread
+              {unreadCount > 0 && (
+                <Badge variant="warning" className="ml-2 px-1.5 py-0 text-xs bg-red-500">
+                  {unreadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <TabsContent value={activeTab} className="mt-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        {/* Type Filter */}
+        {notificationTypes.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <Button
+              variant={typeFilter === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTypeFilter(null)}
+            >
+              All Types
+            </Button>
+            {notificationTypes.map(type => (
+              <Button
+                key={type}
+                variant={typeFilter === type ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTypeFilter(type)}
+              >
+                {getNotificationTypeLabel(type)}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Notifications List */}
+      <div className="space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          </div>
+        ) : filteredNotifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+              <Bell className="w-8 h-8 text-gray-400" />
             </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Bell className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No notifications</h3>
-              <p className="text-sm text-gray-500">
-                {activeTab === 'unread'
-                  ? "You're all caught up! No unread notifications."
+            <h3 className="text-lg font-semibold mb-2">No notifications</h3>
+            <p className="text-sm text-gray-500">
+              {activeTab === 'unread'
+                ? "You're all caught up! No unread notifications."
+                : typeFilter
+                  ? `No ${getNotificationTypeLabel(typeFilter).toLowerCase()} notifications found.`
                   : "You don't have any notifications yet"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredNotifications.map((notification) => {
-                const Icon = getNotificationIcon(notification.type)
-                const iconColor = getNotificationColor(notification.type)
+            </p>
+          </div>
+        ) : (
+          <>
+            {Object.entries(groupedNotifications).map(([dateGroup, groupNotifications]) => {
+              if (groupNotifications.length === 0) return null
 
-                return (
-                  <Card
-                    key={notification.id}
-                    className={cn(
-                      'p-4 transition-all cursor-pointer hover:shadow-md',
-                      !notification.read && 'bg-blue-50 border-blue-200'
-                    )}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Icon */}
-                      <div className={cn('p-3 rounded-xl flex-shrink-0', iconColor)}>
-                        <Icon className="w-5 h-5" />
-                      </div>
+              return (
+                <div key={dateGroup} className="space-y-3">
+                  {/* Date Header */}
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                      {dateGroup}
+                    </h2>
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+                  </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 mb-1">
-                          <h3 className="font-semibold text-sm">{notification.title}</h3>
-                          {!notification.read && (
-                            <div className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0 mt-1.5" />
+                  {/* Notifications in this group */}
+                  <div className="space-y-3">
+                    {groupNotifications.map((notification) => {
+                      const Icon = getNotificationIcon(notification.type)
+                      const iconColor = getNotificationColor(notification.type)
+
+                      return (
+                        <Card
+                          key={notification.id}
+                          className={cn(
+                            'p-4 transition-all cursor-pointer hover:shadow-md',
+                            !notification.read && 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900'
                           )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
-                        <p className="text-xs text-gray-400">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-2 flex-shrink-0">
-                        {!notification.read && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleMarkAsRead(notification.id)
-                            }}
-                          >
-                            <Check className="w-4 h-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(notification.id)
-                          }}
+                          onClick={() => handleNotificationClick(notification)}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                          <div className="flex items-start gap-4">
+                            {/* Icon */}
+                            <div className={cn('p-3 relative rounded-xl flex-shrink-0', iconColor)}>
+                              {!notification.read && (
+                                <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-600 flex-shrink-0 mt-1.5" />
+                              )}
+                              <Icon className="w-5 h-5" />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-3 mb-1">
+                                <h3 className="font-semibold text-sm">{notification.title}</h3>
+
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{notification.message}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-gray-400">
+                                  {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                                </p>
+                                <span className="text-gray-300 dark:text-gray-700">•</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {getNotificationTypeLabel(notification.type)}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-2 flex-shrink-0">
+                              {!notification.read && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleMarkAsRead(notification.id)
+                                  }}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(notification.id)
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </>
+        )}
+      </div>
 
       {/* Preferences Dialog */}
       <Dialog open={preferencesOpen} onOpenChange={setPreferencesOpen}>

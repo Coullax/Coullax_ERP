@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
+import { notificationService } from '@/lib/notification-service'
 
 export interface Notification {
   id: string
@@ -39,6 +40,28 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const newNotifications = [notification, ...notifications]
     const unreadCount = newNotifications.filter((n) => !n.read).length
     set({ notifications: newNotifications, unreadCount })
+
+    // Show browser notification if supported and permission granted
+    console.log('Attempting to show browser notification:', {
+      supported: notificationService.isSupported(),
+      permission: notificationService.getPermission(),
+      notification
+    })
+
+    if (notificationService.isSupported() && notificationService.getPermission() === 'granted') {
+      notificationService.showNotification({
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        link: notification.link,
+      }).then(() => {
+        console.log('Browser notification shown successfully')
+      }).catch((error) => {
+        console.error('Failed to show browser notification:', error)
+      })
+    } else if (notificationService.isSupported() && notificationService.getPermission() !== 'granted') {
+      console.warn('Browser notification permission not granted. Current permission:', notificationService.getPermission())
+    }
   },
 
   markAsRead: async (id) => {
@@ -103,7 +126,26 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          console.log('New notification received:', payload.new)
           get().addNotification(payload.new as Notification)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          // Update the notification in the store
+          const { notifications } = get()
+          const updated = notifications.map((n) =>
+            n.id === payload.new.id ? (payload.new as Notification) : n
+          )
+          const unreadCount = updated.filter((n) => !n.read).length
+          set({ notifications: updated, unreadCount })
         }
       )
       .subscribe()

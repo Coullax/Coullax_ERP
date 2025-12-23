@@ -162,6 +162,7 @@ export function Sidebar() {
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const [awaitingProofCount, setAwaitingProofCount] = useState(0);
+    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true, "Salary": true });
   const pathname = usePathname();
   const router = useRouter();
@@ -206,6 +207,17 @@ export function Sidebar() {
           console.error('Sidebar: Failed to fetch awaiting proof count:', error);
         }
       }
+
+      // Fetch unread notifications count for all users
+      try {
+        const response = await fetch('/api/notifications?unread_only=true');
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadNotificationsCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Sidebar: Failed to fetch unread notifications count:', error);
+      }
     };
 
     fetchPendingCounts();
@@ -228,6 +240,8 @@ export function Sidebar() {
     : employeeNavItems.map(item => {
       if (item.href === '/requests') {
         return { ...item, badge: awaitingProofCount, badgeColor: 'red' };
+      } else if (item.href === '/notifications') {
+        return { ...item, badge: unreadNotificationsCount };
       }
       return item;
     });
@@ -391,45 +405,52 @@ export function Sidebar() {
           <>
             <span className="flex-1">{highlightText(item.label, searchQuery)}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <Badge className={cn(
-                "h-5 min-w-5 flex items-center justify-center px-1.5",
-                item.badgeColor === 'red'
-                  ? "bg-red-500 text-white hover:bg-red-600"
-                  : isActive
-                    ? "bg-primary-foreground text-primary"
-                    : "bg-primary text-primary-foreground"
-              )}>
+              <Badge className={
+                cn(
+                  `h-5 min-w-5 flex items-center justify-center px-1.5 !bg-red-500 !text-white hover:bg-red-600`,
+                  item.badgeColor === 'red'
+                    ? ""
+                    : isActive
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-primary text-primary-foreground"
+                )
+              }>
                 {item.badge}
               </Badge>
             )}
           </>
-        )}
-        {isCollapsed && item.badge !== undefined && item.badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
-            {item.badge > 9 ? '9+' : item.badge}
-          </span>
-        )}
-        {isCollapsed && (
-          <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-            {item.label}
-            {item.badge !== undefined && item.badge > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 bg-red-500  rounded-full text-xs">
-                {item.badge}
-              </span>
-            )}
-          </div>
-        )}
-      </Link>
+        )
+        }
+        {
+          isCollapsed && item.badge !== undefined && item.badge > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
+              {item.badge > 9 ? '9+' : item.badge}
+            </span>
+          )
+        }
+        {
+          isCollapsed && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+              {item.label}
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 bg-red-500  rounded-full text-xs">
+                  {item.badge}
+                </span>
+              )}
+            </div>
+          )
+        }
+      </Link >
     );
   };
 
   return (
     <motion.aside
-      initial={{ x: -280 }}
-      animate={{
-        x: 0,
-        width: isCollapsed ? 80 : 288
-      }}
+      // initial={{ x: -280 }}
+      // animate={{
+      //   x: 0,
+      //   width: isCollapsed ? 80 : 288
+      // }}
       // transition={{ duration: 0.3, ease: "easeInOut" }}
       className="fixed left-0 top-0 z-30 h-screen border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-col"
     >
