@@ -69,7 +69,7 @@ export function CategoryDialog({
         defaultValues: {
             name: category?.name || "",
             description: category?.description || "",
-            category_type: category?.category_type || "deduction",
+            category_type: category?.category_type || "addition",
             is_percentage_based: category?.is_percentage_based ?? true,
         },
     });
@@ -163,9 +163,9 @@ export function CategoryDialog({
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="deduction">Deduction</SelectItem>
                                             <SelectItem value="addition">Addition</SelectItem>
-                                            <SelectItem value="allowance">Allowance</SelectItem>
+                                            <SelectItem value="deduction">Deduction</SelectItem>
+                                            {/* <SelectItem value="allowance">Allowance</SelectItem> */}
                                         </SelectContent>
                                     </Select>
                                     <FormDescription>
