@@ -33,18 +33,16 @@ export async function getEmployeesWithBaseSalary() {
 
         if (employeesError) throw employeesError;
 
-        // Get latest salary payment for each employee
+        // Get base salary from salaries table for each employee
         const employeesWithSalary = await Promise.all(
             (employees || []).map(async (employee: any) => {
-                const { data: latestSalary } = await supabase
-                    .from("salary_payments")
+                const { data: salaryConfig } = await supabase
+                    .from("salaries")
                     .select("base_amount")
                     .eq("employee_id", employee.id)
-                    .order("created_at", { ascending: false })
-                    .limit(1)
                     .maybeSingle();
 
-                const baseSalary = latestSalary?.base_amount || null;
+                const baseSalary = salaryConfig?.base_amount || null;
 
                 // Get all category assignments for this employee
                 const { data: assignments } = await supabase
