@@ -12,7 +12,6 @@ export type SalaryCategory = {
     name: string;
     description: string | null;
     category_type: "deduction" | "addition" | "allowance";
-    is_percentage_based: boolean;
     created_at: string;
     updated_at: string;
 };
@@ -50,7 +49,6 @@ export async function createSalaryCategory(data: {
     name: string;
     description?: string;
     category_type: "deduction" | "addition" | "allowance";
-    is_percentage_based: boolean;
 }) {
     try {
         const supabase = await createClient();
@@ -77,7 +75,6 @@ export async function updateSalaryCategory(
         name?: string;
         description?: string;
         category_type?: "deduction" | "addition" | "allowance";
-        is_percentage_based?: boolean;
     }
 ) {
     try {
