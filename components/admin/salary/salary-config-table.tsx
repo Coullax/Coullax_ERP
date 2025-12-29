@@ -116,22 +116,19 @@ export function SalaryConfigTable() {
                             <TableHead>Employee</TableHead>
                             <TableHead>Department</TableHead>
                             <TableHead>Base Salary</TableHead>
-                            <TableHead>Allowances</TableHead>
-                            <TableHead>Deductions</TableHead>
-                            <TableHead>Effective Date</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
+                                <TableCell colSpan={4} className="h-24 text-center">
                                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : filteredEmployees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
+                                <TableCell colSpan={4} className="h-24 text-center">
                                     No employees found.
                                 </TableCell>
                             </TableRow>
@@ -152,6 +149,7 @@ export function SalaryConfigTable() {
                                                 <div>
                                                     <p className="font-medium text-sm">{emp.profiles?.full_name}</p>
                                                     <p className="text-xs text-muted-foreground">{emp.employee_id}</p>
+                                                    <p className="text-xs text-muted-foreground">{emp.profiles?.email}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -169,23 +167,6 @@ export function SalaryConfigTable() {
                                             ) : (
                                                 <Badge variant="secondary">Not Set</Badge>
                                             )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {allowanceCount > 0 ? (
-                                                <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
-                                                    {allowanceCount} types
-                                                </Badge>
-                                            ) : "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {deductionCount > 0 ? (
-                                                <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
-                                                    {deductionCount} types
-                                                </Badge>
-                                            ) : "-"}
-                                        </TableCell>
-                                        <TableCell>
-                                            {salary?.effective_date ? format(new Date(salary.effective_date), "MMM d, yyyy") : "-"}
                                         </TableCell>
                                         <TableCell>
                                             <DropdownMenu>
