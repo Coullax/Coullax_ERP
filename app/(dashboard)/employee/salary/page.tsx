@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { SalaryPayment } from "@/lib/types"
 import { SalaryDetailsModal } from "@/components/employee/salary/salary-details-modal"
+import Link from "next/link"
 
 export default function EmployeeSalaryPage() {
     const [payments, setPayments] = useState<SalaryPayment[]>([])
@@ -96,14 +97,20 @@ export default function EmployeeSalaryPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
+                                            {/* <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => setSelectedPayment(payment)}
                                             >
                                                 <Eye className="w-4 h-4 mr-2" />
                                                 View
-                                            </Button>
+                                            </Button> */}
+                                            <Link target="_blank" href={`/employee/salary/slip/${payment.id}`}>
+                                                <Button variant="ghost" size="sm">
+                                                    <Eye className="w-4 h-4 mr-2" />
+                                                    View
+                                                </Button>
+                                            </Link>
                                         </TableCell>
                                     </TableRow>
                                 ))}
