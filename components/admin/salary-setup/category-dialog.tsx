@@ -31,7 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { Loader2 } from "lucide-react";
 import {
     createSalaryCategory,
@@ -43,7 +43,6 @@ const categorySchema = z.object({
     name: z.string().min(1, "Category name is required"),
     description: z.string().optional(),
     category_type: z.enum(["deduction", "addition", "allowance"]),
-    is_percentage_based: z.boolean().default(true),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -70,7 +69,6 @@ export function CategoryDialog({
             name: category?.name || "",
             description: category?.description || "",
             category_type: category?.category_type || "addition",
-            is_percentage_based: category?.is_percentage_based ?? true,
         },
     });
 
@@ -176,26 +174,7 @@ export function CategoryDialog({
                             )}
                         />
 
-                        <FormField
-                            control={form.control}
-                            name="is_percentage_based"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Percentage-Based</FormLabel>
-                                        <FormDescription>
-                                            Enable for percentage calculations, disable for fixed amounts
-                                        </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
+
 
                         <div className="flex justify-end gap-3 pt-4">
                             <Button
