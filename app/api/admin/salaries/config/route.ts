@@ -48,7 +48,43 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
-        return NextResponse.json({ employees: employees || [] })
+        // For each employee, calculate net salary from category assignments
+        const employeesWithNetSalary = await Promise.all(
+            (employees || []).map(async (employee: any) => {
+                const baseSalary = employee.salary?.base_amount || 0;
+
+                // Get all category assignments for this employee
+                const { data: assignments } = await supabase
+                    .from('employee_salary_category_assign')
+                    .select(`
+                        category_amount,
+                        category:salary_categories!category_id(category_type)
+                    `)
+                    .eq('employee_id', employee.id);
+
+                // Calculate net salary
+                let netSalary = baseSalary;
+                if (assignments && assignments.length > 0) {
+                    for (const assignment of assignments) {
+                        const amount = assignment.category_amount || 0;
+                        const categoryType = (assignment.category as any)?.category_type;
+
+                        if (categoryType === 'addition' || categoryType === 'allowance') {
+                            netSalary += amount;
+                        } else if (categoryType === 'deduction') {
+                            netSalary -= amount;
+                        }
+                    }
+                }
+
+                return {
+                    ...employee,
+                    calculated_net_salary: netSalary
+                };
+            })
+        );
+
+        return NextResponse.json({ employees: employeesWithNetSalary || [] })
     } catch (error: any) {
         console.error('Error in GET admin salary config:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
