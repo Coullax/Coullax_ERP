@@ -149,7 +149,7 @@ export default function SalarySetupPage() {
                     </TabsTrigger>
                     <TabsTrigger value="ranges" className="gap-2">
                         <TrendingUp className="w-4 h-4" />
-                        APIIT Ranges
+                        APIT Ranges
                     </TabsTrigger>
                     <TabsTrigger value="rules" className="gap-2">
                         <Calculator className="w-4 h-4" />
@@ -246,9 +246,9 @@ export default function SalarySetupPage() {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle>APIIT Salary Ranges</CardTitle>
+                                    <CardTitle>APIT Salary Ranges</CardTitle>
                                     <CardDescription>
-                                        Create APIIT salary brackets for different calculation rules
+                                        Create APIT salary brackets for different calculation rules
                                     </CardDescription>
                                 </div>
                                 <Button
