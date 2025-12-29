@@ -27,16 +27,6 @@ import { SalaryConfig } from "@/lib/types"
 
 const salaryConfigSchema = z.object({
     base_amount: z.coerce.number().min(0, "Base salary must be positive"),
-    recurring_allowances: z.array(z.object({
-        name: z.string().min(1, "Name is required"),
-        amount: z.coerce.number().min(0, "Amount must be positive"),
-        type: z.literal("allowance")
-    })),
-    recurring_deductions: z.array(z.object({
-        name: z.string().min(1, "Name is required"),
-        amount: z.coerce.number().min(0, "Amount must be positive"),
-        type: z.literal("deduction")
-    }))
 })
 
 type SalaryConfigFormValues = z.infer<typeof salaryConfigSchema>
@@ -64,23 +54,10 @@ export function SalaryConfigModal({
         resolver: zodResolver(salaryConfigSchema),
         defaultValues: {
             base_amount: currentConfig?.base_amount || 0,
-            recurring_allowances: (currentConfig?.recurring_allowances || []).map(a => ({ ...a, type: 'allowance' })),
-            recurring_deductions: (currentConfig?.recurring_deductions || []).map(d => ({ ...d, type: 'deduction' })),
         },
     })
 
-    // Effect to reset form when config changes
-    // (Left out for brevity, rely on remount or keys)
 
-    const { fields: allowanceFields, append: appendAllowance, remove: removeAllowance } = useFieldArray({
-        control: form.control,
-        name: "recurring_allowances",
-    })
-
-    const { fields: deductionFields, append: appendDeduction, remove: removeDeduction } = useFieldArray({
-        control: form.control,
-        name: "recurring_deductions",
-    })
 
     async function onSubmit(data: SalaryConfigFormValues) {
         if (!employeeId) return
@@ -132,78 +109,6 @@ export function SalaryConfigModal({
                         {form.formState.errors.base_amount && (
                             <p className="text-sm text-red-500">{form.formState.errors.base_amount.message}</p>
                         )}
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label>Recurring Allowances</Label>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => appendAllowance({ name: "", amount: 0, type: "allowance" })}
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Add
-                            </Button>
-                        </div>
-                        {allowanceFields.map((field, index) => (
-                            <div key={field.id} className="flex gap-2 items-start">
-                                <Input
-                                    placeholder="Allowance Name"
-                                    {...form.register(`recurring_allowances.${index}.name`)}
-                                />
-                                <Input
-                                    type="number"
-                                    placeholder="Amount"
-                                    className="w-32"
-                                    {...form.register(`recurring_allowances.${index}.amount`)}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeAllowance(index)}
-                                >
-                                    <Trash className="w-4 h-4 text-red-500" />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label>Recurring Deductions</Label>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => appendDeduction({ name: "", amount: 0, type: "deduction" })}
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Add
-                            </Button>
-                        </div>
-                        {deductionFields.map((field, index) => (
-                            <div key={field.id} className="flex gap-2 items-start">
-                                <Input
-                                    placeholder="Deduction Name"
-                                    {...form.register(`recurring_deductions.${index}.name`)}
-                                />
-                                <Input
-                                    type="number"
-                                    placeholder="Amount"
-                                    className="w-32"
-                                    {...form.register(`recurring_deductions.${index}.amount`)}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeDeduction(index)}
-                                >
-                                    <Trash className="w-4 h-4 text-red-500" />
-                                </Button>
-                            </div>
-                        ))}
                     </div>
 
                     <div className="flex justify-end gap-2">
