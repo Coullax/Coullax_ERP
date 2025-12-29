@@ -182,6 +182,10 @@ export function PayrollProcessor() {
                                                 <span className="font-bold font-mono text-sm">
                                                     {Number(payment.net_amount).toLocaleString()} LKR
                                                 </span>
+                                            ) : emp.calculated_net_salary !== undefined ? (
+                                                <span className="font-mono text-sm text-muted-foreground">
+                                                    {Number(emp.calculated_net_salary).toLocaleString()} LKR
+                                                </span>
                                             ) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
