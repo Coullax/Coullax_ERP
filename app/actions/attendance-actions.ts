@@ -94,11 +94,19 @@ export async function getAttendanceSummary(employeeId: string, month: string) {
 
   if (error) throw error
 
+  // Get covering hours balance
+  const { data: coveringData } = await supabase
+    .from('covering_hours')
+    .select('hours_to_cover')
+    .eq('employee_id', employeeId)
+    .maybeSingle()
+
   const summary = {
     present: data.filter(d => d.status === 'present').length,
     absent: data.filter(d => d.status === 'absent').length,
     leave: data.filter(d => d.status === 'leave').length,
     halfDay: data.filter(d => d.status === 'half_day').length,
+    covering: coveringData?.hours_to_cover || 0,
     total: data.length,
   }
 

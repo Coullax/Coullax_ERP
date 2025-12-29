@@ -20,6 +20,8 @@ import { formatTime } from '@/lib/utils'
 import { AttendanceCalendar } from '@/components/attendance-calendar'
 import { isHoliday, getHolidayName, getHolidays } from '@/lib/holiday-utils'
 import { format, startOfDay, endOfDay } from 'date-fns'
+import { createClient } from '@/lib/supabase/client'
+import { getCoveringHours } from '@/app/actions/request-actions'
 
 
 interface AttendancePageClientProps {
@@ -40,6 +42,19 @@ export function AttendancePageClient({
   const [holidayName, setHolidayName] = useState<string | null>(null)
   const [isTodayPoya, setIsTodayPoya] = useState(false)
   const [poyaName, setPoyaName] = useState<string | null>(null)
+  const [coveringHoursLoading, setCoveringHoursLoading] = useState(false)
+  const [coveringHours, setCoveringHours] = useState<number | null>(null)
+  const [user, setUser] = useState<any>(null)
+
+  // Fetch user on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    fetchUser()
+  }, [])
 
   const todayLog = logs.find(
     (log) => log.date === new Date().toISOString().split('T')[0]
@@ -71,6 +86,23 @@ export function AttendancePageClient({
 
     checkTodaySpecialDay()
   }, [])
+
+  useEffect(() => {
+    if (user?.id) {
+      setCoveringHoursLoading(true)
+      getCoveringHours(user.id)
+        .then((hours) => {
+          setCoveringHours(hours)
+        })
+        .catch((error) => {
+          console.error('Failed to fetch covering hours:', error)
+          toast.error('Failed to fetch covering hours: ' + error.message)
+        })
+        .finally(() => {
+          setCoveringHoursLoading(false)
+        })
+    }
+  }, [user?.id])
 
   // Calculate working hours in minutes
   const calculateWorkingMinutes = (checkIn: string, checkOut: string) => {
@@ -307,8 +339,8 @@ export function AttendancePageClient({
           <CardContent className="p-6">
             <div className="text-center">
               <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-              <p className="text-sm text-gray-500">Half Day</p>
-              <p className="text-2xl font-bold">{summary.halfDay}</p>
+              <p className="text-sm text-gray-500">Covering</p>
+              <p className="text-2xl font-bold">{coveringHours} h</p>
             </div>
           </CardContent>
         </Card>
