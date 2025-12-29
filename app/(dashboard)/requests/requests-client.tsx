@@ -593,6 +593,8 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
     approved: requests.filter(r => r.status === 'approved').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
     awaiting_proof_submission: requests.filter(r => r.status === 'awaiting_proof_submission').length,
+    team_leader_approval_pending: requests.filter(r => r.status === 'team_leader_approval_pending').length,
+    admin_approval_pending: requests.filter(r => r.status === 'admin_approval_pending').length,
   }
 
   return (
@@ -608,29 +610,35 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 relative" onClick={() => handleFilterChange('awaiting_proof_submission')}>
+            {stats.awaiting_proof_submission > 0 && (
+              <>
+                <div className=' bg-red-500 absolute top-0 right-0 w-2.5 h-2.5 rounded-full'></div>
+                <div className=' bg-red-500 absolute top-0 right-0 w-2.5 h-2.5 rounded-full animate-ping'></div>
+              </>
+            )}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-sm text-gray-500">Proof Submissions</p>
+                <p className="text-2xl font-bold">{stats.awaiting_proof_submission}</p>
               </div>
               <FileText className="w-8 h-8 text-gray-400" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6" onClick={() => handleFilterChange('team_leader_approval_pending')}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
+                <p className="text-sm text-gray-500">Pending team approval</p>
+                <p className="text-2xl font-bold">{stats.team_leader_approval_pending}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6" onClick={() => handleFilterChange('approved')}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Approved</p>
@@ -641,7 +649,7 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6" onClick={() => handleFilterChange('rejected')}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Rejected</p>
@@ -837,9 +845,10 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
               >
                 Awaiting Proof Submission
                 {stats.awaiting_proof_submission > 0 && (
-                  <Badge className="ml-1 px-2 py-0 text-xs bg-red-500 hover:bg-red-600 text-white">
-                    {stats.awaiting_proof_submission}
-                  </Badge>
+                  <>
+                    <div className=' bg-red-500 absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full'></div>
+                    <div className=' bg-red-500 absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full animate-ping'></div>
+                  </>
                 )}
               </Button>
               <Button
@@ -938,7 +947,12 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 relative">
-                                {request.status === 'awaiting_proof_submission' && <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>}
+                                {request.status === 'awaiting_proof_submission' && (
+                                  <>
+                                    <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>
+                                    <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square animate-ping'></div>
+                                  </>
+                                )}
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -949,7 +963,10 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                               </DropdownMenuItem>
                               {request.status === 'awaiting_proof_submission' && (
                                 <DropdownMenuItem onClick={() => handleViewProof(request)} >
-                                  <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>
+                                  <>
+                                    <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square'></div>
+                                    <div className=' bg-red-500 absolute top-0 right-0 rounded-full h-2 w-2 aspect-square animate-ping'></div>
+                                  </>
                                   <Upload className="w-4 h-4 mr-2" />
                                   Submit Proof
                                 </DropdownMenuItem>

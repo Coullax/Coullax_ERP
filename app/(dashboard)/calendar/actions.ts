@@ -12,7 +12,7 @@ import type { CreateEventInput, UpdateEventInput } from '@/lib/types/calendar';
  */
 export async function getCurrentUserRole() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -41,7 +41,7 @@ export async function isAdmin() {
  */
 export async function getUserCalendars() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -65,7 +65,7 @@ export async function getUserCalendars() {
  */
 export async function createCalendar(name: string, description?: string, type: 'personal' | 'shared' | 'department' = 'personal', departmentId?: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -102,7 +102,7 @@ export async function createCalendar(name: string, description?: string, type: '
  */
 export async function getCalendarEvents(startDate: string, endDate: string, calendarIds?: string[]) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -138,7 +138,7 @@ export async function getCalendarEvents(startDate: string, endDate: string, cale
  */
 export async function createEvent(input: CreateEventInput) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -153,6 +153,7 @@ export async function createEvent(input: CreateEventInput) {
     is_all_day: input.is_all_day || false,
     timezone: input.timezone || 'UTC',
     visibility: input.visibility || 'internal',
+    event_type: input.event_type || 'other',
     status: 'confirmed',
   };
 
@@ -211,7 +212,7 @@ export async function createEvent(input: CreateEventInput) {
  */
 export async function updateEvent(input: UpdateEventInput) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -235,7 +236,7 @@ export async function updateEvent(input: UpdateEventInput) {
  */
 export async function deleteEvent(eventId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -255,7 +256,7 @@ export async function deleteEvent(eventId: string) {
  */
 export async function connectGoogleCalendar(calendarId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -268,7 +269,7 @@ export async function connectGoogleCalendar(calendarId: string) {
  */
 export async function disconnectGoogleCalendar(integrationId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -289,7 +290,7 @@ export async function disconnectGoogleCalendar(integrationId: string) {
  */
 export async function getCalendarIntegrations() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -310,7 +311,7 @@ export async function getCalendarIntegrations() {
  */
 export async function createAppleSubscription(calendarId: string, includePrivate: boolean = false) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -325,7 +326,7 @@ export async function createAppleSubscription(calendarId: string, includePrivate
  */
 export async function getAppleSubscriptions() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -342,7 +343,7 @@ export async function shareCalendar(
   permissions: { canView: boolean; canEdit: boolean; canDelete: boolean }
 ) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 

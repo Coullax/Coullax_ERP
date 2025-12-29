@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, LogIn, LogOut, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatTime } from '@/lib/utils'
 import { CheckCircle, XCircle, Coffee, Clock } from 'lucide-react'
+import { getHolidays } from '@/lib/holiday-utils'
+import { format as formatDate, startOfMonth, endOfMonth } from 'date-fns'
 
 interface AttendanceLog {
     id: string
@@ -42,6 +44,35 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState<string | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [holidays, setHolidays] = useState<Map<string, string>>(new Map())
+
+    // Fetch holidays when month changes
+    useEffect(() => {
+        const fetchHolidays = async () => {
+            const monthStart = startOfMonth(currentDate)
+            const monthEnd = endOfMonth(currentDate)
+            const holidayData = await getHolidays(monthStart, monthEnd)
+
+            // Create a map of date -> holiday title
+            const holidayMap = new Map<string, string>()
+            holidayData.forEach(holiday => {
+                const startDate = new Date(holiday.start_time)
+                const endDate = new Date(holiday.end_time)
+
+                // Add all dates in the holiday range
+                let currentHolidayDate = new Date(startDate)
+                while (currentHolidayDate <= endDate) {
+                    const dateStr = formatDate(currentHolidayDate, 'yyyy-MM-dd')
+                    holidayMap.set(dateStr, holiday.title)
+                    currentHolidayDate.setDate(currentHolidayDate.getDate() + 1)
+                }
+            })
+
+            setHolidays(holidayMap)
+        }
+
+        fetchHolidays()
+    }, [currentDate])
 
     // Convert logs array to a map for quick lookup
     const logsMap = new Map(logs.map((log) => [log.date, log]))
@@ -200,6 +231,8 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                         day === new Date().getDate() &&
                         month === new Date().getMonth() &&
                         year === new Date().getFullYear()
+                    const isHoliday = holidays.has(dateStr)
+                    const holidayName = holidays.get(dateStr)
                     const hasData = log || dateLeaves.length > 0
 
                     return (
@@ -208,15 +241,25 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                             onClick={() => hasData && handleDateClick(dateStr)}
                             className={`
                 min-h-[80px] sm:aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all overflow-hidden
-                ${isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-800'}
-                ${hasData ? 'hover:shadow-lg cursor-pointer hover:border-blue-400' : ''}
+                ${isHoliday ? 'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700' : ''}
+                ${isToday && !isHoliday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}
+                ${!isToday && !isHoliday ? 'border-gray-200 dark:border-gray-800' : ''}
+                ${hasData && !isHoliday ? 'hover:shadow-lg cursor-pointer hover:border-blue-400' : ''}
               `}
+                            title={isHoliday ? `Holiday: ${holidayName}` : undefined}
                         >
                             <div className="h-full flex flex-col overflow-hidden">
                                 {/* Day Number */}
-                                <div className={`text-xs sm:text-sm font-semibold mb-1 flex-shrink-0 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                                <div className={`text-xs sm:text-sm font-semibold mb-1 flex-shrink-0 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''} ${isHoliday ? 'text-gray-700 dark:text-gray-400' : ''}`}>
                                     {day}
                                 </div>
+
+                                {/* Holiday Indicator */}
+                                {isHoliday && (
+                                    <div className="text-[8px] sm:text-[10px] px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium truncate mb-1">
+                                        🎉 {holidayName}
+                                    </div>
+                                )}
 
                                 {/* Leave Indicators */}
                                 {dateLeaves.length > 0 && (
@@ -473,6 +516,10 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-yellow-500" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Half Day</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-800" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Holiday 🎉</span>
                     </div>
                 </div>
                 <div className="text-center">

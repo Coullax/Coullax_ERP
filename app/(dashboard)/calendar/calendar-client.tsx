@@ -6,12 +6,14 @@ import { EventDialog } from "@/components/event-dialog";
 import { IntegrationSettings } from "@/components/integration-settings";
 import { EventsList } from "@/components/admin/events-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Settings, Calendar, List, MapPin, Clock, Users, Bell, Repeat } from "lucide-react";
+import { Settings, Calendar, List, MapPin, Clock, Users, Bell, Repeat, Pencil, Trash2 } from "lucide-react";
 import type {
   CalendarEventWithDetails,
   Calendar as CalendarType,
@@ -47,6 +49,8 @@ export function CalendarClient() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventWithDetails | undefined>();
   const [viewingEvent, setViewingEvent] = useState<CalendarEventWithDetails | undefined>();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<string | undefined>();
 
   useEffect(() => {
     loadData(currentMonth);
@@ -440,8 +444,63 @@ export function CalendarClient() {
               </div>
             </>
           )}
+
+          {viewingEvent && (
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEventDetailsOpen(false);
+                  handleEditEvent(viewingEvent);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit Event
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setEventToDelete(viewingEvent.id);
+                  setDeleteConfirmOpen(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Event
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this event? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (eventToDelete) {
+                  handleDeleteEvent(eventToDelete);
+                  setEventDetailsOpen(false);
+                  setDeleteConfirmOpen(false);
+                  setEventToDelete(undefined);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,9 +14,11 @@ import {
   CheckCircle,
   XCircle,
   Coffee,
+  PartyPopper,
 } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { AttendanceCalendar } from '@/components/attendance-calendar'
+import { isHoliday, getHolidayName } from '@/lib/holiday-utils'
 
 
 interface AttendancePageClientProps {
@@ -33,10 +35,28 @@ export function AttendancePageClient({
   leaves,
 }: AttendancePageClientProps) {
   const [loading, setLoading] = useState(false)
+  const [isTodayHoliday, setIsTodayHoliday] = useState(false)
+  const [holidayName, setHolidayName] = useState<string | null>(null)
 
   const todayLog = logs.find(
     (log) => log.date === new Date().toISOString().split('T')[0]
   )
+
+  // Check if today is a holiday
+  useEffect(() => {
+    const checkTodayHoliday = async () => {
+      const today = new Date()
+      const isHol = await isHoliday(today)
+      setIsTodayHoliday(isHol)
+
+      if (isHol) {
+        const name = await getHolidayName(today)
+        setHolidayName(name)
+      }
+    }
+
+    checkTodayHoliday()
+  }, [])
 
   // Calculate working hours in minutes
   const calculateWorkingMinutes = (checkIn: string, checkOut: string) => {
@@ -148,18 +168,29 @@ export function AttendancePageClient({
       </div>
 
       {/* Check In/Out Card */}
-      <Card className="bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black">
+      <Card className={isTodayHoliday
+        ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
+        : "bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black"
+      }>
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
               <h2 className="text-2xl font-bold mb-2">
-                {todayLog?.check_in && !todayLog?.check_out
-                  ? 'You are checked in'
-                  : todayLog?.check_out
-                    ? 'Attendance marked for today'
-                    : 'Mark your attendance'}
+                {isTodayHoliday ? (
+                  <>🎉 {holidayName || 'Holiday'}</>
+                ) : todayLog?.check_in && !todayLog?.check_out ? (
+                  'You are checked in'
+                ) : todayLog?.check_out ? (
+                  'Attendance marked for today'
+                ) : (
+                  'Mark your attendance'
+                )}
               </h2>
-              {todayLog?.check_in && (
+              {isTodayHoliday ? (
+                <p className="text-sm opacity-90 mt-2">
+                  Today is a holiday. Attendance marking is disabled.
+                </p>
+              ) : todayLog?.check_in && (
                 <div className="flex flex-col gap-2 mt-4">
                   <div className="flex items-center gap-2">
                     <LogIn className="w-5 h-5" />
@@ -175,7 +206,12 @@ export function AttendancePageClient({
               )}
             </div>
             <div className="flex gap-3">
-              {!todayLog?.check_in ? (
+              {isTodayHoliday ? (
+                <div className="text-center">
+                  <PartyPopper className="w-12 h-12 mx-auto mb-2" />
+                  <p className="text-sm opacity-90">Enjoy your holiday!</p>
+                </div>
+              ) : !todayLog?.check_in ? (
                 <Button
                   onClick={handleCheckIn}
                   disabled={loading}

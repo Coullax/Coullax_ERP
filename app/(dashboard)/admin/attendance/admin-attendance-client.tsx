@@ -21,6 +21,7 @@ import {
   Coffee,
   UserPlus,
   Upload,
+  FileDown,
 } from 'lucide-react'
 import {
   format,
@@ -47,6 +48,8 @@ import { formatTime } from '@/lib/utils'
 import { toast } from 'sonner'
 import { parseAttendanceExcel } from '@/lib/excel-parser'
 import { useRouter } from 'next/navigation'
+import { AttendanceExportDialog } from '@/components/admin/attendance-export-dialog'
+import { getHolidays } from '@/lib/holiday-utils'
 
 interface AttendanceRecord {
   id: string
@@ -118,6 +121,8 @@ export function AdminAttendanceClient({
   })
   const [submitting, setSubmitting] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [holidays, setHolidays] = useState<Map<string, string>>(new Map())
   const router = useRouter()
 
   // Fetch employees when dialog opens
@@ -186,6 +191,28 @@ export function AdminAttendanceClient({
         const month = currentMonth.getMonth()
         const data = await getMonthAttendanceData(year, month)
         setMonthData(data)
+
+        // Fetch holidays for the month
+        const monthStart = startOfMonth(currentMonth)
+        const monthEnd = endOfMonth(currentMonth)
+        const holidayData = await getHolidays(monthStart, monthEnd)
+
+        // Create a map of date -> holiday title
+        const holidayMap = new Map<string, string>()
+        holidayData.forEach(holiday => {
+          const startDate = new Date(holiday.start_time)
+          const endDate = new Date(holiday.end_time)
+
+          // Add all dates in the holiday range
+          let currentDate = new Date(startDate)
+          while (currentDate <= endDate) {
+            const dateStr = format(currentDate, 'yyyy-MM-dd')
+            holidayMap.set(dateStr, holiday.title)
+            currentDate.setDate(currentDate.getDate() + 1)
+          }
+        })
+
+        setHolidays(holidayMap)
       } catch (error) {
         console.error('Error fetching month data:', error)
       }
@@ -250,6 +277,14 @@ export function AdminAttendanceClient({
         return
       }
 
+      // Check if the selected date is a holiday
+      const isHoliday = holidays.has(formData.date)
+      if (isHoliday) {
+        const holidayName = holidays.get(formData.date)
+        toast.error(`Cannot mark attendance on holiday: ${holidayName}`)
+        return
+      }
+
       await adminMarkAttendance(formData.employeeId, formData.date, {
         check_in: formData.checkIn || undefined,
         check_out: formData.checkOut || undefined,
@@ -259,7 +294,7 @@ export function AdminAttendanceClient({
 
       toast.success('Attendance marked successfully')
       setDialogOpen(false)
-      
+
       // Reset form
       setFormData({
         employeeId: '',
@@ -374,7 +409,7 @@ export function AdminAttendanceClient({
             View and manage employee attendance and leave records
           </p>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex gap-2">
           {/* Bulk Upload Dialog */}
@@ -414,6 +449,12 @@ export function AdminAttendanceClient({
             </DialogContent>
           </Dialog>
 
+          {/* Export Attendance Button */}
+          <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Export Attendance
+          </Button>
+
           {/* Mark Attendance Dialog */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -422,132 +463,132 @@ export function AdminAttendanceClient({
                 Mark Attendance
               </Button>
             </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Mark Employee Attendance</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleMarkAttendance} className="space-y-4">
-              {/* Date */}
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={e => setFormData({ ...formData, date: e.target.value })}
-                  max={format(new Date(), 'yyyy-MM-dd')}
-                  required
-                />
-              </div>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Mark Employee Attendance</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleMarkAttendance} className="space-y-4">
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={e => setFormData({ ...formData, date: e.target.value })}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    required
+                  />
+                </div>
 
-              {/* Employee Search/Select */}
-              <div className="space-y-2">
-                <Label htmlFor="employee-search">Employee</Label>
-                <Input
-                  id="employee-search"
-                  type="text"
-                  placeholder="Search by name, ID, or email..."
-                  value={employeeSearch}
-                  onChange={e => setEmployeeSearch(e.target.value)}
-                  className="mb-2"
-                />
-                <Select
-                  value={formData.employeeId}
-                  onValueChange={value => setFormData({ ...formData, employeeId: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredEmployees.length > 0 ? (
-                      filteredEmployees.map(emp => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.profile?.full_name} ({emp.employee_id})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-sm text-gray-500">
-                        {employeeSearch ? 'No employees found' : 'Loading employees...'}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Employee Search/Select */}
+                <div className="space-y-2">
+                  <Label htmlFor="employee-search">Employee</Label>
+                  <Input
+                    id="employee-search"
+                    type="text"
+                    placeholder="Search by name, ID, or email..."
+                    value={employeeSearch}
+                    onChange={e => setEmployeeSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                  <Select
+                    value={formData.employeeId}
+                    onValueChange={value => setFormData({ ...formData, employeeId: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredEmployees.length > 0 ? (
+                        filteredEmployees.map(emp => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.profile?.full_name} ({emp.employee_id})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-sm text-gray-500">
+                          {employeeSearch ? 'No employees found' : 'Loading employees...'}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Status */}
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={value => setFormData({ ...formData, status: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="present">Present</SelectItem>
-                    <SelectItem value="absent">Absent</SelectItem>
-                    <SelectItem value="half_day">Half Day</SelectItem>
-                    <SelectItem value="leave">Leave</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Status */}
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={value => setFormData({ ...formData, status: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="present">Present</SelectItem>
+                      <SelectItem value="absent">Absent</SelectItem>
+                      <SelectItem value="half_day">Half Day</SelectItem>
+                      <SelectItem value="leave">Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Check-in Time */}
-              <div className="space-y-2">
-                <Label htmlFor="check-in">Check-in Time (Optional)</Label>
-                <Input
-                  id="check-in"
-                  type="time"
-                  value={formData.checkIn}
-                  onChange={e => setFormData({ ...formData, checkIn: e.target.value })}
-                />
-              </div>
+                {/* Check-in Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="check-in">Check-in Time (Optional)</Label>
+                  <Input
+                    id="check-in"
+                    type="time"
+                    value={formData.checkIn}
+                    onChange={e => setFormData({ ...formData, checkIn: e.target.value })}
+                  />
+                </div>
 
-              {/* Check-out Time */}
-              <div className="space-y-2">
-                <Label htmlFor="check-out">Check-out Time (Optional)</Label>
-                <Input
-                  id="check-out"
-                  type="time"
-                  value={formData.checkOut}
-                  onChange={e => setFormData({ ...formData, checkOut: e.target.value })}
-                />
-              </div>
+                {/* Check-out Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="check-out">Check-out Time (Optional)</Label>
+                  <Input
+                    id="check-out"
+                    type="time"
+                    value={formData.checkOut}
+                    onChange={e => setFormData({ ...formData, checkOut: e.target.value })}
+                  />
+                </div>
 
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Input
-                  id="notes"
-                  type="text"
-                  placeholder="Add any notes..."
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Input
+                    id="notes"
+                    type="text"
+                    placeholder="Add any notes..."
+                    value={formData.notes}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? 'Saving...' : 'Mark Attendance'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                {/* Submit Button */}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? 'Saving...' : 'Mark Attendance'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-    </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -629,30 +670,43 @@ export function AdminAttendanceClient({
                   const isToday = isSameDay(day, new Date())
                   const isCurrentMonth = isSameMonth(day, currentMonth)
                   const isSelected = isSameDay(day, selectedDate)
+                  const isHoliday = holidays.has(dateKey)
+                  const holidayName = holidays.get(dateKey)
 
                   return (
                     <div
                       key={day.toISOString()}
-                      onClick={() => handleDateClick(day)}
+                      onClick={() => !isHoliday && handleDateClick(day)}
                       className={cn(
-                        'min-h-20 p-2 rounded-lg border-2 cursor-pointer hover:border-blue-300 transition-all',
+                        'min-h-20 p-2 rounded-lg border-2 transition-all',
                         !isCurrentMonth && 'opacity-40',
-                        isSelected && 'border-blue-500 bg-blue-50 dark:bg-blue-950',
-                        !isSelected && 'border-gray-200 dark:border-gray-800'
+                        isHoliday && 'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 cursor-not-allowed',
+                        !isHoliday && 'cursor-pointer hover:border-blue-300',
+                        isSelected && !isHoliday && 'border-blue-500 bg-blue-50 dark:bg-blue-950',
+                        !isSelected && !isHoliday && 'border-gray-200 dark:border-gray-800'
                       )}
+                      title={isHoliday ? `Holiday: ${holidayName}` : undefined}
                     >
                       <div
                         className={cn(
                           'text-sm font-medium mb-1',
                           isToday &&
-                            'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center'
+                          'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center',
+                          isHoliday && !isToday && 'text-gray-700 dark:text-gray-400 font-bold'
                         )}
                       >
                         {format(day, 'd')}
                       </div>
 
+                      {/* Holiday Indicator */}
+                      {isHoliday && isCurrentMonth && (
+                        <div className="text-xs px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium truncate">
+                          {holidayName}
+                        </div>
+                      )}
+
                       {/* Attendance/Leave Indicators */}
-                      {isCurrentMonth && (attendanceCount > 0 || leavesCount > 0) && (
+                      {isCurrentMonth && !isHoliday && (attendanceCount > 0 || leavesCount > 0) && (
                         <div className="space-y-1 mt-1">
                           {attendanceCount > 0 && (
                             <div className="text-xs px-1 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 flex items-center gap-1">
@@ -807,6 +861,12 @@ export function AdminAttendanceClient({
           </Card>
         </div>
       </div>
+
+      {/* Export Attendance Dialog */}
+      <AttendanceExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+      />
     </div>
   )
 }

@@ -37,16 +37,38 @@ export function CalendarView({
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
-  // Group events by date
+  // Group events by date - for multi-day events, add to all dates in range
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEventWithDetails[]>();
 
     events.forEach(event => {
-      const dateKey = format(new Date(event.start_time), 'yyyy-MM-dd');
-      if (!map.has(dateKey)) {
-        map.set(dateKey, []);
+      const startDate = new Date(event.start_time);
+      const endDate = new Date(event.end_time);
+
+      // For multi-day events (especially holidays), add to all dates in the range
+      if (event.is_all_day || event.event_type === 'holiday') {
+        // Generate all dates in the range
+        const currentDate = new Date(startDate);
+        currentDate.setHours(0, 0, 0, 0);
+        const finalDate = new Date(endDate);
+        finalDate.setHours(0, 0, 0, 0);
+
+        while (currentDate <= finalDate) {
+          const dateKey = format(currentDate, 'yyyy-MM-dd');
+          if (!map.has(dateKey)) {
+            map.set(dateKey, []);
+          }
+          map.get(dateKey)!.push(event);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        // For single-day events, just add to start date
+        const dateKey = format(startDate, 'yyyy-MM-dd');
+        if (!map.has(dateKey)) {
+          map.set(dateKey, []);
+        }
+        map.get(dateKey)!.push(event);
       }
-      map.get(dateKey)!.push(event);
     });
 
     return map;
@@ -140,50 +162,114 @@ export function CalendarView({
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
 
+              // Check if this day has a holiday or poya event
+              const holidayEvent = dayEvents.find(event => event.event_type === 'holiday');
+              const poyaEvent = dayEvents.find(event => event.event_type === 'poya');
+              const isHoliday = !!holidayEvent;
+              const isPoya = !!poyaEvent;
+              const isSpecialDay = isHoliday || isPoya;
+
               return (
                 <div
                   key={day.toISOString()}
-                  onClick={() => handleDateClick(day)}
+                  onClick={() => {
+                    // Only prevent clicking on holidays (Poya days are allowed)
+                    if (!isHoliday) {
+                      handleDateClick(day);
+                    }
+                  }}
                   className={cn(
-                    'min-h-24 bg-white dark:bg-gray-900 p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors',
+                    'min-h-24 p-2 transition-colors relative',
+                    // Holiday styling - gray background
+                    isHoliday
+                      ? 'bg-gray-100 dark:bg-gray-800/50 border-2 border-gray-300 dark:border-gray-700 cursor-not-allowed'
+                      : '',
+                    // Poya styling - yellow background (but still clickable)
+                    isPoya && !isHoliday
+                      ? 'bg-yellow-50 dark:bg-yellow-950/30 border-2 border-yellow-300 dark:border-yellow-800 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/40'
+                      : '',
+                    // Regular day styling
+                    !isHoliday && !isPoya
+                      ? 'bg-white dark:bg-gray-900 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800'
+                      : '',
                     !isCurrentMonth && 'opacity-40',
-                    isSelected && 'ring-2 ring-blue-500 ring-inset'
+                    isSelected && !isHoliday && 'ring-2 ring-blue-500 ring-inset'
                   )}
+                  title={
+                    isHoliday
+                      ? `Holiday: ${holidayEvent.title}`
+                      : isPoya
+                        ? `Poya Day: ${poyaEvent.title}`
+                        : undefined
+                  }
                 >
+                  {/* Holiday indicator badge */}
+                  {isHoliday && (
+                    <div className="absolute top-1 right-1 bg-gray-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                      HOLIDAY
+                    </div>
+                  )}
+
+                  {/* Poya indicator badge */}
+                  {isPoya && (
+                    <div className="absolute top-1 right-1 bg-yellow-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                      POYA
+                    </div>
+                  )}
+
                   <div
                     className={cn(
                       'text-sm font-medium mb-1',
                       isToday &&
-                      'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center'
+                      'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center',
+                      isHoliday && !isToday && 'text-gray-700 dark:text-gray-400 font-bold',
+                      isPoya && !isToday && 'text-yellow-700 dark:text-yellow-400 font-bold'
                     )}
                   >
                     {format(day, 'd')}
                   </div>
 
-                  {/* Events */}
+                  {/* Holiday Title */}
+                  {isHoliday && (
+                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-400 mb-2 truncate">
+                      🎉 {holidayEvent.title}
+                    </div>
+                  )}
+
+                  {/* Poya Title */}
+                  {isPoya && (
+                    <div className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-2 truncate">
+                      🌙 {poyaEvent.title}
+                    </div>
+                  )}
+
+                  {/* Other Events (non-holiday/non-poya) */}
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map(event => (
-                      <div
-                        key={event.id}
-                        onClick={e => {
-                          e.stopPropagation();
-                          onEventClick(event);
-                        }}
-                        className={cn(
-                          'text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity',
-                          'text-white'
-                        )}
-                        style={{
-                          backgroundColor: event.calendar?.color || '#3B82F6',
-                        }}
-                        title={event.title}
-                      >
-                        {format(new Date(event.start_time), 'h:mm a')} {event.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
+                    {dayEvents
+                      .filter(event => event.event_type !== 'holiday' && event.event_type !== 'poya')
+                      .slice(0, isHoliday ? 2 : 3)
+                      .map(event => (
+                        <div
+                          key={event.id}
+                          onClick={e => {
+                            e.stopPropagation();
+                            onEventClick(event);
+                          }}
+                          className={cn(
+                            'text-xs px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity',
+                            'text-white'
+                          )}
+                          style={{
+                            backgroundColor: event.calendar?.color || '#3B82F6',
+                          }}
+                          title={event.title}
+                        >
+                          {!event.is_all_day && format(new Date(event.start_time), 'h:mm a')} {event.title}
+                        </div>
+                      ))}
+                    {dayEvents.filter(e => e.event_type !== 'holiday' && e.event_type !== 'poya').length > (isHoliday ? 2 : 3) && (
                       <div className="text-xs text-gray-500 dark:text-gray-400 px-2">
-                        +{dayEvents.length - 3} more
+                        +{dayEvents.filter(e => e.event_type !== 'holiday' && e.event_type !== 'poya').length - (isHoliday ? 2 : 3)} more
                       </div>
                     )}
                   </div>

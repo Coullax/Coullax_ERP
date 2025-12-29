@@ -3,6 +3,7 @@
 export type CalendarType = 'personal' | 'shared' | 'department';
 export type EventVisibility = 'public' | 'private' | 'internal';
 export type EventStatus = 'confirmed' | 'tentative' | 'cancelled';
+export type EventType = 'meeting' | 'reminder' | 'holiday' | 'poya' | 'other';
 export type IntegrationProvider = 'google' | 'outlook' | 'apple_feed';
 export type SyncStatus = 'success' | 'failed' | 'in_progress';
 export type ResponseStatus = 'pending' | 'accepted' | 'declined' | 'maybe';
@@ -39,6 +40,7 @@ export interface CalendarEvent {
   parent_event_id?: string;
   status: EventStatus;
   visibility: EventVisibility;
+  event_type?: EventType;
   google_event_id?: string;
   external_event_url?: string;
   created_at: string;
@@ -152,6 +154,7 @@ export interface CreateEventInput {
   is_all_day?: boolean;
   timezone?: string;
   visibility?: EventVisibility;
+  event_type?: EventType;
   attendee_emails?: string[];
   reminder_minutes?: number[];
 }
