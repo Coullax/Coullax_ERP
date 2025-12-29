@@ -97,14 +97,6 @@ export default function EmployeeSalaryPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {/* <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setSelectedPayment(payment)}
-                                            >
-                                                <Eye className="w-4 h-4 mr-2" />
-                                                View
-                                            </Button> */}
                                             <Link target="_blank" href={`/employee/salary/slip/${payment.id}`}>
                                                 <Button variant="ghost" size="sm">
                                                     <Eye className="w-4 h-4 mr-2" />
