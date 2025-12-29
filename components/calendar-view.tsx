@@ -27,15 +27,23 @@ export function CalendarView({
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Generate calendar days
+  // Generate calendar days based on view
   const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart);
-    const calendarEnd = endOfWeek(monthEnd);
-
-    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-  }, [currentDate]);
+    if (view === 'month') {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      const calendarStart = startOfWeek(monthStart);
+      const calendarEnd = endOfWeek(monthEnd);
+      return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    } else if (view === 'week') {
+      const weekStart = startOfWeek(currentDate);
+      const weekEnd = endOfWeek(currentDate);
+      return eachDayOfInterval({ start: weekStart, end: weekEnd });
+    } else {
+      // day view - just return single day
+      return [currentDate];
+    }
+  }, [currentDate, view]);
 
   // Group events by date - for multi-day events, add to all dates in range
   const eventsByDate = useMemo(() => {
@@ -141,20 +149,25 @@ export function CalendarView({
 
         {/* Calendar Grid */}
         <div className="flex-1 p-4 overflow-auto">
-          {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-px mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div
-                key={day}
-                className="text-center text-sm font-semibold text-gray-600 dark:text-gray-400 py-2"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
+          {/* Weekday Headers - only show for month and week views */}
+          {view !== 'day' && (
+            <div className="grid grid-cols-7 gap-px mb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div
+                  key={day}
+                  className="text-center text-sm font-semibold text-gray-600 dark:text-gray-400 py-2"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+          <div className={cn(
+            'gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden',
+            view === 'day' ? 'grid grid-cols-1' : 'grid grid-cols-7'
+          )}>
             {calendarDays.map(day => {
               const dateKey = format(day, 'yyyy-MM-dd');
               const dayEvents = eventsByDate.get(dateKey) || [];
