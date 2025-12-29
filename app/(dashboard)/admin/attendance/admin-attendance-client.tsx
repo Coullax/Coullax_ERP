@@ -197,7 +197,7 @@ export function AdminAttendanceClient({
         const monthEnd = endOfMonth(currentMonth)
         const holidayData = await getHolidays(monthStart, monthEnd)
 
-        // Create a map of date -> holiday title
+        // Create a map of date -> event data (format: "eventType:title")
         const holidayMap = new Map<string, string>()
         holidayData.forEach(holiday => {
           const startDate = new Date(holiday.start_time)
@@ -207,7 +207,9 @@ export function AdminAttendanceClient({
           let currentDate = new Date(startDate)
           while (currentDate <= endDate) {
             const dateStr = format(currentDate, 'yyyy-MM-dd')
-            holidayMap.set(dateStr, holiday.title)
+            // Store with event type prefix to distinguish holidays from poya
+            const eventType = (holiday as any).event_type || 'holiday'
+            holidayMap.set(dateStr, `${eventType}:${holiday.title}`)
             currentDate.setDate(currentDate.getDate() + 1)
           }
         })
@@ -277,12 +279,25 @@ export function AdminAttendanceClient({
         return
       }
 
-      // Check if the selected date is a holiday
-      const isHoliday = holidays.has(formData.date)
-      if (isHoliday) {
-        const holidayName = holidays.get(formData.date)
-        toast.error(`Cannot mark attendance on holiday: ${holidayName}`)
-        return
+      // Validate and submit
+      if (formData.date && formData.status) {
+        // Check if the selected date is a holiday (not Poya)
+        const specialDayData = holidays.get(formData.date)
+        let isActualHoliday = false
+
+        if (specialDayData && specialDayData.includes(':')) {
+          const parts = specialDayData.split(':')
+          const eventType = parts[0]
+          isActualHoliday = eventType === 'holiday'
+        } else if (specialDayData) {
+          isActualHoliday = true // Old format, assume holiday
+        }
+
+        if (isActualHoliday) {
+          const eventTitle = specialDayData?.split(':').slice(1).join(':') || specialDayData
+          toast.error(`Cannot mark attendance on holiday: ${eventTitle}`)
+          return
+        }
       }
 
       await adminMarkAttendance(formData.employeeId, formData.date, {
@@ -670,8 +685,21 @@ export function AdminAttendanceClient({
                   const isToday = isSameDay(day, new Date())
                   const isCurrentMonth = isSameMonth(day, currentMonth)
                   const isSelected = isSameDay(day, selectedDate)
-                  const isHoliday = holidays.has(dateKey)
-                  const holidayName = holidays.get(dateKey)
+
+                  // Parse holiday/poya data (format: "eventType:title")
+                  const specialDayData = holidays.get(dateKey)
+                  const isSpecialDay = !!specialDayData
+                  let eventType = 'holiday'
+                  let eventTitle = specialDayData || ''
+
+                  if (specialDayData && specialDayData.includes(':')) {
+                    const parts = specialDayData.split(':')
+                    eventType = parts[0]
+                    eventTitle = parts.slice(1).join(':')
+                  }
+
+                  const isHoliday = isSpecialDay && eventType === 'holiday'
+                  const isPoya = isSpecialDay && eventType === 'poya'
 
                   return (
                     <div
@@ -681,18 +709,20 @@ export function AdminAttendanceClient({
                         'min-h-20 p-2 rounded-lg border-2 transition-all',
                         !isCurrentMonth && 'opacity-40',
                         isHoliday && 'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 cursor-not-allowed',
-                        !isHoliday && 'cursor-pointer hover:border-blue-300',
+                        isPoya && 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800 cursor-pointer hover:border-yellow-400',
+                        !isSpecialDay && 'cursor-pointer hover:border-blue-300',
                         isSelected && !isHoliday && 'border-blue-500 bg-blue-50 dark:bg-blue-950',
-                        !isSelected && !isHoliday && 'border-gray-200 dark:border-gray-800'
+                        !isSelected && !isSpecialDay && 'border-gray-200 dark:border-gray-800'
                       )}
-                      title={isHoliday ? `Holiday: ${holidayName}` : undefined}
+                      title={isHoliday ? `Holiday: ${eventTitle}` : isPoya ? `Poya Day: ${eventTitle}` : undefined}
                     >
                       <div
                         className={cn(
                           'text-sm font-medium mb-1',
                           isToday &&
                           'w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center',
-                          isHoliday && !isToday && 'text-gray-700 dark:text-gray-400 font-bold'
+                          isHoliday && !isToday && 'text-gray-700 dark:text-gray-400 font-bold',
+                          isPoya && !isToday && 'text-yellow-700 dark:text-yellow-400 font-bold'
                         )}
                       >
                         {format(day, 'd')}
@@ -701,12 +731,19 @@ export function AdminAttendanceClient({
                       {/* Holiday Indicator */}
                       {isHoliday && isCurrentMonth && (
                         <div className="text-xs px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium truncate">
-                          {holidayName}
+                          🎉 {eventTitle}
+                        </div>
+                      )}
+
+                      {/* Poya Indicator */}
+                      {isPoya && isCurrentMonth && (
+                        <div className="text-xs px-1 py-0.5 rounded bg-yellow-200 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 font-medium truncate">
+                          🌙 {eventTitle}
                         </div>
                       )}
 
                       {/* Attendance/Leave Indicators */}
-                      {isCurrentMonth && !isHoliday && (attendanceCount > 0 || leavesCount > 0) && (
+                      {isCurrentMonth && !isSpecialDay && (attendanceCount > 0 || leavesCount > 0) && (
                         <div className="space-y-1 mt-1">
                           {attendanceCount > 0 && (
                             <div className="text-xs px-1 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 flex items-center gap-1">

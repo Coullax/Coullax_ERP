@@ -18,7 +18,8 @@ import {
 } from 'lucide-react'
 import { formatTime } from '@/lib/utils'
 import { AttendanceCalendar } from '@/components/attendance-calendar'
-import { isHoliday, getHolidayName } from '@/lib/holiday-utils'
+import { isHoliday, getHolidayName, getHolidays } from '@/lib/holiday-utils'
+import { format, startOfDay, endOfDay } from 'date-fns'
 
 
 interface AttendancePageClientProps {
@@ -37,14 +38,16 @@ export function AttendancePageClient({
   const [loading, setLoading] = useState(false)
   const [isTodayHoliday, setIsTodayHoliday] = useState(false)
   const [holidayName, setHolidayName] = useState<string | null>(null)
+  const [isTodayPoya, setIsTodayPoya] = useState(false)
+  const [poyaName, setPoyaName] = useState<string | null>(null)
 
   const todayLog = logs.find(
     (log) => log.date === new Date().toISOString().split('T')[0]
   )
 
-  // Check if today is a holiday
+  // Check if today is a holiday or poya day
   useEffect(() => {
-    const checkTodayHoliday = async () => {
+    const checkTodaySpecialDay = async () => {
       const today = new Date()
       const isHol = await isHoliday(today)
       setIsTodayHoliday(isHol)
@@ -53,9 +56,20 @@ export function AttendancePageClient({
         const name = await getHolidayName(today)
         setHolidayName(name)
       }
+
+      // Check for Poya day
+      const todayStart = startOfDay(today)
+      const todayEnd = endOfDay(today)
+      const specialDays = await getHolidays(todayStart, todayEnd)
+      const poyaDay = specialDays.find((day: any) => day.event_type === 'poya')
+
+      if (poyaDay) {
+        setIsTodayPoya(true)
+        setPoyaName(poyaDay.title)
+      }
     }
 
-    checkTodayHoliday()
+    checkTodaySpecialDay()
   }, [])
 
   // Calculate working hours in minutes
@@ -168,9 +182,12 @@ export function AttendancePageClient({
       </div>
 
       {/* Check In/Out Card */}
-      <Card className={isTodayHoliday
-        ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
-        : "bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black"
+      <Card className={
+        isTodayHoliday
+          ? "bg-gradient-to-r from-gray-400 to-gray-600 text-white"
+          : isTodayPoya
+            ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white"
+            : "bg-gradient-to-r from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black"
       }>
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -178,6 +195,8 @@ export function AttendancePageClient({
               <h2 className="text-2xl font-bold mb-2">
                 {isTodayHoliday ? (
                   <>🎉 {holidayName || 'Holiday'}</>
+                ) : isTodayPoya ? (
+                  <>🌙 {poyaName || 'Poya Day'}</>
                 ) : todayLog?.check_in && !todayLog?.check_out ? (
                   'You are checked in'
                 ) : todayLog?.check_out ? (
@@ -189,6 +208,10 @@ export function AttendancePageClient({
               {isTodayHoliday ? (
                 <p className="text-sm opacity-90 mt-2">
                   Today is a holiday. Attendance marking is disabled.
+                </p>
+              ) : isTodayPoya ? (
+                <p className="text-sm opacity-90 mt-2">
+                  Today is a Poya day. You can still mark your attendance.
                 </p>
               ) : todayLog?.check_in && (
                 <div className="flex flex-col gap-2 mt-4">

@@ -63,7 +63,9 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                 let currentHolidayDate = new Date(startDate)
                 while (currentHolidayDate <= endDate) {
                     const dateStr = formatDate(currentHolidayDate, 'yyyy-MM-dd')
-                    holidayMap.set(dateStr, holiday.title)
+                    // Store with event type prefix to distinguish holidays from poya
+                    const eventType = (holiday as any).event_type || 'holiday'
+                    holidayMap.set(dateStr, `${eventType}:${holiday.title}`)
                     currentHolidayDate.setDate(currentHolidayDate.getDate() + 1)
                 }
             })
@@ -231,8 +233,21 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                         day === new Date().getDate() &&
                         month === new Date().getMonth() &&
                         year === new Date().getFullYear()
-                    const isHoliday = holidays.has(dateStr)
-                    const holidayName = holidays.get(dateStr)
+
+                    // Parse holiday data (format: "eventType:title")
+                    const holidayData = holidays.get(dateStr)
+                    const isSpecialDay = !!holidayData
+                    let eventType = 'holiday'
+                    let eventTitle = holidayData || ''
+
+                    if (holidayData && holidayData.includes(':')) {
+                        const parts = holidayData.split(':')
+                        eventType = parts[0]
+                        eventTitle = parts.slice(1).join(':')
+                    }
+
+                    const isHoliday = isSpecialDay && eventType === 'holiday'
+                    const isPoya = isSpecialDay && eventType === 'poya'
                     const hasData = log || dateLeaves.length > 0
 
                     return (
@@ -242,22 +257,30 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                             className={`
                 min-h-[80px] sm:aspect-square p-1 sm:p-2 rounded-lg border-2 transition-all overflow-hidden
                 ${isHoliday ? 'bg-gray-100 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700' : ''}
-                ${isToday && !isHoliday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}
-                ${!isToday && !isHoliday ? 'border-gray-200 dark:border-gray-800' : ''}
-                ${hasData && !isHoliday ? 'hover:shadow-lg cursor-pointer hover:border-blue-400' : ''}
+                ${isPoya ? 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800' : ''}
+                ${isToday && !isSpecialDay ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}
+                ${!isToday && !isSpecialDay ? 'border-gray-200 dark:border-gray-800' : ''}
+                ${hasData && !isSpecialDay ? 'hover:shadow-lg cursor-pointer hover:border-blue-400' : ''}
               `}
-                            title={isHoliday ? `Holiday: ${holidayName}` : undefined}
+                            title={isHoliday ? `Holiday: ${eventTitle}` : isPoya ? `Poya Day: ${eventTitle}` : undefined}
                         >
                             <div className="h-full flex flex-col overflow-hidden">
                                 {/* Day Number */}
-                                <div className={`text-xs sm:text-sm font-semibold mb-1 flex-shrink-0 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''} ${isHoliday ? 'text-gray-700 dark:text-gray-400' : ''}`}>
+                                <div className={`text-xs sm:text-sm font-semibold mb-1 flex-shrink-0 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''} ${isHoliday ? 'text-gray-700 dark:text-gray-400' : ''} ${isPoya ? 'text-yellow-700 dark:text-yellow-400' : ''}`}>
                                     {day}
                                 </div>
 
                                 {/* Holiday Indicator */}
                                 {isHoliday && (
                                     <div className="text-[8px] sm:text-[10px] px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium truncate mb-1">
-                                        🎉 {holidayName}
+                                        🎉 {eventTitle}
+                                    </div>
+                                )}
+
+                                {/* Poya Indicator */}
+                                {isPoya && (
+                                    <div className="text-[8px] sm:text-[10px] px-1 py-0.5 rounded bg-yellow-200 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 font-medium truncate mb-1">
+                                        🌙 {eventTitle}
                                     </div>
                                 )}
 
@@ -518,8 +541,12 @@ export function AttendanceCalendar({ logs, leaves }: AttendanceCalendarProps) {
                         <span className="text-sm text-gray-600 dark:text-gray-400">Half Day</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-800" />
+                        <div className="w-3 h-3 rounded bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-800" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Holiday 🎉</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-900 border border-yellow-300 dark:border-yellow-800" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Poya Day 🌙</span>
                     </div>
                 </div>
                 <div className="text-center">
