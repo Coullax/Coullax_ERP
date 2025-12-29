@@ -28,6 +28,9 @@ import {
 import { getEmployeeCurrentBalance } from '@/app/actions/policy-actions'
 import { getEmployeeInventory } from '@/app/actions/inventory-actions'
 import { uploadToB2 } from '@/app/actions/upload-actions'
+import { getHolidayDates } from '@/lib/holiday-utils'
+import { addMonths, format as formatDate } from 'date-fns'
+import { DatePicker } from '@/components/ui/calendar'
 
 interface RequestFormProps {
   employeeId: string
@@ -68,6 +71,10 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
   // Covering hours state
   const [coveringHours, setCoveringHours] = useState<number | null>(null)
   const [coveringHoursLoading, setCoveringHoursLoading] = useState(false)
+
+  // Holiday validation state
+  const [holidayDates, setHolidayDates] = useState<Date[]>([])
+  const [holidayValidationError, setHolidayValidationError] = useState<string | null>(null)
 
   // Helper function to format days to "Xd Yh" format
   const formatDaysToHours = (days: number, workHoursPerDay: number = 9): string => {
@@ -151,6 +158,25 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         })
     }
   }, [requestType, employeeId])
+
+  // Fetch holidays for date validation
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const today = new Date()
+        const futureDate = addMonths(today, 12) // Fetch holidays for next 12 months
+        const holidays = await getHolidayDates(today, futureDate)
+
+        // Store as Date array for DatePicker component
+        setHolidayDates(holidays)
+      } catch (error) {
+        console.error('Failed to fetch holidays:', error)
+        // Don't show error to user, just log it
+      }
+    }
+
+    fetchHolidays()
+  }, [])
 
   // Auto-populate start_time and end_time based on leave_duration
   useEffect(() => {
@@ -378,6 +404,28 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
         }
       }
     } else {
+      // Validate date inputs for holidays
+      const dateFieldNames = ['start_date', 'end_date', 'date', 'expense_date', 'last_working_date', 'covering_date']
+
+      if (dateFieldNames.includes(e.target.name) && e.target.value) {
+        const selectedDate = e.target.value // Already in yyyy-MM-dd format
+
+        // Check if selected date is a holiday
+        const isHoliday = holidayDates.some(holidayDate =>
+          formatDate(holidayDate, 'yyyy-MM-dd') === selectedDate
+        )
+
+        if (isHoliday) {
+          setHolidayValidationError(`The selected date (${selectedDate}) is a holiday. Please choose a different date.`)
+          // Still update the form data so user can see what they selected
+          setFormData({ ...formData, [e.target.name]: e.target.value })
+          return
+        } else {
+          // Clear holiday validation error if date is valid
+          setHolidayValidationError(null)
+        }
+      }
+
       // Track date changes for leave requests
       if (e.target.name === 'start_date') {
         setStartDate(e.target.value)
@@ -395,6 +443,12 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
     // Prevent submission if there are time validation errors
     if (timeValidationError) {
       toast.error(timeValidationError)
+      return
+    }
+
+    // Prevent submission if there are holiday validation errors
+    if (holidayValidationError) {
+      toast.error(holidayValidationError)
       return
     }
 
@@ -504,6 +558,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'leave':
         return (
           <>
+            {/* Holiday Validation Error - Global */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Leave Balance Summary */}
             {leaveBalance && leaveBalance.policy && (
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border-2 border-blue-200 dark:border-blue-800">
@@ -774,6 +840,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'overtime':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date *</Label>
@@ -839,6 +917,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'travel':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="destination">Destination *</Label>
@@ -942,6 +1032,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'expense':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="expense_type">Expense Type *</Label>
@@ -1021,6 +1123,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'attendance_regularization':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date *</Label>
@@ -1274,6 +1388,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'resignation':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="last_working_date">Last Working Date *</Label>
               <Input
@@ -1338,6 +1464,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'covering':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Covering Hours Balance Display */}
             {coveringHoursLoading ? (
               <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700">
@@ -1432,6 +1570,18 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
       case 'request_for_covering':
         return (
           <>
+            {/* Holiday Validation Error */}
+            {holidayValidationError && (
+              <div className="p-4 bg-red-50 dark:bg-red-950 rounded-xl border-2 border-red-200 dark:border-red-800 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400 text-lg">⚠️</span>
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {holidayValidationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="date">Date *</Label>
               <Input
