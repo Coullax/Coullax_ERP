@@ -96,6 +96,7 @@ const adminNavItems = [
     isExpandable: true,
     subItems: [
       { icon: Settings, label: "Salary Setup", href: "/admin/salary/setup" },
+      { icon: UserSquare2, label: "Employee Category Assign", href: "/admin/salary/category-assign" },
       { icon: DollarSign, label: "Salary Processing", href: "/admin/salary" },
     ],
   },
@@ -162,7 +163,7 @@ export function Sidebar() {
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const [awaitingProofCount, setAwaitingProofCount] = useState(0);
-    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true, "Salary": true });
   const pathname = usePathname();
   const router = useRouter();

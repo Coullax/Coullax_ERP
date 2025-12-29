@@ -193,7 +193,6 @@ export default function SalarySetupPage() {
                                             <TableHead>Name</TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead>Type</TableHead>
-                                            <TableHead>Calculation</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -205,11 +204,6 @@ export default function SalarySetupPage() {
                                                     {category.description || "-"}
                                                 </TableCell>
                                                 <TableCell>{getCategoryTypeBadge(category.category_type)}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">
-                                                        {category.is_percentage_based ? "Percentage" : "Fixed Amount"}
-                                                    </Badge>
-                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
@@ -360,10 +354,8 @@ export default function SalarySetupPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Category</TableHead>
-                                            <TableHead>Salary Range</TableHead>
                                             <TableHead>Type</TableHead>
                                             <TableHead>Value</TableHead>
-                                            <TableHead>Applies To</TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
@@ -375,11 +367,6 @@ export default function SalarySetupPage() {
                                                     {rule.category?.name || "-"}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {rule.apit_range?.name || (
-                                                        <Badge variant="outline">All Ranges</Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
                                                     <Badge variant={rule.calculation_type === "percentage" ? "default" : "secondary"}>
                                                         {rule.calculation_type}
                                                     </Badge>
@@ -388,9 +375,6 @@ export default function SalarySetupPage() {
                                                     {rule.calculation_type === "percentage"
                                                         ? `${rule.value}%`
                                                         : formatCurrency(rule.value)}
-                                                </TableCell>
-                                                <TableCell className="text-gray-600">
-                                                    {rule.applies_to_category?.name || "Base Salary"}
                                                 </TableCell>
                                                 <TableCell className="text-gray-600 max-w-xs truncate">
                                                     {rule.description || "-"}
@@ -446,7 +430,6 @@ export default function SalarySetupPage() {
                 onOpenChange={setRuleDialogOpen}
                 rule={editingRule}
                 categories={categories}
-                ranges={ranges}
                 onSuccess={loadData}
             />
 

@@ -42,10 +42,8 @@ import {
 
 const ruleSchema = z.object({
     category_id: z.string().min(1, "Category is required"),
-    apit_range_id: z.string().nullable().optional(),
     calculation_type: z.enum(["percentage", "fixed"]),
     value: z.coerce.number().min(0, "Value must be 0 or greater"),
-    applies_to_category_id: z.string().nullable().optional(),
     description: z.string().optional(),
 });
 
@@ -56,7 +54,6 @@ interface RuleDialogProps {
     onOpenChange: (open: boolean) => void;
     rule?: SalaryCategoryRule | null;
     categories: SalaryCategory[];
-    ranges: ApitRange[];
     onSuccess?: () => void;
 }
 
@@ -65,21 +62,17 @@ export function RuleDialog({
     onOpenChange,
     rule,
     categories,
-    ranges,
     onSuccess,
 }: RuleDialogProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [applyToAll, setApplyToAll] = useState(!rule?.apit_range_id);
     const isEditing = !!rule;
 
     const form = useForm<RuleFormData>({
         resolver: zodResolver(ruleSchema),
         defaultValues: {
             category_id: rule?.category_id || "",
-            apit_range_id: rule?.apit_range_id || null,
             calculation_type: rule?.calculation_type || "percentage",
             value: rule?.value || 0,
-            applies_to_category_id: rule?.applies_to_category_id || null,
             description: rule?.description || "",
         },
     });
@@ -89,14 +82,9 @@ export function RuleDialog({
     const onSubmit = async (data: RuleFormData) => {
         setIsSubmitting(true);
         try {
-            const submitData = {
-                ...data,
-                apit_range_id: applyToAll ? null : data.apit_range_id,
-            };
-
             const result = isEditing
-                ? await updateCategoryRule(rule.id, submitData)
-                : await createCategoryRule(submitData);
+                ? await updateCategoryRule(rule.id, data)
+                : await createCategoryRule(data);
 
             if (result.success) {
                 toast.success(
@@ -162,54 +150,6 @@ export function RuleDialog({
                             )}
                         />
 
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="applyToAll"
-                                    checked={applyToAll}
-                                    onChange={(e) => setApplyToAll(e.target.checked)}
-                                    className="rounded border-gray-300"
-                                />
-                                <label
-                                    htmlFor="applyToAll"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Apply to all APIT ranges
-                                </label>
-                            </div>
-
-                            {!applyToAll && (
-                                <FormField
-                                    control={form.control}
-                                    name="apit_range_id"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>APIT Range</FormLabel>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={field.value || undefined}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select APIT range" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {ranges.map((range) => (
-                                                        <SelectItem key={range.id} value={range.id}>
-                                                            {range.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-                        </div>
-
                         <FormField
                             control={form.control}
                             name="calculation_type"
@@ -259,38 +199,6 @@ export function RuleDialog({
                                         {calculationType === "percentage"
                                             ? "Enter percentage value (e.g., 8.5 for 8.5%)"
                                             : "Enter fixed amount in LKR"}
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="applies_to_category_id"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Applies To (Optional)</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value || undefined}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select category (or leave empty for base salary)" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="null">Base Salary</SelectItem>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat.id} value={cat.id}>
-                                                    {cat.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormDescription>
-                                        Which category to calculate from (e.g., calculate EPF from Basic Salary)
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

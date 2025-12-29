@@ -29,16 +29,12 @@ export type ApitRange = {
 export type SalaryCategoryRule = {
     id: string;
     category_id: string;
-    apit_range_id: string | null;
     calculation_type: "percentage" | "fixed";
     value: number;
-    applies_to_category_id: string | null;
     description: string | null;
     created_at: string;
     updated_at: string;
     category?: SalaryCategory;
-    apit_range?: ApitRange;
-    applies_to_category?: SalaryCategory;
 };
 
 // =====================================================
@@ -236,10 +232,8 @@ export async function getAllApitRanges() {
 
 export async function createCategoryRule(data: {
     category_id: string;
-    apit_range_id?: string | null;
     calculation_type: "percentage" | "fixed";
     value: number;
-    applies_to_category_id?: string | null;
     description?: string;
 }) {
     try {
@@ -265,10 +259,8 @@ export async function updateCategoryRule(
     id: string,
     data: {
         category_id?: string;
-        apit_range_id?: string | null;
         calculation_type?: "percentage" | "fixed";
         value?: number;
-        applies_to_category_id?: string | null;
         description?: string;
     }
 ) {
@@ -319,9 +311,7 @@ export async function getAllCategoryRules() {
             .from("salary_category_rules")
             .select(`
         *,
-        category:salary_categories!category_id(*),
-        apit_range:apit_ranges(*),
-        applies_to_category:salary_categories!applies_to_category_id(*)
+        category:salary_categories!category_id(*)
       `)
             .order("created_at", { ascending: false });
 
@@ -342,8 +332,7 @@ export async function getRulesByCategory(categoryId: string) {
             .from("salary_category_rules")
             .select(`
         *,
-        apit_range:apit_ranges(*),
-        applies_to_category:salary_categories!applies_to_category_id(*)
+        category:salary_categories!category_id(*)
       `)
             .eq("category_id", categoryId)
             .order("created_at", { ascending: false });
