@@ -1855,3 +1855,20 @@ export async function cancelRequest(requestId: string, userId: string) {
   revalidatePath('/requests')
   return { success: true }
 }
+
+// Get count of pending document requests for admin (for sidebar badge)
+export async function getPendingDocumentRequestsCount() {
+  const supabase = await createClient()
+
+  const { count, error } = await supabase
+    .from('document_requests')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending')
+
+  if (error) {
+    console.error('Error fetching pending document requests count:', error)
+    return 0
+  }
+
+  return count || 0
+}

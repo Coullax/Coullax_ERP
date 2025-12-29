@@ -219,34 +219,34 @@ export default function AdminDocumentRequestsPage() {
                     <TabsTrigger value="pending">
                         Pending
                         {stats.pending > 0 && (
-                            <Badge variant="warning" className="ml-2 px-1.5 py-0 text-xs">
+                            <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-xs">
                                 {stats.pending}
                             </Badge>
                         )}
                     </TabsTrigger>
                     <TabsTrigger value="fulfilled">
                         Fulfilled
-                        {stats.fulfilled > 0 && (
+                        {/* {stats.fulfilled > 0 && (
                             <Badge variant="success" className="ml-2 px-1.5 py-0 text-xs">
                                 {stats.fulfilled}
                             </Badge>
-                        )}
+                        )} */}
                     </TabsTrigger>
                     <TabsTrigger value="rejected">
                         Rejected
-                        {stats.rejected > 0 && (
+                        {/* {stats.rejected > 0 && (
                             <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-xs">
                                 {stats.rejected}
                             </Badge>
-                        )}
+                        )} */}
                     </TabsTrigger>
                     <TabsTrigger value="all">
                         All Requests
-                        {totalRequests > 0 && (
+                        {/* {totalRequests > 0 && (
                             <Badge variant="secondary" className="ml-2 px-1.5 py-0 text-xs">
                                 {totalRequests}
                             </Badge>
-                        )}
+                        )} */}
                     </TabsTrigger>
                 </TabsList>
 

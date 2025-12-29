@@ -64,7 +64,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import { getPendingVerificationsCount } from "@/app/actions/verification-actions";
-import { getPendingRequestsCount, getTeamLeadPendingRequestsCount, getAwaitingProofSubmissionCount } from "@/app/actions/request-actions";
+import { getPendingRequestsCount, getTeamLeadPendingRequestsCount, getAwaitingProofSubmissionCount, getPendingDocumentRequestsCount } from "@/app/actions/request-actions";
 
 const employeeNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/employee" },
@@ -165,6 +165,7 @@ export function Sidebar() {
   const [teamLeadPendingCount, setTeamLeadPendingCount] = useState(0);
   const [awaitingProofCount, setAwaitingProofCount] = useState(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [pendingDocumentRequestsCount, setPendingDocumentRequestsCount] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({ "Inventory": true, "Salary": true });
   const pathname = usePathname();
   const router = useRouter();
@@ -179,12 +180,14 @@ export function Sidebar() {
 
       if (isUserAdmin) {
         try {
-          const [verificationsCount, approvalsCount] = await Promise.all([
+          const [verificationsCount, approvalsCount, documentRequestsCount] = await Promise.all([
             getPendingVerificationsCount(),
-            getPendingRequestsCount()
+            getPendingRequestsCount(),
+            getPendingDocumentRequestsCount()
           ]);
           setPendingVerificationsCount(verificationsCount);
           setPendingApprovalsCount(approvalsCount);
+          setPendingDocumentRequestsCount(documentRequestsCount);
         } catch (error) {
           console.error('Sidebar: Failed to fetch pending counts:', error);
         }
@@ -236,6 +239,8 @@ export function Sidebar() {
         return { ...item, badge: pendingVerificationsCount };
       } else if (item.href === '/admin/approvals') {
         return { ...item, badge: pendingApprovalsCount };
+      } else if (item.href === '/admin/document-requests') {
+        return { ...item, badge: pendingDocumentRequestsCount };
       }
       return item;
     })
