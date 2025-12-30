@@ -96,6 +96,7 @@ const adminNavItems = [
     isExpandable: true,
     subItems: [
       { icon: DollarSign, label: "Base Salary Setup", href: "/admin/salary/base-salary" },
+      { icon: Clock, label: "Attendance Salary Calculation", href: "/admin/salary/attendance-calculation" },
       { icon: Settings, label: "Salary Setup", href: "/admin/salary/setup" },
       { icon: UserSquare2, label: "Employee Category Assign", href: "/admin/salary/category-assign" },
       { icon: DollarSign, label: "Salary Processing", href: "/admin/salary" },
