@@ -178,10 +178,125 @@ export async function adminMarkAttendance(
     check_out?: string
     status: string
     notes?: string
+  },
+  leaveDeduction?: {
+    employeeId: string
+    leaveType: string
+    daysToDeduct: number
+    shouldCancelLeave: boolean
   }
 ) {
   const supabase = await createClient()
 
+  // Handle leave deduction if provided
+  if (leaveDeduction && leaveDeduction.daysToDeduct > 0) {
+    console.log('Processing leave deduction:', leaveDeduction)
+
+    // Find the leave request for this employee on this date
+    const { data: leaveRequests, error: leaveError } = await supabase
+      .from('leave_requests')
+      .select(`
+        id,
+        employee_id,
+        start_date,
+        end_date,
+        leave_type,
+        total_days,
+        request_id
+      `)
+      .eq('employee_id', employeeId)
+      .lte('start_date', date)
+      .gte('end_date', date)
+      .limit(1)
+
+    if (leaveError) {
+      console.error('Error fetching leave request:', leaveError)
+      throw new Error('Failed to fetch leave request')
+    }
+
+    if (leaveRequests && leaveRequests.length > 0) {
+      const leaveRequest = leaveRequests[0]
+      console.log('Found leave request:', leaveRequest)
+
+      if (!leaveRequest.request_id) {
+        console.error('Leave request has no request_id')
+        throw new Error('Invalid leave request data')
+      }
+
+      // Verify the request is approved
+      const { data: requestData, error: requestError } = await supabase
+        .from('requests')
+        .select('id, status')
+        .eq('id', leaveRequest.request_id)
+        .single()
+
+      console.log('Request data:', requestData, 'Error:', requestError)
+
+      if (requestError || !requestData || requestData.status !== 'approved') {
+        console.log('Leave request not approved or not found, skipping deduction')
+      } else if (leaveDeduction.shouldCancelLeave) {
+        console.log('Cancelling leave request:', requestData.id)
+
+        // Cancel the leave request
+        const { error: cancelError } = await supabase
+          .from('requests')
+          .update({ status: 'cancelled' })
+          .eq('id', requestData.id)
+
+        if (cancelError) {
+          console.error('Error cancelling leave request:', cancelError)
+          throw new Error('Failed to cancel leave request')
+        }
+
+        console.log('Leave request cancelled successfully')
+
+        // Restore only the unused portion of leave days
+        // If half_day (0.5 deduction), restore 0.5 days (keep 0.5 deducted)
+        // If present (1 day deduction), restore 0 days (keep 1 day deducted)
+        const daysToRestore = leaveRequest.total_days - leaveDeduction.daysToDeduct
+
+        console.log('Days to restore:', daysToRestore, '(total:', leaveRequest.total_days, '- deduct:', leaveDeduction.daysToDeduct, ')')
+
+        if (daysToRestore > 0) {
+          const { data: leaveBalance, error: balanceError } = await supabase
+            .from('leave_balances')
+            .select('*')
+            .eq('employee_id', employeeId)
+            .eq('leave_type', leaveRequest.leave_type)
+            .single()
+
+          console.log('Current leave balance:', leaveBalance)
+
+          if (!balanceError && leaveBalance) {
+            const newUsedDays = leaveBalance.used_days - daysToRestore
+            const newRemainingDays = leaveBalance.remaining_days + daysToRestore
+
+            console.log('Updating balance - used:', leaveBalance.used_days, '->', newUsedDays, ', remaining:', leaveBalance.remaining_days, '->', newRemainingDays)
+
+            const { error: updateError } = await supabase
+              .from('leave_balances')
+              .update({
+                used_days: newUsedDays,
+                remaining_days: newRemainingDays
+              })
+              .eq('id', leaveBalance.id)
+
+            if (updateError) {
+              console.error('Error updating leave balance:', updateError)
+            } else {
+              console.log('Leave balance updated successfully')
+            }
+          }
+        } else {
+          console.log('No days to restore (employee worked full day)')
+        }
+      }
+    } else {
+      console.log('No leave request found for this date')
+    }
+  }
+
+  // Mark attendance
   const { error } = await supabase
     .from('attendance_logs')
     .upsert(

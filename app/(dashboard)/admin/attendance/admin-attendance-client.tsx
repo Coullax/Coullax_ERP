@@ -369,11 +369,19 @@ export function AdminAttendanceClient({
 
       toast.success(`Parsed ${result.records.length} attendance record(s)`)
 
-      // Encode records for URL
-      const encoded = Buffer.from(JSON.stringify(result.records)).toString('base64')
+      // Store records in sessionStorage instead of URL to avoid length limitations
+      const storageKey = `bulk-attendance-${Date.now()}`
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(result.records))
+      } catch (storageError) {
+        console.error('SessionStorage error:', storageError)
+        toast.error('Dataset too large to process. Please split into smaller files.')
+        setBulkUploadOpen(false)
+        return
+      }
 
-      // Navigate to review page
-      router.push(`/admin/attendance/bulk-review?data=${encoded}`)
+      // Navigate to review page with only the storage key
+      router.push(`/admin/attendance/bulk-review?key=${storageKey}`)
     } catch (error: any) {
       console.error('Error parsing Excel file:', error)
       toast.error(error.message || 'Failed to parse Excel file')

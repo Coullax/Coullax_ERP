@@ -11,6 +11,12 @@ export interface BulkAttendanceRecord {
     checkOut: string | null
     status: string
     notes?: string
+    leaveDeduction?: {
+        employeeId: string
+        leaveType: string
+        daysToDeduct: number
+        shouldCancelLeave: boolean
+    }
 }
 
 export interface BulkAttendanceResult {
@@ -69,6 +75,60 @@ export async function validateEmployeeIds(employeeIds: string[]) {
 }
 
 /**
+ * Check for leave conflicts - returns map of employeeId-date combinations that have approved leaves
+ */
+export async function checkLeaveConflicts(
+    employeeIds: string[],
+    dates: string[]
+): Promise<Map<string, string>> {
+    if (employeeIds.length === 0 || dates.length === 0) {
+        return new Map()
+    }
+
+    const supabase = await createClient()
+    const minDate = dates.reduce((a, b) => (a < b ? a : b))
+    const maxDate = dates.reduce((a, b) => (a > b ? a : b))
+
+    const { data, error } = await supabase
+        .from('leave_requests')
+        .select(`
+            employee_id,
+            start_date,
+            end_date,
+            leave_type,
+            request:requests!leave_requests_request_id_fkey(status)
+        `)
+        .in('employee_id', employeeIds)
+        .lte('start_date', maxDate)
+        .gte('end_date', minDate)
+        .eq('request.status', 'approved')
+
+    if (error) {
+        console.error('Error checking leave conflicts:', error)
+        return new Map()
+    }
+
+    // Create a map of "employeeId-date" -> leave type
+    const conflictMap = new Map<string, string>()
+
+    data?.forEach(leave => {
+        const startDate = new Date(leave.start_date)
+        const endDate = new Date(leave.end_date)
+
+        // Check each date in the leave range
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0]
+            if (dates.includes(dateStr)) {
+                const key = `${leave.employee_id}-${dateStr}`
+                conflictMap.set(key, leave.leave_type)
+            }
+        }
+    })
+
+    return conflictMap
+}
+
+/**
  * Bulk mark attendance for multiple employees
  */
 export async function bulkMarkAttendance(
@@ -83,12 +143,17 @@ export async function bulkMarkAttendance(
     // Process each record
     for (const record of records) {
         try {
-            await adminMarkAttendance(record.employeeId, record.date, {
-                check_in: record.checkIn || undefined,
-                check_out: record.checkOut || undefined,
-                status: record.status,
-                notes: record.notes || undefined,
-            })
+            await adminMarkAttendance(
+                record.employeeId,
+                record.date,
+                {
+                    check_in: record.checkIn || undefined,
+                    check_out: record.checkOut || undefined,
+                    status: record.status,
+                    notes: record.notes || undefined,
+                },
+                record.leaveDeduction
+            )
             result.success++
         } catch (error: any) {
             result.failed++
