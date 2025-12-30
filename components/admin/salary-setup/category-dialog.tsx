@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -71,6 +71,23 @@ export function CategoryDialog({
             category_type: category?.category_type || "addition",
         },
     });
+
+    // Reset form when category changes (for editing)
+    useEffect(() => {
+        if (category) {
+            form.reset({
+                name: category.name,
+                description: category.description || "",
+                category_type: category.category_type,
+            });
+        } else {
+            form.reset({
+                name: "",
+                description: "",
+                category_type: "addition",
+            });
+        }
+    }, [category, form]);
 
     const onSubmit = async (data: CategoryFormData) => {
         setIsSubmitting(true);
