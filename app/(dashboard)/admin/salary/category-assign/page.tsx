@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, TrendingUp, TrendingDown, Gift, Search, Loader2 } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Gift, Search, Loader2, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
     type SalaryCategory,
 } from "@/app/actions/salary-setup-actions";
 import { EmployeeAssignmentDialog } from "@/components/admin/salary-setup/employee-assignment-dialog";
+import { OvertimeManagementDialog } from "@/components/admin/salary/overtime-management-dialog";
 
 export default function CategoryAssignPage() {
     const [categories, setCategories] = useState<SalaryCategory[]>([]);
@@ -19,6 +20,7 @@ export default function CategoryAssignPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<SalaryCategory | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [overtimeDialogOpen, setOvertimeDialogOpen] = useState(false);
 
     useEffect(() => {
         loadCategories();
@@ -225,8 +227,13 @@ export default function CategoryAssignPage() {
                                         key={category.id}
                                         className="border-l-4 border-l-green-600 cursor-pointer hover:shadow-md transition-shadow"
                                         onClick={() => {
-                                            setSelectedCategory(category);
-                                            setDialogOpen(true);
+                                            // Check if this is the Overtime category
+                                            if (category.name.toLowerCase().includes("overtime")) {
+                                                setOvertimeDialogOpen(true);
+                                            } else {
+                                                setSelectedCategory(category);
+                                                setDialogOpen(true);
+                                            }
                                         }}
                                     >
                                         <CardHeader className="pb-3">
@@ -293,6 +300,46 @@ export default function CategoryAssignPage() {
                     </Card>
                 )}
 
+                {/* Others */}
+                {/* <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-purple-600" />
+                                    Others
+                                </CardTitle>
+                                <CardDescription>
+                                    Special salary components and adjustments
+                                </CardDescription>
+                            </div>
+                            <Badge className="bg-purple-600 hover:bg-purple-700">1</Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            <Card
+                                className="border-l-4 border-l-purple-600 cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => setOvertimeDialogOpen(true)}
+                            >
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-start justify-between">
+                                        <CardTitle className="text-base">Overtime (OT)</CardTitle>
+                                        <Badge variant="secondary" className="gap-1 bg-purple-600 hover:bg-purple-700 text-white">
+                                            <Clock className="w-3 h-3" />OT
+                                        </Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">
+                                        Manage and approve overtime hours for salary calculation
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </CardContent>
+                </Card> */}
+
                 {/* No results */}
                 {filteredCategories.length === 0 && (
                     <Card>
@@ -316,6 +363,13 @@ export default function CategoryAssignPage() {
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 category={selectedCategory}
+            />
+
+            {/* Overtime Management Dialog */}
+            <OvertimeManagementDialog
+                open={overtimeDialogOpen}
+                onOpenChange={setOvertimeDialogOpen}
+                initialMonth={new Date().toISOString().substring(0, 7)}
             />
         </div>
     );
