@@ -296,6 +296,52 @@ export async function adminMarkAttendance(
     }
   }
 
+  // If admin is marking attendance as "leave" (retroactive leave), deduct from leave balance
+  if (data.status === 'leave' && !leaveDeduction) {
+    console.log('Admin marking attendance as leave - deducting from balance')
+
+    // Get the month and year from the attendance date
+    const attendanceDate = new Date(date)
+    const month = attendanceDate.getMonth() + 1 // JavaScript months are 0-indexed
+    const year = attendanceDate.getFullYear()
+
+    console.log('Looking for leave balance for month:', month, 'year:', year)
+
+    const { data: leaveBalance, error: balanceError } = await supabase
+      .from('employee_leave_balances')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .eq('month', month)
+      .eq('year', year)
+      .single()
+
+    if (!balanceError && leaveBalance) {
+      console.log('Found leave balance:', leaveBalance)
+
+      // Check if employee has enough leave balance
+      if (leaveBalance.available_leaves >= 1) {
+        const { error: updateError } = await supabase
+          .from('employee_leave_balances')
+          .update({
+            used_leaves: Number(leaveBalance.used_leaves) + 1,
+            available_leaves: Number(leaveBalance.available_leaves) - 1
+          })
+          .eq('id', leaveBalance.id)
+
+        if (updateError) {
+          console.error('Error deducting leave balance:', updateError)
+        } else {
+          console.log('Leave balance deducted: 1 day from month', month, 'year', year)
+        }
+      } else {
+        console.warn('Insufficient leave balance for employee:', employeeId, 'month:', month, 'year:', year)
+        // You might want to throw an error here or handle it differently
+      }
+    } else {
+      console.error('Leave balance not found for employee:', employeeId, 'month:', month, 'year:', year, 'Error:', balanceError)
+    }
+  }
+
   // Mark attendance
   const { error } = await supabase
     .from('attendance_logs')

@@ -231,6 +231,22 @@ export function BulkReviewClient({ storageKey }: BulkReviewClientProps) {
       return !!(record.error || hasAnyTimes)
     }
 
+    // For leave records: both times must be null AND status must be 'leave'
+    if (record.onLeave) {
+      const hasAnyTimes = record.checkIn || record.checkOut
+      const isLeaveStatus = record.status === 'leave'
+      return !!(record.error || hasAnyTimes || !isLeaveStatus)
+    }
+
+    // For Poya days with filled times: status must be 'poya'
+    if (record.isPoya) {
+      const hasBothTimes = record.checkIn && record.checkOut
+      if (hasBothTimes) {
+        const isPoyaStatus = record.status === 'poya'
+        return !!(record.error || !isPoyaStatus)
+      }
+    }
+
     // For other records: validate based on times and status
     const hasBothTimes = record.checkIn && record.checkOut
     const hasNoTimes = !record.checkIn && !record.checkOut
@@ -587,9 +603,10 @@ export function BulkReviewClient({ storageKey }: BulkReviewClientProps) {
                             onChange={(e) => updateRecord(index, 'checkIn', e.target.value || null)}
                             className="pr-8"
                             step="1"
+                            disabled={!!record.error}
                           />
                           {/* Clear button inside input */}
-                          {record.checkIn && (
+                          {record.checkIn && !record.error && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -610,9 +627,10 @@ export function BulkReviewClient({ storageKey }: BulkReviewClientProps) {
                             onChange={(e) => updateRecord(index, 'checkOut', e.target.value || null)}
                             className="pr-8"
                             step="1"
+                            disabled={!!record.error}
                           />
                           {/* Clear button inside input */}
-                          {record.checkOut && (
+                          {record.checkOut && !record.error && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -684,7 +702,7 @@ export function BulkReviewClient({ storageKey }: BulkReviewClientProps) {
                         <Select
                           value={record.status}
                           onValueChange={(value) => updateRecord(index, 'status', value)}
-                          disabled={record.isHoliday}
+                          disabled={record.isHoliday || !!record.error || record.onLeave}
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
