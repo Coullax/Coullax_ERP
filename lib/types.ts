@@ -119,6 +119,8 @@ export interface SalaryPayment {
   additions: SalaryComponent[]
   deductions: SalaryComponent[]
   attendance_salary?: number
+  apit_deduction?: number
+  apit_percentage?: number
   category_additions?: number
   category_deductions?: number
   category_net?: number
