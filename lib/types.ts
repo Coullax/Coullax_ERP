@@ -118,6 +118,10 @@ export interface SalaryPayment {
   net_amount: number
   additions: SalaryComponent[]
   deductions: SalaryComponent[]
+  attendance_salary?: number
+  category_additions?: number
+  category_deductions?: number
+  category_net?: number
   status: 'draft' | 'paid'
   payment_date?: string
   notes?: string
