@@ -76,7 +76,15 @@ export function AttendanceCalculationDialog({
                 setNotes(existingResult.data.notes || "");
             } else {
                 setExistingRecord(null);
-                setCalculatedAmount("");
+
+                // Auto-calculate salary using formula: (base_salary / 30) * (30 - unpaid_leave_days)
+                if (employee.base_salary && statsResult.data) {
+                    const unpaidLeaveDays = statsResult.data.unpaid_leave || 0;
+                    const calculatedSalary = (employee.base_salary / 30) * (30 - unpaidLeaveDays);
+                    setCalculatedAmount(calculatedSalary.toFixed(2));
+                } else {
+                    setCalculatedAmount("");
+                }
                 setNotes("");
             }
         } catch (error: any) {
@@ -98,7 +106,7 @@ export function AttendanceCalculationDialog({
 
             const data = {
                 employee_id: employee.id,
-                month: month,
+                month: month + '-01', // Convert YYYY-MM to YYYY-MM-01 for DATE column
                 absent_days: attendanceStats.absent,
                 half_days: attendanceStats.half_day,
                 leave_days: attendanceStats.leave,
