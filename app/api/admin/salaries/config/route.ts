@@ -49,6 +49,16 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
+        // Fetch all APIT ranges for calculation
+        const { data: apitRanges, error: apitError } = await supabase
+            .from('apit_ranges')
+            .select('min_amount, max_amount, percentage')
+            .order('min_amount', { ascending: true });
+
+        if (apitError) {
+            console.error('Error fetching APIT ranges:', apitError);
+        }
+
         // For each employee, calculate detailed salary breakdown
         const employeesWithSalaryBreakdown = await Promise.all(
             (employees || []).map(async (employee: any) => {
@@ -100,8 +110,28 @@ export async function GET(request: Request) {
                     }
                 }
 
+                // Calculate APIT deduction based on base salary
+                let apitDeduction = 0;
+                let apitPercentage = 0;
+                if (apitRanges && apitRanges.length > 0 && baseSalary > 0) {
+                    // Find the matching APIT range for the base salary
+                    const matchingRange = apitRanges.find(range => {
+                        const minAmount = Number(range.min_amount) || 0;
+                        const maxAmount = range.max_amount ? Number(range.max_amount) : Infinity;
+                        return baseSalary >= minAmount && baseSalary <= maxAmount;
+                    });
+
+                    if (matchingRange) {
+                        apitPercentage = Number(matchingRange.percentage) || 0;
+                        apitDeduction = (baseSalary * apitPercentage) / 100;
+                    }
+                }
+
                 const categoryNet = categoryAdditions - categoryDeductions;
-                const calculatedNetSalary = baseSalary + categoryNet;
+                // Net Salary = Attendance Salary - APIT Deduction + Category Amount
+                // Use attendance salary if available, otherwise fall back to base salary
+                const salaryBase = attendanceSalary !== null ? attendanceSalary : baseSalary;
+                const calculatedNetSalary = salaryBase - apitDeduction + categoryNet;
 
                 return {
                     ...employee,
@@ -109,6 +139,8 @@ export async function GET(request: Request) {
                     category_additions: categoryAdditions,
                     category_deductions: categoryDeductions,
                     category_net: categoryNet,
+                    apit_deduction: apitDeduction,
+                    apit_percentage: apitPercentage,
                     calculated_net_salary: calculatedNetSalary
                 };
             })
