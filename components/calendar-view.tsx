@@ -294,10 +294,9 @@ export function CalendarView({
       </div>
 
       {/* Events Sidebar */}
-      <div className="w-80 bg-white dark:bg-gray-900 rounded-lg border p-4 flex flex-col">
+      {/* <div className="w-80 bg-white dark:bg-gray-900 rounded-lg border p-4 flex flex-col">
         {selectedDate ? (
           <>
-            {/* Selected Date Header */}
             <div className="mb-4 pb-4 border-b">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 {format(selectedDate, 'EEEE, MMMM d, yyyy')}
@@ -307,7 +306,6 @@ export function CalendarView({
               </p>
             </div>
 
-            {/* Events List */}
             <div className="flex-1 overflow-auto space-y-3">
               {selectedDateEvents.length > 0 ? (
                 selectedDateEvents.map(event => (
@@ -376,7 +374,7 @@ export function CalendarView({
             </p>
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 }

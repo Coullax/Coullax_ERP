@@ -1,39 +1,28 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { BarChartComponent } from '@/components/charts/bar-chart'
-import { Users, FileText, Clock, CheckCircle, Loader2, ArrowUp, ArrowDown } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { CalendarClient } from './calendar/calendar-client'
-import { toast } from 'sonner'
-import { formatDistanceToNow, format } from 'date-fns'
-import { useAuthStore } from '@/store/auth-store'
-
-interface RequestDistribution {
-  name: string
-  value: number
-}
-
-interface RecentRequest {
-  id: string
-  type: string
-  employee: string
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
-  date: string
-}
-
-interface DashboardData {
-  requestDistribution: RequestDistribution[]
-  recentRequests: RecentRequest[]
-  stats: {
-    totalEmployees: number
-    pendingRequests: number
-    monthEventCount: number
-  }
-}
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { BarChartComponent } from "@/components/charts/bar-chart"
+import {
+  Users,
+  FileText,
+  Clock,
+  CheckCircle,
+  Loader2,
+  ArrowUp,
+  ArrowDown,
+  LayoutDashboard,
+  CalendarIcon,
+  History,
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { CalendarClient } from "./calendar/calendar-client"
+import { formatDistanceToNow, format } from "date-fns"
+import { useAuthStore } from "@/store/auth-store"
+import { cn } from "@/lib/utils"
+import type { DashboardData } from "@/lib/types"
 
 export function AdminDashboardClient() {
   const router = useRouter()
@@ -55,7 +44,6 @@ export function AdminDashboardClient() {
       setDashboardData(data)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
@@ -63,36 +51,44 @@ export function AdminDashboardClient() {
 
   const stats = [
     {
-      title: 'Total Employees',
-      value: dashboardData?.stats.totalEmployees.toString() || '0',
+      title: "Total Employees",
+      value: dashboardData?.stats.totalEmployees.toString() || "0",
       change: 12,
-      trend: 'up' as const,
-      icon: <Users className="w-5 h-5 text-blue-600" />,
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      trend: "up" as const,
+      icon: Users,
+      bg: "bg-blue-50 dark:bg-blue-900/20",
+      iconColor: "text-blue-600",
+      trendColor: "text-blue-600",
     },
     {
-      title: 'Pending Requests',
-      value: dashboardData?.stats.pendingRequests.toString() || '0',
+      title: "Pending Requests",
+      value: dashboardData?.stats.pendingRequests.toString() || "0",
       change: -8,
-      trend: 'down' as const,
-      icon: <FileText className="w-5 h-5 text-orange-600" />,
-      bg: 'bg-orange-50 dark:bg-orange-900/20',
+      trend: "down" as const,
+      icon: FileText,
+      bg: "bg-orange-50 dark:bg-orange-900/20",
+      iconColor: "text-orange-600",
+      trendColor: "text-orange-600",
     },
     {
-      title: "Total Events",
-      value: dashboardData?.stats.monthEventCount.toString() || '0',
-      change: 0,
-      trend: 'up' as const,
-      icon: <Clock className="w-5 h-5 text-purple-600" />,
-      bg: 'bg-purple-50 dark:bg-purple-900/20',
+      title: "Active Events",
+      value: dashboardData?.stats.monthEventCount.toString() || "0",
+      change: 2.4,
+      trend: "up" as const,
+      icon: Clock,
+      bg: "bg-purple-50 dark:bg-purple-900/20",
+      iconColor: "text-purple-600",
+      trendColor: "text-purple-600",
     },
     {
-      title: 'Completed Tasks',
-      value: '157',
-      change: 18,
-      trend: 'up' as const,
-      icon: <CheckCircle className="w-5 h-5 text-green-600" />,
-      bg: 'bg-green-50 dark:bg-green-900/20',
+      title: "Success Rate",
+      value: "98.2%",
+      change: 1.2,
+      trend: "up" as const,
+      icon: CheckCircle,
+      bg: "bg-green-50 dark:bg-green-900/20",
+      iconColor: "text-green-600",
+      trendColor: "text-green-600",
     },
   ]
 
@@ -109,136 +105,191 @@ export function AdminDashboardClient() {
       awaiting_proof_submission: 'bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-medium',
     }
     const className = variants[status] || 'bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium'
-    const label = status.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-    return <span className={className}>{label}</span>
+    const label = status
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+    return (
+      <span className={className}>{label}</span>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-8 pb-8">
-      {/* 1. Hero Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="flex flex-col gap-6 p-4 md:p-8 max-w-(--breakpoint-2xl) mx-auto bg-background min-h-screen">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-border/50">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, {profile?.full_name?.split(' ')[0]} 👋
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
+            <LayoutDashboard className="w-3 h-3" />
+            <span>Overview</span>
+            <span>/</span>
+            <span className="text-foreground">Analytics Dashboard</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Welcome back, {profile?.full_name?.split(" ")[0] || "Admin"}
           </h1>
-          <p className="text-gray-500 mt-1 flex items-center gap-2">
-            {format(new Date(), 'EEEE, MMMM do, yyyy')}
+          <p className="text-sm text-muted-foreground mt-1">
+            System performance is stable. {dashboardData?.stats.pendingRequests || 0} requests awaiting your review.
           </p>
         </div>
-      </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex flex-col items-end mr-2">
+            <span className="text-xs font-semibold text-foreground">{format(new Date(), "HH:mm")}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-tighter">
+              {format(new Date(), "EEE, MMM d")}
+            </span>
+          </div>
+          <Button variant="outline" size="sm" className="h-9 gap-2 bg-transparent">
+            <CalendarIcon className="w-4 h-4" />
+            Schedule
+          </Button>
+          <Button
+            size="sm"
+            className="h-9 bg-foreground text-background hover:bg-foreground/90 transition-all active:scale-95"
+          >
+            Export Report
+          </Button>
+        </div>
+      </header>
 
-      {/* 2. Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <Card key={stat.title} className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 rounded-lg ${stat.bg}`}>
-                  {stat.icon}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat) => (
+          <Card
+            key={stat.title}
+            className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50/50 transition-colors"
+          >
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className={cn("p-2 rounded-lg", stat.bg)}>
+                  <stat.icon className={cn("w-4 h-4", stat.iconColor)} />
                 </div>
-                {stat.change !== undefined && (
-                  <div className={`flex items-center text-xs font-medium ${stat.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {stat.change >= 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                <Badge
+                  variant="secondary"
+                  className="bg-transparent text-[10px] font-bold px-1.5 h-5 flex items-center gap-1"
+                >
+                  <span className={cn("flex items-center", stat.change >= 0 ? "text-green-600" : "text-red-600")}>
+                    {stat.change >= 0 ? <ArrowUp className="w-2.5 h-2.5 mr-1" /> : <ArrowDown className="w-2.5 h-2.5 mr-1" />}
                     {Math.abs(stat.change)}%
-                  </div>
-                )}
+                  </span>
+                </Badge>
               </div>
-              <div>
-                <p className="text-sm text-gray-500 font-medium">{stat.title}</p>
-                <p className="text-2xl font-bold tracking-tight mt-1">{stat.value}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{stat.title}</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-2xl font-bold tabular-nums text-foreground">{stat.value}</span>
+                <span className="text-[10px] text-muted-foreground italic">vs last month</span>
               </div>
             </CardContent>
           </Card>
         ))}
-      </div>
+      </section>
 
-      <CalendarClient />
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-8 flex flex-col gap-6">
+          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900 flex-1 overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+              <div className="space-y-1">
+                <CardTitle className="text-base font-semibold">Request Distribution</CardTitle>
+                <CardDescription className="text-xs">Daily volume per request category</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-[10px] uppercase font-medium text-muted-foreground">Main Metric</span>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4">
+              {loading ? (
+                <div className="h-[320px] flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                </div>
+              ) : (
+                <div className="h-[320px] w-full">
+                  <BarChartComponent
+                    title=""
+                    data={dashboardData?.requestDistribution || []}
+                    dataKey="value"
+                    color="#3b82f6"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* 3. Charts and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Request Distribution Chart */}
-        <div className="lg:col-span-2">
-          {loading ? (
-            <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 h-full">
-              <CardHeader>
-                <CardTitle>Request Type Distribution</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[300px] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="h-full p-1 rounded-xl border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-              <BarChartComponent
-                title="Request Type Distribution"
-                data={dashboardData?.requestDistribution || []}
-                dataKey="value"
-                color="#3b82f6"
-              />
-            </div>
-          )}
+          <div className="rounded-lg overflow-hidden border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900">
+            <CalendarClient />
+          </div>
         </div>
 
-        {/* Recent Requests */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-gray-500" />
-              Recent Requests
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-500 hover:text-gray-900"
-              onClick={() => router.push('/admin/approvals')}
-            >
-              View All
-            </Button>
-          </div>
-
-          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+        <aside className="xl:col-span-4 space-y-6">
+          <Card className="border-0 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 bg-white dark:bg-gray-900 h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-muted-foreground" />
+                <CardTitle className="text-base font-semibold">Live Feed</CardTitle>
+              </div>
+              <Button
+                variant="link"
+                size="sm"
+                className="text-[10px] uppercase font-bold tracking-tighter text-muted-foreground hover:text-foreground"
+                onClick={() => router.push("/admin/approvals")}
+              >
+                View Logs
+              </Button>
+            </CardHeader>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/30" />
+                  <span className="text-xs text-muted-foreground animate-pulse">Syncing data...</span>
                 </div>
               ) : dashboardData?.recentRequests && dashboardData.recentRequests.length > 0 ? (
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {dashboardData.recentRequests.slice(0, 5).map((request) => (
+                  {dashboardData.recentRequests.slice(0, 7).map((request) => (
                     <div
                       key={request.id}
-                      className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/admin/approvals`)} // Or specific detail link
+                      className="group p-4 flex flex-col gap-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all cursor-pointer border-l-2 border-transparent hover:border-primary"
+                      onClick={() => router.push(`/admin/approvals`)}
                     >
-                      <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 shrink-0">
-                        <FileText className="w-4 h-4 text-gray-500" />
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-semibold text-xs text-foreground uppercase tracking-tight group-hover:text-primary transition-colors truncate">
+                            {request.type}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                            {request.employee}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                          {formatDistanceToNow(new Date(request.date), { addSuffix: false })}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm truncate">{request.type}</p>
-                          <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
-                            {formatDistanceToNow(new Date(request.date), { addSuffix: true })}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-gray-500 truncate">{request.employee}</p>
-                          {getStatusBadge(request.status)}
-                        </div>
+                      <div className="flex items-center justify-between mt-1">
+                        {getStatusBadge(request.status)}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <FileText className="w-6 h-6 text-gray-400" />
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                    <FileText className="w-5 h-5 text-muted-foreground/50" />
                   </div>
-                  <p className="text-gray-500 font-medium">No recent requests</p>
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-widest">Idle State</p>
+                  <p className="text-xs text-muted-foreground mt-1">No active requests found in the system logs.</p>
                 </div>
               )}
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center justify-between text-[10px] uppercase font-bold text-muted-foreground">
+                  <span>System Uptime: 99.9%</span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </div>
+        </aside>
       </div>
     </div>
   )

@@ -160,3 +160,26 @@ export interface Visitor {
   notes?: string;
   created_at: string;
 }
+
+export interface RequestDistribution {
+  name: string
+  value: number
+}
+
+export interface RecentRequest {
+  id: string
+  type: string
+  employee: string
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  date: string
+}
+
+export interface DashboardData {
+  requestDistribution: RequestDistribution[]
+  recentRequests: RecentRequest[]
+  stats: {
+    totalEmployees: number
+    pendingRequests: number
+    monthEventCount: number
+  }
+}
