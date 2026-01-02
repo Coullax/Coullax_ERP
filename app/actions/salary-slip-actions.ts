@@ -7,12 +7,6 @@ export async function getSalarySlip(paymentId: string) {
     const supabase = createAdminClient()
 
     // Fetch payment with all related details
-    // We need to fetch:
-    // - Payment details (amounts, breakdown)
-    // - Employee details (name, id, NIC, EPF)
-    // - Department & Designation
-    // - Salary Config (maybe for verification, but payment record should have the snapshot)
-
     const { data: payment, error } = await supabase
         .from('salary_payments')
         .select(`
@@ -21,7 +15,9 @@ export async function getSalarySlip(paymentId: string) {
         id,
         employee_no,
         employee_id,
+        nic,
         joining_date,
+        policy_id,
         department:departments(name),
         designation:designations(title),
         profile:profiles!employees_id_fkey(
@@ -39,7 +35,59 @@ export async function getSalarySlip(paymentId: string) {
         return null
     }
 
-    return payment
+    // Get NIC directly from employee record
+    const nicNumber = payment?.employee?.nic || null
+
+    // Fetch attendance salary for the month
+    let attendanceData = null
+    if (payment?.employee?.id && payment?.month) {
+        const monthStr = payment.month // YYYY-MM format
+        const { data: attSalary } = await supabase
+            .from('attendance_salary')
+            .select('*')
+            .eq('employee_id', payment.employee.id)
+            .eq('month', monthStr + '-01')
+            .maybeSingle()
+
+        attendanceData = attSalary
+    }
+
+    // Fetch bank details
+    let bankDetails = null
+    if (payment?.employee?.id) {
+        const { data: bank } = await supabase
+            .from('bank_details')
+            .select('bank_name, account_number')
+            .eq('employee_id', payment.employee.id)
+            .eq('status', 'verified')
+            .maybeSingle()
+
+        bankDetails = bank
+    }
+
+    // Fetch leave balance for the month
+    let leaveBalance = null
+    if (payment?.employee?.id && payment?.employee?.policy_id && payment?.month) {
+        const monthDate = new Date(payment.month + '-01')
+        const { data: balance } = await supabase
+            .from('employee_leave_balance')
+            .select('total_leaves, used_leaves, available_leaves')
+            .eq('employee_id', payment.employee.id)
+            .eq('policy_id', payment.employee.policy_id)
+            .eq('month', monthDate.getMonth() + 1)
+            .eq('year', monthDate.getFullYear())
+            .maybeSingle()
+
+        leaveBalance = balance
+    }
+
+    return {
+        ...payment,
+        nic_number: nicNumber,
+        attendance_data: attendanceData,
+        bank_details: bankDetails,
+        leave_balance: leaveBalance,
+    }
 }
 
 
