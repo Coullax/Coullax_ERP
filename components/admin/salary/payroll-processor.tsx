@@ -88,6 +88,7 @@ export function PayrollProcessor() {
                             <TableHead>Status</TableHead>
                             <TableHead>Base Salary</TableHead>
                             <TableHead>Attendance Salary</TableHead>
+                            <TableHead>APIT Deduction</TableHead>
                             <TableHead>Category Amount</TableHead>
                             <TableHead>Net Salary</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -96,13 +97,13 @@ export function PayrollProcessor() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center">
+                                <TableCell colSpan={9} className="h-24 text-center">
                                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : employees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center">
+                                <TableCell colSpan={9} className="h-24 text-center">
                                     No employees found.
                                 </TableCell>
                             </TableRow>
@@ -195,6 +196,35 @@ export function PayrollProcessor() {
                                                         ? Number(emp.attendance_salary).toLocaleString()
                                                         : "-"}
                                                 </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {payment ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono text-sm text-red-600">
+                                                        -{payment.apit_deduction !== null && payment.apit_deduction !== undefined
+                                                            ? Number(payment.apit_deduction).toLocaleString()
+                                                            : "0"}
+                                                    </span>
+                                                    {payment.apit_percentage !== undefined && payment.apit_percentage > 0 && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            ({payment.apit_percentage}%)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono text-sm text-red-600">
+                                                        -{emp.apit_deduction !== null && emp.apit_deduction !== undefined
+                                                            ? Number(emp.apit_deduction).toLocaleString()
+                                                            : "0"}
+                                                    </span>
+                                                    {emp.apit_percentage !== undefined && emp.apit_percentage > 0 && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            ({emp.apit_percentage}%)
+                                                        </span>
+                                                    )}
+                                                </div>
                                             )}
                                         </TableCell>
                                         <TableCell>
