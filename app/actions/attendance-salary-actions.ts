@@ -118,27 +118,36 @@ export async function calculateAttendanceStats(employeeId: string, month: string
         }
 
         // Calculate unpaid leaves from leave_requests
+        // Query the leave_requests table directly and join with requests
+        // We need to find leaves that overlap with the selected month:
+        // - Leaves that start during the month
+        // - Leaves that end during the month
+        // - Leaves that span the entire month
         const { data: unpaidLeaves, error: unpaidError } = await supabase
-            .from('requests')
+            .from('leave_requests')
             .select(`
-        id,
-        leave_requests!inner(
-          leave_type,
-          total_days
+        total_days,
+        leave_type,
+        start_date,
+        end_date,
+        request:requests!inner(
+          employee_id,
+          request_type,
+          status
         )
       `)
-            .eq('employee_id', employeeId)
-            .eq('request_type', 'leave')
-            .eq('status', 'approved')
-            .gte('leave_requests.start_date', startDateStr)
-            .lte('leave_requests.end_date', endDateStr)
+            .eq('request.employee_id', employeeId)
+            .eq('request.request_type', 'leave')
+            .eq('request.status', 'approved')
+            .eq('leave_type', 'unpaid')
+            .lte('start_date', endDateStr)  // Leave starts before or during the month
+            .gte('end_date', startDateStr)  // Leave ends during or after the month
 
         if (unpaidError) throw unpaidError
 
         // Count unpaid leave days
         const unpaidLeaveDays = unpaidLeaves
-            ?.filter((req: any) => req.leave_requests?.leave_type === 'unpaid')
-            .reduce((sum: number, req: any) => sum + (req.leave_requests?.total_days || 0), 0) || 0
+            ?.reduce((sum: number, leave: any) => sum + (parseFloat(leave.total_days) || 0), 0) || 0
 
         return {
             success: true,
