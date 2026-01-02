@@ -8,6 +8,7 @@ export async function GET(request: Request) {
         const supabase = await createClient()
         const { searchParams } = new URL(request.url)
         const employee_id = searchParams.get('employee_id')
+        const month = searchParams.get('month') // Get month parameter for attendance salary
 
         // Get current user and verify admin
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -48,10 +49,30 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
-        // For each employee, calculate net salary from category assignments
-        const employeesWithNetSalary = await Promise.all(
+        // For each employee, calculate detailed salary breakdown
+        const employeesWithSalaryBreakdown = await Promise.all(
             (employees || []).map(async (employee: any) => {
                 const baseSalary = employee.salary?.base_amount || 0;
+
+                // Get attendance-based salary for the selected month
+                let attendanceSalary = null;
+                if (month) {
+                    const monthDate = month + '-01';
+                    const { data: attendanceData, error: attendanceError } = await supabase
+                        .from('attendance_salary')
+                        .select('calculated_amount')
+                        .eq('employee_id', employee.id)
+                        .eq('month', monthDate)
+                        .maybeSingle();
+
+                    if (attendanceError) {
+                        console.error('Error fetching attendance salary:', attendanceError);
+                    }
+
+                    if (attendanceData?.calculated_amount !== null && attendanceData?.calculated_amount !== undefined) {
+                        attendanceSalary = parseFloat(String(attendanceData.calculated_amount));
+                    }
+                }
 
                 // Get all category assignments for this employee
                 const { data: assignments } = await supabase
@@ -62,29 +83,47 @@ export async function GET(request: Request) {
                     `)
                     .eq('employee_id', employee.id);
 
-                // Calculate net salary
-                let netSalary = baseSalary;
+                // Calculate category additions and deductions separately
+                let categoryAdditions = 0;
+                let categoryDeductions = 0;
+
                 if (assignments && assignments.length > 0) {
                     for (const assignment of assignments) {
                         const amount = assignment.category_amount || 0;
                         const categoryType = (assignment.category as any)?.category_type;
 
                         if (categoryType === 'addition' || categoryType === 'allowance') {
-                            netSalary += amount;
+                            categoryAdditions += amount;
                         } else if (categoryType === 'deduction') {
-                            netSalary -= amount;
+                            categoryDeductions += amount;
                         }
                     }
                 }
 
+                const categoryNet = categoryAdditions - categoryDeductions;
+                const calculatedNetSalary = baseSalary + categoryNet;
+
                 return {
                     ...employee,
-                    calculated_net_salary: netSalary
+                    attendance_salary: attendanceSalary,
+                    category_additions: categoryAdditions,
+                    category_deductions: categoryDeductions,
+                    category_net: categoryNet,
+                    calculated_net_salary: calculatedNetSalary
                 };
             })
         );
 
-        return NextResponse.json({ employees: employeesWithNetSalary || [] })
+        // Log employees with attendance salary
+        const employeesWithAttendance = employeesWithSalaryBreakdown.filter(emp => emp.attendance_salary !== null);
+        console.log('=== Employees with attendance salary data ===');
+        console.log(`Total employees: ${employeesWithSalaryBreakdown.length}`);
+        console.log(`Employees with attendance data: ${employeesWithAttendance.length}`);
+        employeesWithAttendance.forEach(emp => {
+            console.log(`  - ${emp.employee_id}: ${emp.attendance_salary} LKR`);
+        });
+
+        return NextResponse.json({ employees: employeesWithSalaryBreakdown || [] })
     } catch (error: any) {
         console.error('Error in GET admin salary config:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
