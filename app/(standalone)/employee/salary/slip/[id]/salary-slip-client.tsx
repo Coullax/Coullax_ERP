@@ -47,6 +47,22 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
     const deductions = Array.isArray(payment.deductions) ? payment.deductions : [];
 
     const basicSalary = payment.base_amount || 0;
+    const attendanceSalary = payment.attendance_salary ?? payment.attendance_data?.calculated_amount ?? null;
+    const apitDeduction = payment.apit_deduction || 0;
+    const apitPercentage = payment.apit_percentage || 0;
+    const categoryNet = payment.category_net || 0;
+
+    // Leave data
+    const leaveBalance = payment.leave_balance;
+    const attendanceData = payment.attendance_data;
+    const leavesAllowed = leaveBalance?.total_leaves ?? attendanceData?.total_working_days ?? '-';
+    const leaveTaken = leaveBalance?.used_leaves ?? attendanceData?.leave_days ?? 0;
+    const noPayLeave = attendanceData?.unpaid_leave_days ?? 0;
+
+    // Bank details
+    const bankDetails = payment.bank_details;
+    const accountNumber = bankDetails?.account_number || 'Not Available';
+    const bankName = bankDetails?.bank_name || 'Not Available';
 
     const handleApprove = async () => {
         setIsApproving(true);
@@ -116,7 +132,7 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                                     <span className="font-medium">- {profile?.full_name || 'N/A'}</span>
 
                                     <span className="text-gray-600">NIC</span>
-                                    <span className="font-medium">- {'-'}</span>
+                                    <span className="font-medium">- {payment.nic_number || 'N/A'}</span>
 
                                     <span className="text-gray-600">Department</span>
                                     <span className="font-medium">- {department?.name || 'N/A'}</span>
@@ -155,11 +171,11 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
 
                             <div className="grid grid-cols-[auto_1fr] gap-x-2 text-left mb-2">
                                 <span className="text-gray-600 text-xs">Leaves Allowed</span>
-                                <span className="text-xs font-medium">- 13</span>
+                                <span className="text-xs font-medium">- {leavesAllowed}</span>
                                 <span className="text-gray-600 text-xs">Leave Taken</span>
-                                <span className="text-xs font-medium">- 0</span>
+                                <span className="text-xs font-medium">- {leaveTaken}</span>
                                 <span className="text-gray-600 text-xs">No Pay Leave</span>
-                                <span className="text-xs font-medium">- 00</span>
+                                <span className="text-xs font-medium">- {noPayLeave}</span>
                             </div>
 
                             <div className="mt-4">
@@ -172,8 +188,8 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                             </div>
 
                             <p className="mt-4 text-xs text-gray-500">
-                                Account Number - Not Available<br />
-                                Bank, Branch - Not Available
+                                Account Number - {accountNumber}<br />
+                                Bank - {bankName}
                             </p>
                         </div>
                     </div>
@@ -196,10 +212,30 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                                 <div className="text-right font-medium">{basicSalary.toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR</div>
                             </div>
 
-                            {/* Allowances Section */}
+                            {/* Attendance Salary */}
+                            {attendanceSalary !== null && (
+                                <div className="grid grid-cols-[1fr_100px_100px_150px]">
+                                    <div className="font-medium">Attendance Salary</div>
+                                    <div className="text-center text-gray-500">{attendanceData?.total_working_days || '-'}</div>
+                                    <div className="text-center text-gray-500">-</div>
+                                    <div className="text-right font-medium">{Number(attendanceSalary).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR</div>
+                                </div>
+                            )}
+
+                            {/* Category Additions */}
+                            {categoryNet > 0 && (
+                                <div className="grid grid-cols-[1fr_100px_100px_150px]">
+                                    <div className="font-medium text-green-600">Category Additions</div>
+                                    <div className="text-center text-gray-500">-</div>
+                                    <div className="text-center text-gray-500">-</div>
+                                    <div className="text-right font-medium text-green-600">+{categoryNet.toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR</div>
+                                </div>
+                            )}
+
+                            {/* Other Allowances Section */}
                             {additions.length > 0 && (
                                 <div className="mt-4">
-                                    <p className="font-semibold text-gray-900 mb-2">Allowances:</p>
+                                    <p className="font-semibold text-gray-900 mb-2">Other Allowances:</p>
                                     {additions.map((item: any, idx: number) => (
                                         <div key={idx} className="grid grid-cols-[1fr_100px_100px_150px] mb-1">
                                             <div className="pl-4 text-gray-600">{item.name}</div>
@@ -214,7 +250,7 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                             <div className="border-t border-gray-200 mt-4 pt-2 grid grid-cols-[1fr_150px]">
                                 <div className="text-right pr-4 font-semibold text-gray-700">Total Allowances</div>
                                 <div className="text-right font-semibold">
-                                    {additions.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR
+                                    {(additions.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0) + (categoryNet > 0 ? categoryNet : 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR
                                 </div>
                             </div>
 
@@ -235,6 +271,23 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                         </div>
 
                         <div className="space-y-2 text-sm">
+                            {/* APIT Deduction */}
+                            {apitDeduction > 0 && (
+                                <div className="grid grid-cols-[1fr_150px]">
+                                    <div className="font-medium text-red-600">APIT Tax ({apitPercentage}%)</div>
+                                    <div className="text-right text-red-600">{apitDeduction.toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR</div>
+                                </div>
+                            )}
+
+                            {/* Category Deductions */}
+                            {categoryNet < 0 && (
+                                <div className="grid grid-cols-[1fr_150px]">
+                                    <div className="font-medium text-red-600">Category Deductions</div>
+                                    <div className="text-right text-red-600">{Math.abs(categoryNet).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR</div>
+                                </div>
+                            )}
+
+                            {/* Other Deductions */}
                             {deductions.map((item: any, idx: number) => (
                                 <div key={idx} className="grid grid-cols-[1fr_150px]">
                                     <div className="font-medium text-gray-600">{item.name}</div>
@@ -242,14 +295,14 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                                 </div>
                             ))}
 
-                            {deductions.length === 0 && (
+                            {deductions.length === 0 && apitDeduction === 0 && categoryNet >= 0 && (
                                 <div className="text-gray-400 italic text-sm">No deductions</div>
                             )}
 
                             <div className="border-t border-gray-200 mt-4 pt-2 grid grid-cols-[1fr_150px]">
                                 <div className="text-right pr-4 font-semibold text-gray-700">Total Deductions</div>
-                                <div className="text-right font-semibold">
-                                    {payment.deductions.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR
+                                <div className="text-right font-semibold text-red-600">
+                                    {(apitDeduction + (categoryNet < 0 ? Math.abs(categoryNet) : 0) + deductions.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })} LKR
                                 </div>
                             </div>
 
