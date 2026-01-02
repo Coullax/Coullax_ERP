@@ -61,7 +61,19 @@ export async function POST(request: Request) {
     try {
         const supabase = await createClient()
         const body = await request.json()
-        const { employee_id, month, additions, deductions, status, notes } = body
+        const {
+            employee_id,
+            month,
+            additions,
+            deductions,
+            status,
+            notes,
+            attendance_salary,
+            apit_deduction,
+            apit_percentage,
+            category_net,
+            net_amount: passedNetAmount
+        } = body
 
         // Auth Check
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -90,27 +102,15 @@ export async function POST(request: Request) {
 
         const base_amount = Number(config.base_amount)
 
-        // 2. Calculate Totals
-        // Additions = Recurring Allowances + One-time Additions (Bonus)
-        const recurringAllowances = (config.recurring_allowances as SalaryComponent[]) || []
-        const oneTimeAdditions = (additions as SalaryComponent[]) || []
-        const allAdditions = [...recurringAllowances, ...oneTimeAdditions] // Store both in payment record for immutability? Or just the one-times? 
-        // Ideally we snapshot everything into the payment record. 
-        // However, the input 'additions' might already include everything if the frontend handles it, or just extras.
-        // Let's assume the frontend sends the *final* list of additions/deductions to be saved.
-        // BUT, for a "Process" action, likely we start with defaults.
-        // Let's assume the Body contains text-confirmed arrays. If not, we might need to merge.
-        // For simplicity: The API trusts the passed `additions` and `deductions` arrays as the FINAL breakdown for this month.
-        // The Frontend should have pre-populated them from config.
-
-        // Total Additions
+        // 2. Calculate Totals for additions/deductions
         const totalAdditions = (additions as SalaryComponent[]).reduce((sum, item) => sum + Number(item.amount), 0)
-
-        // Total Deductions
         const totalDeductions = (deductions as SalaryComponent[]).reduce((sum, item) => sum + Number(item.amount), 0)
 
         const gross_amount = base_amount + totalAdditions
-        const net_amount = gross_amount - totalDeductions
+
+        // Use the net_amount passed from frontend (which includes attendance, APIT, categories, etc.)
+        // Or calculate it here if not passed
+        const net_amount = passedNetAmount !== undefined ? passedNetAmount : (gross_amount - totalDeductions)
 
         // 3. Save to salary_payments
         const { data: payment, error: saveError } = await supabase
@@ -121,6 +121,10 @@ export async function POST(request: Request) {
                 base_amount,
                 gross_amount,
                 net_amount,
+                attendance_salary: attendance_salary ?? null,
+                apit_deduction: apit_deduction ?? 0,
+                apit_percentage: apit_percentage ?? 0,
+                category_net: category_net ?? 0,
                 additions: additions || [],
                 deductions: deductions || [],
                 status: status || 'draft',
