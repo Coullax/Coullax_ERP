@@ -33,12 +33,15 @@ export function PayrollProcessor() {
         setLoading(true)
         try {
             // Fetch all employees (using config endpoint which returns all)
-            const empRes = await fetch("/api/admin/salaries/config")
+            const empRes = await fetch(`/api/admin/salaries/config?month=${month}`)
             const empData = await empRes.json()
 
             // Fetch payments for the month
             const payRes = await fetch(`/api/admin/salaries/process?month=${month}`)
             const payData = await payRes.json()
+
+            console.log('Employees data received:', empData.employees?.slice(0, 2)); // Log first 2 employees
+            console.log('First employee attendance_salary:', empData.employees?.[0]?.attendance_salary);
 
             if (empData.employees) setEmployees(empData.employees)
             if (payData.payments) setPayments(payData.payments)
@@ -84,6 +87,8 @@ export function PayrollProcessor() {
                             <TableHead>Designation</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Base Salary</TableHead>
+                            <TableHead>Attendance Salary</TableHead>
+                            <TableHead>Category Amount</TableHead>
                             <TableHead>Net Salary</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -91,13 +96,13 @@ export function PayrollProcessor() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
+                                <TableCell colSpan={8} className="h-24 text-center">
                                     <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                                 </TableCell>
                             </TableRow>
                         ) : employees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
+                                <TableCell colSpan={8} className="h-24 text-center">
                                     No employees found.
                                 </TableCell>
                             </TableRow>
@@ -176,6 +181,46 @@ export function PayrollProcessor() {
                                                     : (emp.salary?.base_amount ? Number(emp.salary.base_amount).toLocaleString() : "-")
                                                 }
                                             </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {payment ? (
+                                                <span className="font-mono text-sm">
+                                                    {payment.attendance_salary !== null && payment.attendance_salary !== undefined
+                                                        ? Number(payment.attendance_salary).toLocaleString()
+                                                        : "-"}
+                                                </span>
+                                            ) : (
+                                                <span className="font-mono text-sm text-muted-foreground">
+                                                    {emp.attendance_salary !== null && emp.attendance_salary !== undefined
+                                                        ? Number(emp.attendance_salary).toLocaleString()
+                                                        : "-"}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {payment ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono text-sm">
+                                                        {payment.category_net ? Number(payment.category_net).toLocaleString() : "0"}
+                                                    </span>
+                                                    {(payment.category_additions || payment.category_deductions) && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            +{Number(payment.category_additions || 0).toLocaleString()} / -{Number(payment.category_deductions || 0).toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono text-sm text-muted-foreground">
+                                                        {emp.category_net ? Number(emp.category_net).toLocaleString() : "0"}
+                                                    </span>
+                                                    {(emp.category_additions || emp.category_deductions) && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            +{Number(emp.category_additions || 0).toLocaleString()} / -{Number(emp.category_deductions || 0).toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             {payment ? (
