@@ -57,6 +57,10 @@ export function ProcessSalaryModal({
 }: ProcessSalaryModalProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [baseSalary, setBaseSalary] = useState<number>(0)
+    const [attendanceSalary, setAttendanceSalary] = useState<number | null>(null)
+    const [apitDeduction, setApitDeduction] = useState<number>(0)
+    const [apitPercentage, setApitPercentage] = useState<number>(0)
+    const [categoryNet, setCategoryNet] = useState<number>(0)
     const [isLoadingConfig, setIsLoadingConfig] = useState(false)
     const [disputeReason, setDisputeReason] = useState<string | null>(null)
 
@@ -77,7 +81,9 @@ export function ProcessSalaryModal({
     const totalAdditions = watchedAdditions?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0
     const totalDeductions = watchedDeductions?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0
     const grossSalary = baseSalary + totalAdditions
-    const netSalary = grossSalary - totalDeductions
+    // Net Salary = Attendance Salary - APIT Deduction + Category Amount + Additions - Deductions
+    const salaryBase = attendanceSalary !== null ? attendanceSalary : baseSalary
+    const netSalary = salaryBase - apitDeduction + categoryNet + totalAdditions - totalDeductions
 
     // Fetch config when employeeId changes or modal opens
     // Fetch config or existing payment when employeeId/month changes
@@ -99,6 +105,11 @@ export function ProcessSalaryModal({
 
                 if (existingPayment) {
                     setBaseSalary(Number(existingPayment.base_amount))
+                    setAttendanceSalary(existingPayment.attendance_salary !== null && existingPayment.attendance_salary !== undefined
+                        ? Number(existingPayment.attendance_salary) : null)
+                    setApitDeduction(Number(existingPayment.apit_deduction) || 0)
+                    setApitPercentage(Number(existingPayment.apit_percentage) || 0)
+                    setCategoryNet(Number(existingPayment.category_net) || 0)
                     form.setValue("additions", existingPayment.additions || [])
                     form.setValue("deductions", existingPayment.deductions || [])
                     form.setValue("notes", existingPayment.notes || "")
@@ -114,7 +125,7 @@ export function ProcessSalaryModal({
                 }
 
                 // 2. If no payment, load default config
-                const configRes = await fetch(`/api/admin/salaries/config?employee_id=${employeeId}`)
+                const configRes = await fetch(`/api/admin/salaries/config?employee_id=${employeeId}&month=${currentMonth}`)
                 const configData = await configRes.json()
 
                 const employee = configData.employees?.[0]
@@ -125,9 +136,24 @@ export function ProcessSalaryModal({
                     setBaseSalary(Number(config.base_amount))
                     form.setValue("additions", (config.recurring_allowances || []).map(a => ({ ...a, type: 'allowance' })))
                     form.setValue("deductions", (config.recurring_deductions || []).map(d => ({ ...d, type: 'deduction' })))
-                } else {
+                }
+
+                // Set attendance salary, APIT, and category values from the employee data
+                if (employee) {
+                    setAttendanceSalary(employee.attendance_salary !== null && employee.attendance_salary !== undefined
+                        ? Number(employee.attendance_salary) : null)
+                    setApitDeduction(Number(employee.apit_deduction) || 0)
+                    setApitPercentage(Number(employee.apit_percentage) || 0)
+                    setCategoryNet(Number(employee.category_net) || 0)
+                }
+
+                if (!salaryConfig && !employee) {
                     toast.error("Salary configuration not found. Please configure first.")
                     setBaseSalary(0)
+                    setAttendanceSalary(null)
+                    setApitDeduction(0)
+                    setApitPercentage(0)
+                    setCategoryNet(0)
                     form.setValue("additions", [])
                     form.setValue("deductions", [])
                     setDisputeReason(null)
@@ -165,9 +191,12 @@ export function ProcessSalaryModal({
                 body: JSON.stringify({
                     employee_id: employeeId,
                     ...data,
-                    status: 'paid' // Or 'draft' ? Let's Assume Process = Paid/Finalize for now, or maybe just calculated.
-                    // Let's autoset to 'paid' for simplicity or add a checkbox "Mark as Paid".
-                    // The prompt said "Process", implying calculation.
+                    attendance_salary: attendanceSalary,
+                    apit_deduction: apitDeduction,
+                    apit_percentage: apitPercentage,
+                    category_net: categoryNet,
+                    net_amount: netSalary,
+                    status: 'paid'
                 }),
             })
 
@@ -361,17 +390,29 @@ export function ProcessSalaryModal({
 
                         <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg space-y-2">
                             <div className="flex justify-between text-sm">
-                                <span>Base Salary:</span>
-                                <span>{baseSalary.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between text-sm text-green-600">
-                                <span>Total Additions:</span>
-                                <span>+{totalAdditions.toLocaleString()}</span>
+                                <span>Attendance Salary:</span>
+                                <span>{attendanceSalary !== null ? attendanceSalary.toLocaleString() : baseSalary.toLocaleString()} LKR</span>
                             </div>
                             <div className="flex justify-between text-sm text-red-600">
-                                <span>Total Deductions:</span>
-                                <span>-{totalDeductions.toLocaleString()}</span>
+                                <span>APIT Deduction {apitPercentage > 0 ? `(${apitPercentage}%)` : ''}:</span>
+                                <span>-{apitDeduction.toLocaleString()} LKR</span>
                             </div>
+                            <div className={`flex justify-between text-sm ${categoryNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <span>Category Amount:</span>
+                                <span>{categoryNet >= 0 ? '+' : ''}{categoryNet.toLocaleString()} LKR</span>
+                            </div>
+                            {totalAdditions > 0 && (
+                                <div className="flex justify-between text-sm text-green-600">
+                                    <span>Additions (Manual):</span>
+                                    <span>+{totalAdditions.toLocaleString()} LKR</span>
+                                </div>
+                            )}
+                            {totalDeductions > 0 && (
+                                <div className="flex justify-between text-sm text-red-600">
+                                    <span>Deductions (Manual):</span>
+                                    <span>-{totalDeductions.toLocaleString()} LKR</span>
+                                </div>
+                            )}
                             <Separator />
                             <div className="flex justify-between font-bold text-lg">
                                 <span>Net Salary:</span>
