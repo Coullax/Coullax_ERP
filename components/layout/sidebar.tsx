@@ -380,7 +380,7 @@ export function Sidebar() {
           {!isCollapsed && shouldExpand && (
             <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-800 pl-2">
               {filteredSubItems.map((subItem: any) => (
-                <NavItem key={subItem.href} item={subItem} isCollapsed={isCollapsed} isSubItem={true} />
+                <NavItem key={subItem.href || subItem.label} item={subItem} isCollapsed={isCollapsed} isSubItem={true} />
               ))}
             </div>
           )}
@@ -511,7 +511,7 @@ export function Sidebar() {
         {/* Main Items */}
         <div className="space-y-1">
           {filteredMainItems.map((item) => (
-            <NavItem key={item.href} item={item} isCollapsed={isCollapsed} />
+            <NavItem key={item.href || item.label} item={item} isCollapsed={isCollapsed} />
           ))}
         </div>
 
@@ -528,7 +528,7 @@ export function Sidebar() {
             {isCollapsed && <div className="border-t border-gray-200 dark:border-gray-800 my-2" />}
             <div className="space-y-1">
               {section.items.map((item) => (
-                <NavItem key={item.href} item={item} isCollapsed={isCollapsed} />
+                <NavItem key={item.href || item.label} item={item} isCollapsed={isCollapsed} />
               ))}
             </div>
           </div>
