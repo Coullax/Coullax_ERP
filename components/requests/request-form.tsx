@@ -941,13 +941,14 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estimated_cost">Estimated Cost</Label>
+                <Label htmlFor="estimated_cost">Estimated Cost *</Label>
                 <Input
                   id="estimated_cost"
                   name="estimated_cost"
                   type="number"
                   step="0.01"
                   onChange={handleChange}
+                  required
                   placeholder="1500.00"
                 />
               </div>
