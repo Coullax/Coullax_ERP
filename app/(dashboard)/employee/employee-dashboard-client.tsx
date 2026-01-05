@@ -123,7 +123,7 @@ export function EmployeeDashboardClient({
           </p>
         </div>
         <div className="flex gap-3">
-          <Link href="/requests/new/leave">
+          <Link href="/requests">
             <Button size="lg" className="shadow-lg shadow-primary/20 transition-all hover:scale-105">
               <Plus className="w-4 h-4 mr-2" />
               New Request
