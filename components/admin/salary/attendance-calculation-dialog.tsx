@@ -332,7 +332,7 @@ export function AttendanceCalculationDialog({
                                     onChange={(e) => setCalculatedAmount(e.target.value)}
                                 />
                             </div>
-                            <div className="space-y-2">
+                            {/* <div className="space-y-2">
                                 <Label htmlFor="notes">Notes (Optional)</Label>
                                 <Textarea
                                     id="notes"
@@ -341,7 +341,7 @@ export function AttendanceCalculationDialog({
                                     onChange={(e) => setNotes(e.target.value)}
                                     rows={3}
                                 />
-                            </div>
+                            </div> */}
                         </div>
                     )}
                 </div>
