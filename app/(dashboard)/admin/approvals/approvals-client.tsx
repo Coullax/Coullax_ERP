@@ -867,14 +867,11 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       {REQUEST_TYPE_LABELS[selectedRequest.request_type] || selectedRequest.request_type}
                     </p>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-400 mt-0.5" />
-                    <div>
-                      <p className="text-gray-500 text-xs">Employee</p>
-                      <p className="font-medium">
-                        {selectedRequest.employee?.profile?.full_name}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-gray-500 text-xs">Employee</p>
+                    <p className="font-medium">
+                      {selectedRequest.employee?.profile?.full_name}
+                    </p>
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs">Employee ID</p>
@@ -898,19 +895,13 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                   )}
                   {selectedRequest.request_type === 'leave' && selectedRequest.leave_requests?.[0] && (
                     <>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-gray-500 text-xs">Leave Start Date</p>
-                          <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].start_date), 'MMMM dd, yyyy')}</p>
-                        </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Leave Start Date</p>
+                        <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].start_date), 'MMMM dd, yyyy')}</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-gray-500 text-xs">Leave End Date</p>
-                          <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].end_date), 'MMMM dd, yyyy')}</p>
-                        </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Leave End Date</p>
+                        <p className="font-medium">{format(new Date(selectedRequest.leave_requests[0].end_date), 'MMMM dd, yyyy')}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs">Leave Duration</p>
@@ -930,26 +921,17 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
 
                   {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0] && (
                     <>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-gray-500 text-xs">Covering Date</p>
-                          <p className="font-medium">{format(new Date(selectedRequest.covering_requests[0].covering_date), 'MMMM dd, yyyy')}</p>
-                        </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Covering Date</p>
+                        <p className="font-medium">{format(new Date(selectedRequest.covering_requests[0].covering_date), 'MMMM dd, yyyy')}</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-gray-500 text-xs">Covering Start Time</p>
-                          <p className="font-medium">{selectedRequest.covering_requests[0].start_time}</p>
-                        </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Covering Start Time</p>
+                        <p className="font-medium">{selectedRequest.covering_requests[0].start_time}</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <p className="text-gray-500 text-xs">Covering End Time</p>
-                          <p className="font-medium">{selectedRequest.covering_requests[0].end_time}</p>
-                        </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Covering End Time</p>
+                        <p className="font-medium">{selectedRequest.covering_requests[0].end_time}</p>
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs">Covering Hours</p>
