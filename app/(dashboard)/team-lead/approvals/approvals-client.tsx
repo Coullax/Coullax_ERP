@@ -220,7 +220,9 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
   }
 
   const handleViewDetails = (request: any) => {
-    console.log('Request Details:', request)
+    console.log('🔍 Team Lead - Request Details:', request)
+    console.log('📊 Team Lead - Overtime Requests:', request.overtime_requests)
+    console.log('✈️ Team Lead - Travel Requests:', request.travel_requests)
     setSelectedRequest(request)
     setDialogOpen(true)
     setNotes('')
@@ -877,6 +879,331 @@ export function ApprovalsPageClient({ requests, reviewerId }: ApprovalsPageClien
                       </div>
                     </>
                   )}
+
+                  {selectedRequest.request_type === 'overtime' && selectedRequest.overtime_requests?.[0] && (() => {
+                    const overtimeData = Array.isArray(selectedRequest.overtime_requests)
+                      ? selectedRequest.overtime_requests[0]
+                      : selectedRequest.overtime_requests
+
+                    return (
+                      <>
+                        {overtimeData.date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-gray-500 text-xs">Overtime Date</p>
+                              <p className="font-medium">{format(new Date(overtimeData.date), 'MMMM dd, yyyy')}</p>
+                            </div>
+                          </div>
+                        )}
+                        {overtimeData.hours && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Hours</p>
+                            <p className="font-medium">{overtimeData.hours} {overtimeData.hours === 1 ? 'hour' : 'hours'}</p>
+                          </div>
+                        )}
+                        {overtimeData.start_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Start Time</p>
+                            <p className="font-medium">{overtimeData.start_time}</p>
+                          </div>
+                        )}
+                        {overtimeData.end_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">End Time</p>
+                            <p className="font-medium">{overtimeData.end_time}</p>
+                          </div>
+                        )}
+                        {overtimeData.reason && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Reason</p>
+                            <p className="font-medium text-sm">{overtimeData.reason}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.request_type === 'travel_request' && selectedRequest.travel_requests?.[0] && (() => {
+                    const travelData = Array.isArray(selectedRequest.travel_requests)
+                      ? selectedRequest.travel_requests[0]
+                      : selectedRequest.travel_requests
+
+                    return (
+                      <>
+                        {travelData.destination && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Destination</p>
+                            <p className="font-medium">{travelData.destination}</p>
+                          </div>
+                        )}
+                        {travelData.start_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-gray-500 text-xs">Start Date</p>
+                              <p className="font-medium">{format(new Date(travelData.start_date), 'MMMM dd, yyyy')}</p>
+                            </div>
+                          </div>
+                        )}
+                        {travelData.end_date && (
+                          <div className="flex items-start gap-2">
+                            <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-gray-500 text-xs">End Date</p>
+                              <p className="font-medium">{format(new Date(travelData.end_date), 'MMMM dd, yyyy')}</p>
+                            </div>
+                          </div>
+                        )}
+                        {travelData.check_out_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Check-Out Time</p>
+                            <p className="font-medium">{travelData.check_out_time}</p>
+                          </div>
+                        )}
+                        {travelData.check_in_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Check-In Time</p>
+                            <p className="font-medium">{travelData.check_in_time}</p>
+                          </div>
+                        )}
+                        {travelData.estimated_cost && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Estimated Cost</p>
+                            <p className="font-medium">${travelData.estimated_cost}</p>
+                          </div>
+                        )}
+                        {travelData.transport_mode && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Transport Mode</p>
+                            <p className="font-medium capitalize">{travelData.transport_mode}</p>
+                          </div>
+                        )}
+                        {travelData.purpose && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Purpose</p>
+                            <p className="font-medium text-sm">{travelData.purpose}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.request_type === 'expense_reimbursement' && selectedRequest.expense_reimbursements?.[0] && (() => {
+                    const expenseData = Array.isArray(selectedRequest.expense_reimbursements)
+                      ? selectedRequest.expense_reimbursements[0]
+                      : selectedRequest.expense_reimbursements
+
+                    return (
+                      <>
+                        {expenseData.expense_type && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Expense Type</p>
+                            <p className="font-medium capitalize">{expenseData.expense_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {expenseData.amount && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Amount</p>
+                            <p className="font-medium text-green-700 dark:text-green-300">${expenseData.amount}</p>
+                          </div>
+                        )}
+                        {expenseData.expense_date && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Expense Date</p>
+                            <p className="font-medium">{format(new Date(expenseData.expense_date), 'MMMM dd, yyyy')}</p>
+                          </div>
+                        )}
+                        {expenseData.attachments && expenseData.attachments.length > 0 && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Attachments ({expenseData.attachments.length})</p>
+                            <div className="space-y-1 mt-1">
+                              {expenseData.attachments.map((url: string, index: number) => {
+                                const fileName = url.split('/').pop() || `attachment-${index + 1}`
+                                return (
+                                  <a
+                                    key={index}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    {fileName}
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {expenseData.description && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Description</p>
+                            <p className="font-medium text-sm">{expenseData.description}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.request_type === 'attendance_regularization' && selectedRequest.attendance_regularization_requests?.[0] && (() => {
+                    const attendanceData = Array.isArray(selectedRequest.attendance_regularization_requests)
+                      ? selectedRequest.attendance_regularization_requests[0]
+                      : selectedRequest.attendance_regularization_requests
+
+                    return (
+                      <>
+                        {attendanceData.date && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Date</p>
+                            <p className="font-medium">{format(new Date(attendanceData.date), 'MMMM dd, yyyy')}</p>
+                          </div>
+                        )}
+                        {attendanceData.actual_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Actual Time</p>
+                            <p className="font-medium">{attendanceData.actual_time}</p>
+                          </div>
+                        )}
+                        {attendanceData.requested_time && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Requested Time</p>
+                            <p className="font-medium text-indigo-700 dark:text-indigo-300">{attendanceData.requested_time}</p>
+                          </div>
+                        )}
+                        {attendanceData.reason && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Reason</p>
+                            <p className="font-medium text-sm">{attendanceData.reason}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.request_type === 'asset_request' && selectedRequest.asset_requests?.[0] && (() => {
+                    const assetData = Array.isArray(selectedRequest.asset_requests)
+                      ? selectedRequest.asset_requests[0]
+                      : selectedRequest.asset_requests
+
+                    return (
+                      <>
+                        {assetData.asset_type && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Asset Type</p>
+                            <p className="font-medium capitalize">{assetData.asset_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {assetData.quantity && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Quantity</p>
+                            <p className="font-medium text-teal-700 dark:text-teal-300">{assetData.quantity}</p>
+                          </div>
+                        )}
+                        {assetData.asset_specification && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Specification</p>
+                            <p className="font-medium text-sm">{assetData.asset_specification}</p>
+                          </div>
+                        )}
+                        {assetData.reason && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Reason</p>
+                            <p className="font-medium text-sm">{assetData.reason}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.asset_issue_requests?.[0] && (() => {
+                    const assetIssueData = Array.isArray(selectedRequest.asset_issue_requests)
+                      ? selectedRequest.asset_issue_requests[0]
+                      : selectedRequest.asset_issue_requests
+
+                    return (
+                      <>
+                        {assetIssueData.issue_quantity && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Issue Quantity</p>
+                            <p className="font-medium text-rose-700 dark:text-rose-300">{assetIssueData.issue_quantity}</p>
+                          </div>
+                        )}
+                        {assetIssueData.requested_action && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Requested Action</p>
+                            <p className="font-medium capitalize">{assetIssueData.requested_action}</p>
+                          </div>
+                        )}
+                        {assetIssueData.issue_description && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Issue Description</p>
+                            <p className="font-medium text-sm">{assetIssueData.issue_description}</p>
+                          </div>
+                        )}
+                        {assetIssueData.issue_image_url && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs mb-2">Issue Image</p>
+                            <img
+                              src={assetIssueData.issue_image_url}
+                              alt="Asset Issue"
+                              className="rounded-lg border border-gray-300 dark:border-gray-600 max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(assetIssueData.issue_image_url, '_blank')}
+                            />
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {selectedRequest.request_type === 'resignation' && selectedRequest.resignations?.[0] && (() => {
+                    const resignationData = Array.isArray(selectedRequest.resignations)
+                      ? selectedRequest.resignations[0]
+                      : selectedRequest.resignations
+
+                    return (
+                      <>
+                        {resignationData.resignation_date && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Resignation Date</p>
+                            <p className="font-medium text-red-700 dark:text-red-300">{format(new Date(resignationData.resignation_date), 'MMMM dd, yyyy')}</p>
+                          </div>
+                        )}
+                        {resignationData.notice_period_days && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Notice Period</p>
+                            <p className="font-medium">{resignationData.notice_period_days} days</p>
+                          </div>
+                        )}
+                        {resignationData.last_working_date && (
+                          <div>
+                            <p className="text-gray-500 text-xs">Last Working Day</p>
+                            <p className="font-medium">{format(new Date(resignationData.last_working_date), 'MMMM dd, yyyy')}</p>
+                          </div>
+                        )}
+                        {resignationData.document_url && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs mb-1">Resignation Document</p>
+                            <a
+                              href={resignationData.document_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              View Document
+                            </a>
+                          </div>
+                        )}
+                        {resignationData.reason && (
+                          <div className="col-span-2">
+                            <p className="text-gray-500 text-xs">Reason</p>
+                            <p className="font-medium text-sm">{resignationData.reason}</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
 
                   {selectedRequest.request_type === 'covering' && selectedRequest.covering_requests?.[0] && (
                     <>

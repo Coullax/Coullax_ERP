@@ -362,7 +362,10 @@ export function SalarySlipClient({ payment }: SalarySlipProps) {
                         <div className="text-center">
                             <div className="h-16 flex items-end justify-center">
                                 {status === 'approved' ? (
-                                    <div className="text-green-600 font-bold border-2 border-green-600 rounded px-2 rotate-[-10deg]">APPROVED</div>
+                                    <div className="flex flex-col items-center">
+                                        <div className="text-green-600 font-bold border-2 border-green-600 rounded px-2 rotate-[-10deg]">APPROVED</div>
+                                        <div className="text-xs text-green-700 mt-1 font-medium">{profile?.full_name || 'Employee'}</div>
+                                    </div>
                                 ) : (
                                     <div className="text-gray-300">Pending</div>
                                 )}

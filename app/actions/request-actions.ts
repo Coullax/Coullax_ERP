@@ -811,8 +811,8 @@ export async function createResignation(employeeId: string, data: {
 }) {
   const supabase = await createClient()
 
-  // Determine initial status based on whether employee is a department head
-  const initialStatus = await getInitialRequestStatus(employeeId)
+  // Resignations always go directly to admin approval
+  const initialStatus = 'admin_approval_pending'
 
   const { data: request, error: requestError } = await supabase
     .from('requests')

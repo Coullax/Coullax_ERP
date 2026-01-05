@@ -43,7 +43,7 @@ import {
   PaginationPrevious,
   PaginationEllipsis
 } from '@/components/ui/pagination'
-import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, Upload } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, Calendar, CalendarDays, Trash2, Edit, Eye, MoreHorizontal, Loader2, Search, ArrowUpDown, ArrowUp, ArrowDown, Upload, Download } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { subDays, subMonths, startOfDay, endOfDay, isWithinInterval, parseISO, format } from 'date-fns'
 import { Label } from '@/components/ui/label'
@@ -254,6 +254,11 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
   }
 
   const handleViewDetails = (request: any) => {
+    console.log('🔍 Request Details:', request)
+    console.log('� Request Type:', request.request_type)
+    console.log('�📊 Overtime Requests:', request.overtime_requests)
+    console.log('✈️ Travel Requests:', request.travel_requests)
+    console.log('📋 Leave Requests:', request.leave_requests)
     setSelectedRequest(request)
     setDetailsDialogOpen(true)
   }
@@ -1150,6 +1155,406 @@ export function RequestsPageClient({ requests, userId }: RequestsPageClientProps
                         <div className="pt-2 border-t border-blue-200 dark:border-blue-700">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
                           <p className="text-sm">{leaveData.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Overtime Request Specific Details */}
+                {selectedRequest.request_type === 'overtime' && selectedRequest.overtime_requests && (() => {
+                  const overtimeData = Array.isArray(selectedRequest.overtime_requests)
+                    ? selectedRequest.overtime_requests[0]
+                    : selectedRequest.overtime_requests
+
+                  if (!overtimeData) return null
+
+                  return (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900 rounded-lg space-y-3">
+                      <p className="text-sm text-orange-600 dark:text-orange-300 font-semibold mb-3">Overtime Request Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {overtimeData.date && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Date</p>
+                            <p className="text-sm font-medium">{new Date(overtimeData.date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {overtimeData.hours && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hours</p>
+                            <p className="text-sm font-medium">{overtimeData.hours} {overtimeData.hours === 1 ? 'hour' : 'hours'}</p>
+                          </div>
+                        )}
+
+                        {overtimeData.start_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Start Time</p>
+                            <p className="text-sm font-medium">{overtimeData.start_time}</p>
+                          </div>
+                        )}
+
+                        {overtimeData.end_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">End Time</p>
+                            <p className="text-sm font-medium">{overtimeData.end_time}</p>
+                          </div>
+                        )}
+
+                        {overtimeData.assigned_supervisor && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Assigned Supervisor</p>
+                            <p className="text-sm font-medium">{overtimeData.assigned_supervisor}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {overtimeData.reason && (
+                        <div className="pt-2 border-t border-orange-200 dark:border-orange-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
+                          <p className="text-sm">{overtimeData.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Travel Request Specific Details */}
+                {selectedRequest.request_type === 'travel_request' && selectedRequest.travel_requests && (() => {
+                  const travelData = Array.isArray(selectedRequest.travel_requests)
+                    ? selectedRequest.travel_requests[0]
+                    : selectedRequest.travel_requests
+
+                  if (!travelData) return null
+
+                  return (
+                    <div className="p-4 bg-purple-50 dark:bg-purple-900 rounded-lg space-y-3">
+                      <p className="text-sm text-purple-600 dark:text-purple-300 font-semibold mb-3">Travel Request Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {travelData.destination && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Destination</p>
+                            <p className="text-sm font-medium">{travelData.destination}</p>
+                          </div>
+                        )}
+
+                        {travelData.start_date && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</p>
+                            <p className="text-sm font-medium">{new Date(travelData.start_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {travelData.end_date && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</p>
+                            <p className="text-sm font-medium">{new Date(travelData.end_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {travelData.check_out_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Check-Out Time</p>
+                            <p className="text-sm font-medium">{travelData.check_out_time}</p>
+                          </div>
+                        )}
+
+                        {travelData.check_in_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Check-In Time</p>
+                            <p className="text-sm font-medium">{travelData.check_in_time}</p>
+                          </div>
+                        )}
+
+                        {travelData.estimated_cost && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Estimated Cost</p>
+                            <p className="text-sm font-medium">${travelData.estimated_cost}</p>
+                          </div>
+                        )}
+
+                        {travelData.transport_mode && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Transport Mode</p>
+                            <p className="text-sm font-medium capitalize">{travelData.transport_mode}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {travelData.purpose && (
+                        <div className="pt-2 border-t border-purple-200 dark:border-purple-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Purpose</p>
+                          <p className="text-sm">{travelData.purpose}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Expense Reimbursement Specific Details */}
+                {selectedRequest.request_type === 'expense_reimbursement' && selectedRequest.expense_reimbursements && (() => {
+                  const expenseData = Array.isArray(selectedRequest.expense_reimbursements)
+                    ? selectedRequest.expense_reimbursements[0]
+                    : selectedRequest.expense_reimbursements
+
+                  if (!expenseData) return null
+
+                  return (
+                    <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg space-y-3">
+                      <p className="text-sm text-green-600 dark:text-green-300 font-semibold mb-3">Expense Reimbursement Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {expenseData.expense_type && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Expense Type</p>
+                            <p className="text-sm font-medium capitalize">{expenseData.expense_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+
+                        {expenseData.amount && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Amount</p>
+                            <p className="text-sm font-medium text-green-700 dark:text-green-300">${expenseData.amount}</p>
+                          </div>
+                        )}
+
+                        {expenseData.expense_date && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Expense Date</p>
+                            <p className="text-sm font-medium">{new Date(expenseData.expense_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {expenseData.attachments && expenseData.attachments.length > 0 && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Attachments ({expenseData.attachments.length})</p>
+                            <div className="space-y-1">
+                              {expenseData.attachments.map((url: string, index: number) => {
+                                const fileName = url.split('/').pop() || `attachment-${index + 1}`
+                                return (
+                                  <a
+                                    key={index}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    {fileName}
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {expenseData.description && (
+                        <div className="pt-2 border-t border-green-200 dark:border-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Description</p>
+                          <p className="text-sm">{expenseData.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Attendance Regularization Specific Details */}
+                {selectedRequest.request_type === 'attendance_regularization' && selectedRequest.attendance_regularization_requests && (() => {
+                  const attendanceData = Array.isArray(selectedRequest.attendance_regularization_requests)
+                    ? selectedRequest.attendance_regularization_requests[0]
+                    : selectedRequest.attendance_regularization_requests
+
+                  if (!attendanceData) return null
+
+                  return (
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900 rounded-lg space-y-3">
+                      <p className="text-sm text-indigo-600 dark:text-indigo-300 font-semibold mb-3">Attendance Regularization Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {attendanceData.date && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Date</p>
+                            <p className="text-sm font-medium">{new Date(attendanceData.date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {attendanceData.actual_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Actual Time</p>
+                            <p className="text-sm font-medium">{attendanceData.actual_time}</p>
+                          </div>
+                        )}
+
+                        {attendanceData.requested_time && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Requested Time</p>
+                            <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{attendanceData.requested_time}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {attendanceData.reason && (
+                        <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
+                          <p className="text-sm">{attendanceData.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Asset Request Specific Details */}
+                {selectedRequest.request_type === 'asset_request' && selectedRequest.asset_requests && (() => {
+                  const assetData = Array.isArray(selectedRequest.asset_requests)
+                    ? selectedRequest.asset_requests[0]
+                    : selectedRequest.asset_requests
+
+                  if (!assetData) return null
+
+                  return (
+                    <div className="p-4 bg-teal-50 dark:bg-teal-900 rounded-lg space-y-3">
+                      <p className="text-sm text-teal-600 dark:text-teal-300 font-semibold mb-3">Asset Request Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {assetData.asset_type && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Asset Type</p>
+                            <p className="text-sm font-medium capitalize">{assetData.asset_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+
+                        {assetData.quantity && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Quantity</p>
+                            <p className="text-sm font-medium text-teal-700 dark:text-teal-300">{assetData.quantity}</p>
+                          </div>
+                        )}
+
+                        {assetData.asset_specification && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Specification</p>
+                            <p className="text-sm font-medium">{assetData.asset_specification}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {assetData.reason && (
+                        <div className="pt-2 border-t border-teal-200 dark:border-teal-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
+                          <p className="text-sm">{assetData.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Asset Issue Request Specific Details */}
+                {selectedRequest.asset_issue_requests && (() => {
+                  const assetIssueData = Array.isArray(selectedRequest.asset_issue_requests)
+                    ? selectedRequest.asset_issue_requests[0]
+                    : selectedRequest.asset_issue_requests
+
+                  if (!assetIssueData) return null
+
+                  return (
+                    <div className="p-4 bg-rose-50 dark:bg-rose-900 rounded-lg space-y-3">
+                      <p className="text-sm text-rose-600 dark:text-rose-300 font-semibold mb-3">Asset Issue Report Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {assetIssueData.issue_quantity && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Issue Quantity</p>
+                            <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{assetIssueData.issue_quantity}</p>
+                          </div>
+                        )}
+
+                        {assetIssueData.requested_action && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Requested Action</p>
+                            <p className="text-sm font-medium capitalize">{assetIssueData.requested_action}</p>
+                          </div>
+                        )}
+
+                        {assetIssueData.issue_description && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Issue Description</p>
+                            <p className="text-sm font-medium">{assetIssueData.issue_description}</p>
+                          </div>
+                        )}
+
+                        {assetIssueData.issue_image_url && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Issue Image</p>
+                            <img
+                              src={assetIssueData.issue_image_url}
+                              alt="Asset Issue"
+                              className="rounded-lg border border-rose-200 dark:border-rose-700 max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(assetIssueData.issue_image_url, '_blank')}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Resignation Request Specific Details */}
+                {selectedRequest.request_type === 'resignation' && selectedRequest.resignations && (() => {
+                  const resignationData = Array.isArray(selectedRequest.resignations)
+                    ? selectedRequest.resignations[0]
+                    : selectedRequest.resignations
+
+                  if (!resignationData) return null
+
+                  return (
+                    <div className="p-4 bg-red-50 dark:bg-red-900 rounded-lg space-y-3">
+                      <p className="text-sm text-red-600 dark:text-red-300 font-semibold mb-3">Resignation Request Details</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {resignationData.resignation_date && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Resignation Date</p>
+                            <p className="text-sm font-medium text-red-700 dark:text-red-300">{new Date(resignationData.resignation_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {resignationData.notice_period_days && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notice Period</p>
+                            <p className="text-sm font-medium">{resignationData.notice_period_days} days</p>
+                          </div>
+                        )}
+
+                        {resignationData.last_working_date && (
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Last Working Day</p>
+                            <p className="text-sm font-medium">{new Date(resignationData.last_working_date).toLocaleDateString()}</p>
+                          </div>
+                        )}
+
+                        {resignationData.document_url && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Resignation Document</p>
+                            <a
+                              href={resignationData.document_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              View Document
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {resignationData.reason && (
+                        <div className="pt-2 border-t border-red-200 dark:border-red-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Reason</p>
+                          <p className="text-sm">{resignationData.reason}</p>
                         </div>
                       )}
                     </div>

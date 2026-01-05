@@ -947,10 +947,15 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   name="estimated_cost"
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="99999999.99"
                   onChange={handleChange}
                   required
                   placeholder="1500.00"
                 />
+                <p className="text-xs text-gray-500">
+                  Maximum: $99,999,999.99
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
