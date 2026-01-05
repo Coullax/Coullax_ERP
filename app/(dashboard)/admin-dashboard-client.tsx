@@ -41,6 +41,7 @@ export function AdminDashboardClient() {
       if (!response.ok) throw new Error('Failed to fetch dashboard data')
 
       const data = await response.json()
+      console.log("these are data", data)
       setDashboardData(data)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -52,7 +53,7 @@ export function AdminDashboardClient() {
   const stats = [
     {
       title: "Total Employees",
-      value: dashboardData?.stats.totalEmployees.toString() || "0",
+      value: (dashboardData?.stats.totalEmployees || 0).toString(),
       change: 12,
       trend: "up" as const,
       icon: Users,
@@ -62,7 +63,7 @@ export function AdminDashboardClient() {
     },
     {
       title: "Pending Requests",
-      value: dashboardData?.stats.pendingRequests.toString() || "0",
+      value: ((dashboardData?.stats.adminApprovalPendingRequests || 0) + (dashboardData?.stats.pendingRequests || 0)).toString(),
       change: -8,
       trend: "down" as const,
       icon: FileText,
@@ -72,7 +73,7 @@ export function AdminDashboardClient() {
     },
     {
       title: "Active Events",
-      value: dashboardData?.stats.monthEventCount.toString() || "0",
+      value: (dashboardData?.stats.monthEventCount || 0).toString(),
       change: 2.4,
       trend: "up" as const,
       icon: Clock,

@@ -101,7 +101,12 @@ export async function GET() {
     const { count: pendingRequests } = await supabase
       .from('requests')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'admin_final_approval_pending')
+    
+      const { count: adminApprovalPendingRequests } = await supabase
+      .from('requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'admin_approval_pending')
 
     // Get current month's event count
     const now = new Date()
@@ -119,6 +124,7 @@ export async function GET() {
       stats: {
         totalEmployees: totalEmployees || 0,
         pendingRequests: pendingRequests || 0,
+        adminApprovalPendingRequests: adminApprovalPendingRequests || 0,
         monthEventCount: monthEventCount || 0
       }
     })

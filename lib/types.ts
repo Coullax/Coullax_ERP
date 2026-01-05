@@ -180,6 +180,7 @@ export interface DashboardData {
   stats: {
     totalEmployees: number
     pendingRequests: number
+    adminApprovalPendingRequests: number
     monthEventCount: number
   }
 }
