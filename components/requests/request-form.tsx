@@ -684,7 +684,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="start_date"
                   name="start_date"
                   type="date"
-                  min={new Date().toISOString().split('T')[0]}
+                  min={formData.leave_type === 'sick' ? undefined : new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
@@ -695,7 +695,7 @@ export function RequestForm({ employeeId, requestType }: RequestFormProps) {
                   id="end_date"
                   name="end_date"
                   type="date"
-                  min={new Date().toISOString().split('T')[0]}
+                  min={formData.leave_type === 'sick' ? undefined : new Date().toISOString().split('T')[0]}
                   onChange={handleChange}
                   required
                 />
